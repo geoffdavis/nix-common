@@ -1,0 +1,27 @@
+# Install once per checkout: `pre-commit install`
+# Run on everything: `pre-commit run --all-files`
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: mixed-line-ending
+
+  - repo: local
+    hooks:
+      - id: alejandra
+        name: alejandra (nix formatter)
+        entry: alejandra
+        language: system
+        types: [nix]
+
+      - id: nix-flake-check
+        name: nix flake check
+        entry: nix flake check
+        language: system
+        pass_filenames: false
+        files: '\.(nix|lock)$'
