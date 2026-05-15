@@ -1,0 +1,16 @@
+# nix build artifacts
+result
+result-*
+
+# direnv
+.direnv/
+.envrc.local
+
+# editor / OS noise
+.DS_Store
+*.swp
+*.swo
+*~
+
+# claude code worktrees
+.claude/worktrees/
