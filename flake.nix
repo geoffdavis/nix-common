@@ -16,5 +16,6 @@
   outputs = _: {
     darwinModules.common = ./modules/darwin/common.nix;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
+    homeModules.git = ./modules/home/git.nix;
   };
 }
