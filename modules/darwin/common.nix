@@ -28,6 +28,7 @@
       imports = [
         lazyvim.homeManagerModules.default
         ../home/cli-tools.nix
+        ../home/git.nix
       ];
       home.stateVersion = "25.11";
 
