@@ -7,7 +7,6 @@
     awscli2
     cilium-cli
     cloudflared
-    colima # local container runtime; used for Talos rebuilds
     cosign
     crane
     fluxcd
