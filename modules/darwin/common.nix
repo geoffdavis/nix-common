@@ -15,6 +15,8 @@
 
   homebrew.enable = true;
   homebrew.onActivation.autoUpdate = true; # can slow darwin-rebuild down
+  homebrew.onActivation.upgrade = true;
+  homebrew.onActivation.cleanup = "uninstall"; # remove brews/casks not in config
 
   users.users.geoff = {
     name = "geoff";

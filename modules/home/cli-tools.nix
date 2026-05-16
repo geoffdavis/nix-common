@@ -7,6 +7,7 @@
     awscli2
     cilium-cli
     cloudflared
+    colima # local container runtime; used for Talos rebuilds
     cosign
     crane
     fluxcd
@@ -40,6 +41,7 @@
     pipenv
     pipx
     pre-commit
+    python3Packages.pytest
     uv
 
     # general utilities
