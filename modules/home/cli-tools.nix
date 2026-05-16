@@ -44,6 +44,7 @@
 
     # general utilities
     dtc
+    expect
     gnugrep
     gnumake
     gnupatch
