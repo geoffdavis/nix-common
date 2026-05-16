@@ -57,6 +57,9 @@
     yamllint
     yq-go
 
+    # nix tooling
+    alejandra
+
     # editor support
     # (neovim itself is provided by lazyvim-nix)
   ];
