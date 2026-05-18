@@ -33,7 +33,16 @@ in {
 
   config = {
     # Ensure git SSH signing uses the 1Password agent instead of desktop keyring agents.
-    home.sessionVariables = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    # SSH_AUTH_SOCK on both Linux + Darwin. The opAgent let-binding at the
+    # top of the file is already platform-conditional (1P's per-OS socket
+    # paths), so this works uniformly. Previously this was Linux-only, but
+    # that meant macOS shells inherited Apple's default launchd socket
+    # (/private/tmp/com.apple.launchd.*/Listeners), which has no identities
+    # — so tools that honor SSH_AUTH_SOCK (rsync, custom CLIs, fallback
+    # paths in op-ssh-sign for transient XPC hiccups) couldn't reach the
+    # 1P agent. ssh client itself already gets the right agent via the
+    # IdentityAgent matchBlock below, but env-var-based tools need this.
+    home.sessionVariables = {
       SSH_AUTH_SOCK = opAgent;
     };
 
