@@ -42,7 +42,7 @@ in {
     # paths in op-ssh-sign for transient XPC hiccups) couldn't reach the
     # 1P agent. ssh client itself already gets the right agent via the
     # IdentityAgent matchBlock below, but env-var-based tools need this.
-    home.sessionVariables = {
+    home.sessionVariables = lib.mkIf (pkgs.stdenv.hostPlatform.isLinux || pkgs.stdenv.hostPlatform.isDarwin) {
       SSH_AUTH_SOCK = opAgent;
     };
 
