@@ -7,8 +7,8 @@
   cfg = config.onepassword-ssh;
   opAgent =
     if pkgs.stdenv.hostPlatform.isDarwin
-    then "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-    else "~/.1password/agent.sock";
+    then "${config.home.homeDirectory}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+    else "${config.home.homeDirectory}/.1password/agent.sock";
 in {
   options.onepassword-ssh.keys = lib.mkOption {
     type = lib.types.listOf (lib.types.submodule {
@@ -32,6 +32,11 @@ in {
   };
 
   config = {
+    # Ensure git SSH signing uses the 1Password agent instead of desktop keyring agents.
+    home.sessionVariables = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+      SSH_AUTH_SOCK = opAgent;
+    };
+
     programs.ssh = {
       enable = true;
       enableDefaultConfig = false;
