@@ -46,6 +46,7 @@ in {
           lazyvim.homeManagerModules.default
           ../home/cli-tools.nix
           ../home/git.nix
+          ../home/ssh.nix
         ];
         home.stateVersion = "25.11";
 
