@@ -44,6 +44,7 @@
     uv
 
     # general utilities
+    btop
     dtc
     expect
     gnugrep
