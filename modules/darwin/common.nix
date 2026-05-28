@@ -41,6 +41,7 @@ in {
     home-manager = {
       useGlobalPkgs = true;
       useUserPackages = true;
+      backupFileExtension = "pre-hm";
       users.${username} = {pkgs, ...}: {
         imports = [
           lazyvim.homeManagerModules.default
