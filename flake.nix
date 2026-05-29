@@ -19,5 +19,6 @@
     homeModules.git = ./modules/home/git.nix;
     homeModules.ssh = ./modules/home/ssh.nix;
     homeModules.gnome-desktop = ./modules/home/gnome-desktop.nix;
+    homeModules.graphics = ./modules/home/graphics.nix;
   };
 }
