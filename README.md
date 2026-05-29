@@ -12,7 +12,21 @@ configs (windansea, redacted-host, redacted-host, ...).
 
 ## Consuming this flake
 
-In a downstream `flake.nix`:
+In a downstream `flake.nix`, follow the pin set that matches your platform.
+
+Darwin hosts:
+
+    nixpkgs.follows = "nix-common/nixpkgs-darwin";
+    home-manager.follows = "nix-common/home-manager-darwin";
+    darwin.follows = "nix-common/darwin";
+    lazyvim.follows = "nix-common/lazyvim";
+
+NixOS hosts / Linux home configs:
+
+    nixpkgs-nixos.follows = "nix-common/nixpkgs-nixos";
+    home-manager-nixos.follows = "nix-common/home-manager-nixos";
+
+Example for a darwin host:
 
 ```nix
 {
@@ -20,8 +34,8 @@ In a downstream `flake.nix`:
     nix-common.url = "github:geoffdavis/nix-common";
 
     # follow nix-common's pins so all hosts use the same versions
-    nixpkgs.follows = "nix-common/nixpkgs";
-    home-manager.follows = "nix-common/home-manager";
+    nixpkgs.follows = "nix-common/nixpkgs-darwin";
+    home-manager.follows = "nix-common/home-manager-darwin";
     darwin.follows = "nix-common/darwin";
     lazyvim.follows = "nix-common/lazyvim";
   };
