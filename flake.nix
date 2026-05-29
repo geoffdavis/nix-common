@@ -2,13 +2,19 @@
   description = "Shared nix modules and pinned inputs for personal multi-host configs";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    # darwin channel — for nix-darwin hosts (windansea, viasat-laptop)
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    # nixos channel — for NixOS hosts (birdrock) and Linux home configs (oceaneering)
+    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
 
-    home-manager.url = "github:nix-community/home-manager/release-25.11";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
+
+    home-manager-nixos.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-nixos.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
-    darwin.inputs.nixpkgs.follows = "nixpkgs";
+    darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     lazyvim.url = "github:pfassina/lazyvim-nix";
   };
