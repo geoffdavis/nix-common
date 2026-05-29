@@ -38,6 +38,8 @@ in {
     homebrew.onActivation.cleanup = "uninstall"; # remove brews/casks not in config
     # Ensure terminal/editor glyph support on every interactive macOS host.
     homebrew.casks = [
+      "1password"
+      "1password-cli"
       "font-hack-nerd-font"
     ];
 
