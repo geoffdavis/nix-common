@@ -22,6 +22,11 @@ in {
   };
 
   config = {
+    nixpkgs.config.allowUnfreePredicate = pkg:
+      builtins.elem (lib.getName pkg) [
+        "drawio"
+      ];
+
     system.stateVersion = 6;
     system.primaryUser = username;
 
