@@ -37,6 +37,7 @@
     hugo
 
     # python tooling
+    python312
     pipenv
     pipx
     pre-commit
