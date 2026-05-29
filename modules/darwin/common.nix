@@ -41,6 +41,7 @@ in {
       "1password"
       "1password-cli"
       "font-hack-nerd-font"
+      "ghostty"
     ];
 
     users.users.${username} = {
