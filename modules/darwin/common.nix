@@ -36,6 +36,10 @@ in {
     homebrew.onActivation.autoUpdate = true; # can slow darwin-rebuild down
     homebrew.onActivation.upgrade = true;
     homebrew.onActivation.cleanup = "uninstall"; # remove brews/casks not in config
+    # Ensure terminal/editor glyph support on every interactive macOS host.
+    homebrew.casks = [
+      "font-hack-nerd-font"
+    ];
 
     users.users.${username} = {
       name = username;
