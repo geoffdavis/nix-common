@@ -10,6 +10,7 @@
   ...
 }: let
   username = config.my.username;
+  unfreePackageNames = import ../shared/unfree-package-names.nix;
 in {
   options.my.username = lib.mkOption {
     type = lib.types.str;
@@ -22,6 +23,9 @@ in {
   };
 
   config = {
+    nixpkgs.config.allowUnfreePredicate = pkg:
+      builtins.elem (lib.getName pkg) unfreePackageNames;
+
     system.stateVersion = 6;
     system.primaryUser = username;
 
@@ -45,10 +49,7 @@ in {
       users.${username} = {pkgs, ...}: {
         imports = [
           lazyvim.homeManagerModules.default
-          ../home/cli-tools.nix
-          ../home/git.nix
-          ../home/graphics.nix
-          ../home/ssh.nix
+          ../home/desktop-base.nix
         ];
         home.stateVersion = "25.11";
 
