@@ -1,7 +1,7 @@
 {...}: {
   imports = [
     ./desktop-base.nix
-    ./gnome-desktop.nix
+    ./gnome-dconf.nix
     ./unfree-desktop.nix
   ];
 }
