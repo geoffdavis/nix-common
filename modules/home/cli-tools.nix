@@ -75,6 +75,6 @@
       # (neovim itself is provided by lazyvim-nix)
     ])
     ++ lib.optionals pkgs.stdenv.isLinux [
-      _1password-cli
+      pkgs._1password-cli
     ];
 }
