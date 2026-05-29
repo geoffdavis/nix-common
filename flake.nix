@@ -16,9 +16,12 @@
   outputs = _: {
     darwinModules.common = ./modules/darwin/common.nix;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
+    homeModules.desktop-base = ./modules/home/desktop-base.nix;
     homeModules.git = ./modules/home/git.nix;
     homeModules.ssh = ./modules/home/ssh.nix;
     homeModules.gnome-desktop = ./modules/home/gnome-desktop.nix;
     homeModules.graphics = ./modules/home/graphics.nix;
+    homeModules.linux-desktop-base = ./modules/home/linux-desktop-base.nix;
+    homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
   };
 }
