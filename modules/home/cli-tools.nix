@@ -9,6 +9,7 @@
     (with pkgs; [
       # cloud / infra
       ansible
+      azcopy
       awscli2
       cilium-cli
       cloudflared
