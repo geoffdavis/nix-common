@@ -9,7 +9,7 @@
     (with pkgs; [
       # cloud / infra
       ansible
-      azcopy
+      azure-storage-azcopy
       awscli2
       cilium-cli
       cloudflared
