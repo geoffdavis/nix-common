@@ -2,8 +2,8 @@
   "1password"
   "1password-cli"
   "claude-code"
+  "code" # vscode-fhs's derivation is named code-<ver> (lib.getName -> "code")
   "drawio"
   "obsidian"
-  "vscode"
-  "vscode-fhs"
+  "vscode" # plain pkgs.vscode (non-FHS)
 ]
