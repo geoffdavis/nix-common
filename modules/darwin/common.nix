@@ -53,9 +53,12 @@ in {
       useGlobalPkgs = true;
       useUserPackages = true;
       backupFileExtension = "pre-hm";
+      extraSpecialArgs = {inherit lazyvim;};
       users.${username} = {pkgs, ...}: {
         imports = [
-          lazyvim.homeManagerModules.default
+          # Editor (LazyVim + EDITOR) is shared cross-platform; desktop-base
+          # bundles cli-tools/git/graphics/ssh + the macOS/Linux GUI bits.
+          ../home/neovim.nix
           ../home/desktop-base.nix
         ];
         home.stateVersion = "25.11";
@@ -65,34 +68,6 @@ in {
         home.packages = [
           darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
         ];
-
-        programs.lazyvim = {
-          enable = true;
-
-          extras = {
-            lang.nix.enable = true;
-            lang.python = {
-              enable = true;
-              installDependencies = true;
-              installRuntimeDependencies = true;
-            };
-            lang.go = {
-              enable = true;
-              installDependencies = true;
-              installRuntimeDependencies = true;
-            };
-          };
-
-          extraPackages = with pkgs; [
-            nixd # Nix LSP
-            alejandra # Nix formatter
-          ];
-
-          treesitterParsers = with pkgs.vimPlugins.nvim-treesitter-parsers; [
-            wgsl # WebGPU Shading Language
-            templ # Go templ files
-          ];
-        };
       };
     };
   };
