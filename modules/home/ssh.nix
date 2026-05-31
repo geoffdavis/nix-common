@@ -10,6 +10,12 @@
     then "${config.home.homeDirectory}/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
     else "${config.home.homeDirectory}/.1password/agent.sock";
 
+  # ssh_config value: the darwin agent socket lives under "Group Containers"
+  # (spaces), so it must be double-quoted or ssh treats the spaces as extra
+  # arguments and rejects the whole config. SSH_AUTH_SOCK (an env var) keeps the
+  # bare path.
+  opAgentSsh = "\"${opAgent}\"";
+
   sanitize = name: lib.replaceStrings [" " "/"] ["_" "_"] name;
   pubFileRel = k: ".ssh/op-${sanitize k.item}.pub";
   pubFileSsh = k: "~/${pubFileRel k}";
@@ -102,7 +108,7 @@ in {
           "*" =
             {
               extraOptions = {
-                IdentityAgent = opAgent;
+                IdentityAgent = opAgentSsh;
               };
             }
             // lib.optionalAttrs (defaultKey != null) {
@@ -116,7 +122,7 @@ in {
               identityFile = pubFileSsh k;
               identitiesOnly = true;
               extraOptions = {
-                IdentityAgent = opAgent;
+                IdentityAgent = opAgentSsh;
               };
             };
           })
