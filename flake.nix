@@ -2,9 +2,9 @@
   description = "Shared nix modules and pinned inputs for personal multi-host configs";
 
   inputs = {
-    # darwin channel — for nix-darwin hosts (windansea, redacted-host)
+    # darwin channel — for nix-darwin (macOS) hosts
     nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
-    # nixos channel — for NixOS hosts (birdrock) and Linux home configs (redacted)
+    # nixos channel — for NixOS systems and standalone home-manager on Linux
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
 
     home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";

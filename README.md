@@ -1,14 +1,32 @@
 # nix-common
 
-Shared nix modules and pinned flake inputs for my personal multi-host
-configs (windansea, redacted-host, redacted-host, ...).
+Shared nix modules and pinned flake inputs for my personal multi-host nix
+configs — macOS (nix-darwin), NixOS, and standalone home-manager on Linux.
+Downstream host repos are kept separate; this repo stays context-neutral and
+names no specific hosts.
 
 ## Exports
 
-| output                       | what it is                                   |
-| ---------------------------- | -------------------------------------------- |
-| `darwinModules.common`       | shared nix-darwin config for every Mac       |
-| `homeModules.cli-tools`      | shared home-manager CLI packages (Mac + Linux) |
+System modules — per platform; system config + home-manager wiring:
+
+- `darwinModules.common` — nix-darwin hosts (macOS)
+- `nixosModules.common` — NixOS hosts
+
+Home modules — imported into a host's home-manager user (cross-platform unless noted):
+
+- `homeModules.cli-tools` — shared CLI packages (Mac + Linux)
+- `homeModules.neovim` — LazyVim editor + global `EDITOR=nvim`
+- `homeModules.git` — git config + 1Password SSH commit signing
+- `homeModules.ssh` — 1Password SSH agent / `IdentityAgent` config
+- `homeModules.graphics` — GUI / diagramming tools
+- `homeModules.desktop-base` — cli-tools + git + graphics + ssh, plus GUI/fonts on an interactive desktop
+- `homeModules.gnome-dconf` — GNOME dconf settings (extensions, scaling)
+- `homeModules.gnome-desktop-base` — desktop-base + gnome-dconf + unfree-desktop (a GNOME Linux desktop)
+- `homeModules.linux-headless-base` — cli-tools + git (headless Linux)
+- `homeModules.unfree-desktop` — home-level `allowUnfree` predicate
+
+`neovim` is imported by both `*Modules.common`, so every host gets the editor;
+consumers pass `lazyvim` via `extraSpecialArgs`.
 
 ## Consuming this flake
 
