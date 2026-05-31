@@ -1,6 +1,9 @@
 [
   "1password"
   "1password-cli"
+  "claude-code"
   "drawio"
   "obsidian"
+  "vscode"
+  "vscode-fhs"
 ]
