@@ -31,6 +31,8 @@
     extraPackages = with pkgs; [
       nixd # Nix LSP
       alejandra # Nix formatter
+      statix # Nix linter (LazyVim lang.nix expects it on PATH)
+      deadnix # dead-code linter for Nix (LazyVim lang.nix)
     ];
 
     treesitterParsers = with pkgs.vimPlugins.nvim-treesitter-parsers; [
