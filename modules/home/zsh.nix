@@ -4,7 +4,7 @@
     oh-my-zsh = {
       enable = true;
       theme = lib.mkDefault "agnoster";
-      plugins = ["git"];
+      plugins = ["git" "python"];
     };
   };
 }
