@@ -8,6 +8,7 @@
     ./profile.nix
     ./cli-tools.nix
     ./git.nix
+    ./zsh.nix
     ./graphics.nix
     ./ssh.nix
   ];

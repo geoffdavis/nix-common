@@ -27,6 +27,7 @@
     homeModules.profile = ./modules/home/profile.nix;
     homeModules.desktop-base = ./modules/home/desktop-base.nix;
     homeModules.git = ./modules/home/git.nix;
+    homeModules.zsh = ./modules/home/zsh.nix;
     homeModules.ssh = ./modules/home/ssh.nix;
     homeModules.gnome-dconf = ./modules/home/gnome-dconf.nix;
     homeModules.graphics = ./modules/home/graphics.nix;
