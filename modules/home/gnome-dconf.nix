@@ -21,5 +21,29 @@
         "scale-monitor-framebuffer"
       ];
     };
+
+    # 1Password global shortcuts (Wayland requires compositor-level registration)
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+      ];
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
+      name = "1Password Quick Access";
+      command = "1password --quick-access";
+      binding = "<Control><Shift>space";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      name = "1Password Fill in Browser";
+      command = "1password --fill";
+      binding = "<Control>backslash";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      name = "1Password Lock";
+      command = "1password --lock";
+      binding = "<Control><Shift>l";
+    };
   };
 }
