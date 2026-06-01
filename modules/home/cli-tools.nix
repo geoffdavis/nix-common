@@ -59,6 +59,7 @@
       btop
       dtc
       expect
+      fzf
       gnugrep
       gnumake
       gnupatch
