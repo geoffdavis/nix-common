@@ -5,6 +5,8 @@
   pkgs,
   ...
 }: {
+  home.sessionPath = ["$HOME/.local/bin"];
+
   home.packages =
     (with pkgs; [
       # cloud / infra
