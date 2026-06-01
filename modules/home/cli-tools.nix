@@ -11,6 +11,7 @@
     (with pkgs; [
       # cloud / infra
       ansible
+      azure-cli
       azure-storage-azcopy
       awscli2
       cilium-cli
@@ -23,6 +24,7 @@
       k9s
       opentofu
       pulumi
+      terraform
       talhelper
       talosctl
       terragrunt
