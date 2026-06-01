@@ -25,6 +25,7 @@ Home modules — imported into a host's home-manager user (cross-platform unless
 - `homeModules.gnome-desktop-base` — desktop-base + gnome-dconf + unfree-desktop (a GNOME Linux desktop)
 - `homeModules.linux-headless-base` — cli-tools + git (headless Linux)
 - `homeModules.unfree-desktop` — home-level `allowUnfree` predicate
+- `homeModules.op-json-secrets` — patch JSON config files with 1Password secrets at activation time
 
 ## Shared profile management
 
@@ -95,6 +96,57 @@ Example for a darwin host:
   };
 }
 ```
+
+## 1Password secret injection
+
+The `homeModules.op-json-secrets` module patches JSON config files with secrets
+fetched from 1Password at `home-manager switch` time. It uses `jq` to merge
+only the declared keys, leaving all other content (including runtime-written
+values) untouched.
+
+### Setup in a consuming repo
+
+1. Add the module to the relevant `homeManagerConfiguration.modules`:
+
+```nix
+modules = [
+  nix-common.homeModules.op-json-secrets
+  # … other modules …
+];
+```
+
+2. Declare secrets in any module or host config in that configuration:
+
+```nix
+op-json-secrets = [
+  {
+    dest = "${config.home.homeDirectory}/.config/myapp/config.json";
+    patches = [
+      { path = ".password";    ref = "op://MyVault/MyItem/password"; }
+      { path = ".api.token";  ref = "op://MyVault/APIItem/credential"; }
+    ];
+  }
+];
+```
+
+3. Run a `home-manager switch` with an active 1Password session.  The CLI is
+   resolved from PATH at activation time — no flake input or package override
+   needed.  Missing or expired secrets are skipped with a warning; the switch
+   does not fail.
+
+### Static (non-secret) patches
+
+For values that are not sensitive but still need to be present (e.g.
+`disableGpu: false`), use `home.activation` with `jq` directly rather than
+this module.  Keeping secrets and static config separate makes the intent
+clear.
+
+### Relationship to `homeModules.ssh`
+
+The `ssh` module sets up the 1Password SSH agent so that `op` authentication
+works via biometric unlock.  With both modules active, `home-manager switch`
+will automatically populate JSON secrets as long as 1Password is unlocked —
+no interactive `op signin` required.
 
 ## Updating consumers
 
