@@ -24,6 +24,7 @@
     nixosModules.common = ./modules/nixos/common.nix;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
     homeModules.neovim = ./modules/home/neovim.nix;
+    homeModules.profile = ./modules/home/profile.nix;
     homeModules.desktop-base = ./modules/home/desktop-base.nix;
     homeModules.git = ./modules/home/git.nix;
     homeModules.ssh = ./modules/home/ssh.nix;

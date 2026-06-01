@@ -16,6 +16,7 @@ Home modules — imported into a host's home-manager user (cross-platform unless
 
 - `homeModules.cli-tools` — shared CLI packages (Mac + Linux)
 - `homeModules.neovim` — LazyVim editor + global `EDITOR=nvim`
+- `homeModules.profile` — shared Linux `.profile` snippet management
 - `homeModules.git` — git config + 1Password SSH commit signing
 - `homeModules.ssh` — 1Password SSH agent / `IdentityAgent` config
 - `homeModules.graphics` — GUI / diagramming tools
@@ -24,6 +25,29 @@ Home modules — imported into a host's home-manager user (cross-platform unless
 - `homeModules.gnome-desktop-base` — desktop-base + gnome-dconf + unfree-desktop (a GNOME Linux desktop)
 - `homeModules.linux-headless-base` — cli-tools + git (headless Linux)
 - `homeModules.unfree-desktop` — home-level `allowUnfree` predicate
+
+## Shared profile management
+
+Linux profile hooks are centralized via `homeModules.profile`.
+
+Modules can append login/session snippets with:
+
+```nix
+sharedProfile.snippets = [
+  ''
+    # Example: source Home Manager session variables at login
+    if [ -e "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ]; then
+      . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+    fi
+  ''
+];
+```
+
+Notes:
+
+- Snippets are concatenated into `~/.profile` only on Linux.
+- If no snippets are defined, `~/.profile` is not managed by this module.
+- Desktop-specific snippets should usually be gated, for example with `config.targets.genericLinux.enable`, to avoid conflicting with NixOS-managed session behavior.
 
 `neovim` is imported by both `*Modules.common`, so every host gets the editor;
 consumers pass `lazyvim` via `extraSpecialArgs`.
