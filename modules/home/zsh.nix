@@ -10,10 +10,10 @@
     # Shared interactive aliases + functions. Curated subset originally
     # subsetted from oceaneering's CCOE .bash_aliases for viasat-laptop;
     # promoted to shared so every host gets the same baseline. On hosts
-    # whose own initExtra sources a fuller alias file (e.g. oceaneering's
+    # whose own initContent sources a fuller alias file (e.g. oceaneering's
     # CCOE bundle) the later source wins, so per-host supersets still
     # override these definitions.
-    initExtra = ''
+    initContent = ''
       alias reporoot='echo "$(git rev-parse --show-toplevel)"'
       alias cdreporoot='cd "$(git rev-parse --show-toplevel)"'
 
