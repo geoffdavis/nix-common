@@ -1,0 +1,35 @@
+# Weekly auto-PR that runs `nix flake update` and opens a pull request.
+# Trigger an ad-hoc bump from the Actions tab or via:
+#   gh workflow run update-flake-lock.yml
+#
+# Note: PRs opened by GITHUB_TOKEN do not trigger downstream workflows by
+# default (GitHub security feature). Lint / build CI won't run on these PRs
+# without extra wiring (PAT or GitHub App token via the action's `token`
+# input). The diff is usually small enough to eyeball-review; switch to a
+# PAT later if you want auto-CI on bump PRs.
+
+name: update-flake-lock
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays at 07:00 UTC — fresh PR at start of week.
+    - cron: "0 7 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Update flake.lock
+        uses: DeterminateSystems/update-flake-lock@main
+        with:
+          pr-labels: |
+            dependencies
+            automated
