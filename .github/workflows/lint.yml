@@ -1,0 +1,45 @@
+# Reusable workflow: lint a Nix repo with alejandra, deadnix, and statix.
+#
+# Downstream repos call this via:
+#
+#   jobs:
+#     lint:
+#       uses: geoffdavis/nix-common/.github/workflows/lint.yml@main
+#
+# statix reads each repo's own statix.toml (so per-repo `ignore` / `disabled`
+# settings apply automatically). Deadnix excludes are passed via input — used
+# by nix-personal for the generated hardware-configuration.nix.
+
+name: lint
+
+on:
+  workflow_call:
+    inputs:
+      deadnix-exclude:
+        description: Newline-separated paths to skip in `deadnix --exclude`.
+        type: string
+        default: ""
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: alejandra --check
+        run: nix --accept-flake-config run nixpkgs#alejandra -- --check .
+
+      - name: deadnix
+        env:
+          EXCLUDES: ${{ inputs.deadnix-exclude }}
+        run: |
+          args=()
+          while IFS= read -r path; do
+            [ -n "$path" ] && args+=(--exclude "$path")
+          done <<< "$EXCLUDES"
+          nix --accept-flake-config run nixpkgs#deadnix -- --fail "${args[@]}" .
+
+      - name: statix check
+        run: nix --accept-flake-config run nixpkgs#statix -- check .

@@ -3,7 +3,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -18,6 +18,19 @@ repos:
         entry: alejandra
         language: system
         types: [nix]
+
+      - id: deadnix
+        name: deadnix (unused nix code)
+        entry: deadnix --fail
+        language: system
+        types: [nix]
+
+      - id: statix
+        name: statix (nix linter)
+        entry: statix check
+        language: system
+        pass_filenames: false
+        files: '\.nix$'
 
       - id: nix-flake-check
         name: nix flake check

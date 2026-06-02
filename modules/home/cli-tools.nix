@@ -76,6 +76,8 @@
 
       # nix tooling
       alejandra
+      deadnix
+      statix
 
       # editor support
       # (neovim itself is provided by lazyvim-nix)
