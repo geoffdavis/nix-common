@@ -9,7 +9,7 @@
   lazyvim,
   ...
 }: let
-  username = config.my.username;
+  inherit (config.my) username;
   unfreePackageNames = import ../shared/unfree-package-names.nix;
 in {
   options.my.username = lib.mkOption {

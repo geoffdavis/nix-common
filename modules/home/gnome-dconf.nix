@@ -1,4 +1,4 @@
-{...}: {
+_: {
   dconf.settings = {
     "org/gnome/shell" = {
       enabled-extensions = [
