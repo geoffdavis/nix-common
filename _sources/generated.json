@@ -1,0 +1,107 @@
+{
+    "_1password-cli-linux-x64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "_1password-cli-linux-x64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-GYsF3Pmglyd4zlpOJixFmXmwyDcle12mXi+6YYdzQiY=",
+            "type": "url",
+            "url": "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_amd64_v2.34.0.zip"
+        },
+        "version": "2.34.0"
+    },
+    "_1password-gui-linux-x64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "_1password-gui-linux-x64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-dec+oqixlPAbHYWqOBEBNB9IU8+Hfz2W4bm1y6/CbuM=",
+            "type": "url",
+            "url": "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.22.x64.tar.gz"
+        },
+        "version": "8.12.22"
+    },
+    "claude-code-darwin-arm64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "claude-code-darwin-arm64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-LUB90qYyQ6yQD2QzFYm5/NKaIVmnMokHCvaF9AhaF9I=",
+            "type": "url",
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.162/darwin-arm64/claude"
+        },
+        "version": "2.1.162"
+    },
+    "claude-code-linux-x64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "claude-code-linux-x64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-lHpJsN6GiPanSm51PCR3H/Pd0Xsqba6F82ME7FFOYdE=",
+            "type": "url",
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.162/linux-x64/claude"
+        },
+        "version": "2.1.162"
+    },
+    "codex-linux-x64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "codex-linux-x64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-2trWydt0UArVQx+heLMCiP292mvfM5djTbbh9ZgTIc8=",
+            "type": "url",
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.136.0/codex-x86_64-unknown-linux-musl.tar.gz"
+        },
+        "version": "0.136.0"
+    },
+    "copilot-cli-darwin-arm64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "copilot-cli-darwin-arm64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-OQTegFmTuTbyXTpiGeJFRsMY5DEz6aPLgBpD+jueV0E=",
+            "type": "url",
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.59/github-copilot-1.0.59-darwin-arm64.tgz"
+        },
+        "version": "1.0.59"
+    },
+    "copilot-cli-linux-x64": {
+        "cargoLocks": null,
+        "date": null,
+        "extract": null,
+        "name": "copilot-cli-linux-x64",
+        "passthru": null,
+        "pinned": false,
+        "src": {
+            "name": null,
+            "sha256": "sha256-dmPk5+sWQVyfrplEudBlZhYKA0j8nzS2rkVUh9FVfZk=",
+            "type": "url",
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.59/github-copilot-1.0.59-linux-x64.tgz"
+        },
+        "version": "1.0.59"
+    }
+}

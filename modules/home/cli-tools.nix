@@ -1,89 +1,83 @@
 # Shared CLI tooling, cross-platform (macOS + Linux).
 # Imported from each host's home-manager user config.
-{
-  lib,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
+  imports = [./onepassword.nix];
+
   home.sessionPath = ["$HOME/.local/bin"];
 
-  home.packages =
-    (with pkgs; [
-      # cloud / infra
-      ansible
-      azure-cli
-      google-cloud-sdk
-      azure-storage-azcopy
-      awscli2
-      cilium-cli
-      cloudflared
-      cosign
-      crane
-      fluxcd
-      kubernetes-helm
-      jfrog-cli
-      k9s
-      opentofu
-      pulumi
-      terraform
-      talhelper
-      talosctl
-      terragrunt
+  home.packages = with pkgs; [
+    # cloud / infra
+    ansible
+    azure-cli
+    google-cloud-sdk
+    azure-storage-azcopy
+    awscli2
+    cilium-cli
+    cloudflared
+    cosign
+    crane
+    fluxcd
+    kubernetes-helm
+    jfrog-cli
+    k9s
+    opentofu
+    pulumi
+    terraform
+    talhelper
+    talosctl
+    terragrunt
 
-      # git / source control
-      gh
-      git-filter-repo
-      git-secrets
-      gitleaks
+    # git / source control
+    gh
+    git-filter-repo
+    git-secrets
+    gitleaks
 
-      # shells & terminal
-      bashInteractive
-      tmux
-      pay-respects # `thefuck` replacement; nixpkgs dropped thefuck
+    # shells & terminal
+    bashInteractive
+    tmux
+    pay-respects # `thefuck` replacement; nixpkgs dropped thefuck
 
-      # languages / runtimes
-      go
-      go-task
-      nodejs
-      hugo
+    # languages / runtimes
+    go
+    go-task
+    nodejs
+    hugo
 
-      # python tooling
-      python312
-      pipenv
-      pipx
-      pre-commit
-      python3Packages.pytest
-      uv
+    # python tooling
+    python312
+    pipenv
+    pipx
+    pre-commit
+    python3Packages.pytest
+    uv
 
-      # perl tooling
-      perlPackages.Appcpanminus
+    # perl tooling
+    perlPackages.Appcpanminus
 
-      # general utilities
-      btop
-      dtc
-      expect
-      fzf
-      gnugrep
-      gnumake
-      gnupatch
-      ipcalc
-      jq
-      markdownlint-cli
-      mise
-      ripgrep
-      tree
-      yamllint
-      yq-go
+    # general utilities
+    btop
+    dtc
+    expect
+    fzf
+    gnugrep
+    gnumake
+    gnupatch
+    ipcalc
+    jq
+    markdownlint-cli
+    mise
+    ripgrep
+    tree
+    yamllint
+    yq-go
 
-      # nix tooling
-      alejandra
-      deadnix
-      statix
+    # nix tooling
+    alejandra
+    deadnix
+    statix
 
-      # editor support
-      # (neovim itself is provided by lazyvim-nix)
-    ])
-    ++ lib.optionals pkgs.stdenv.isLinux [
-      pkgs._1password-cli
-    ];
+    # editor support
+    # (neovim itself is provided by lazyvim-nix)
+  ];
 }

@@ -20,8 +20,9 @@
   # Provide Nerd Font glyph coverage for terminal editors (Neovim, etc.)
   # on interactive Linux desktops.
   fonts.fontconfig.enable = pkgs.stdenv.isLinux;
+  # _1password-gui comes from modules/home/onepassword.nix (imported via
+  # ./cli-tools.nix above) so it stays in lockstep with the CLI override.
   home.packages = lib.optionals pkgs.stdenv.isLinux (with pkgs; [
-    _1password-gui
     ghostty
     nerd-fonts.hack
     nerd-fonts.symbols-only

@@ -1,88 +1,76 @@
 # modules/home/ai-tools.nix — version-pinned AI CLI tools for all hosts.
 #
-# Provides github-copilot-cli and claude-code, pinned past whatever nixpkgs
-# ships, and configured to authenticate via the GitHub Copilot subscription
-# (apiKeyHelper = "gh auth token").
+# Provides claude-code (Anthropic), github-copilot-cli (GitHub), and
+# codex (OpenAI), pinned past whatever nixpkgs-25.11 ships and tracking
+# each vendor's PRODUCTION/stable release channel via nvfetcher
+# (/nvfetcher.toml → /_sources/generated.nix).
 #
-# Keep versions current by running:
-#   task update:ai-tools          (from nix-common checkout)
-# or via the weekly update-ai-tools GitHub Actions workflow.
+# claude-code is wired through the GitHub Copilot subscription via
+# apiKeyHelper so the same Copilot OAuth token authenticates both
+# claude-code and gh's copilot extensions.
 #
-# After nix-common is updated, bump each consumer with:
-#   task bump:common              (from the consumer repo)
-{pkgs, ...}: let
-  # ── version pins ─────────────────────────────────────────────────────────
-  # Updated by scripts/update-ai-tools.sh via marker comments.
-  copilotVersion = "1.0.59"; # update-ai-tools: copilot-version
-  copilotHashLinuxX64 = "sha256-dmPk5+sWQVyfrplEudBlZhYKA0j8nzS2rkVUh9FVfZk="; # update-ai-tools: copilot-hash-linux-x64
-  copilotHashDarwinArm64 = "sha256-OQTegFmTuTbyXTpiGeJFRsMY5DEz6aPLgBpD+jueV0E="; # update-ai-tools: copilot-hash-darwin-arm64
+# Versions bumped automatically by .github/workflows/update-sources.yml;
+# also manually via `task update:sources`.
+#
+# Platform coverage:
+#   - claude-code, copilot-cli: x86_64-linux + aarch64-darwin
+#   - codex: x86_64-linux only (darwin gets it via Homebrew cask;
+#     see nix-personal hosts/windansea/default.nix)
+{
+  lib,
+  pkgs,
+  ...
+}: let
+  sources = import ../../_sources/generated.nix {
+    inherit (pkgs) fetchgit fetchurl fetchFromGitHub dockerTools;
+  };
 
-  claudeVersion = "2.1.161"; # update-ai-tools: claude-version
-  claudeHashLinuxX64 = "sha256-H2oi84ejvOSWtthpOJo13/taacl9mDGDPzvW3A5sbCg="; # update-ai-tools: claude-hash-linux-x64
-  claudeHashDarwinArm64 = "sha256-W03HnqsF+XVsJSxx3rM576RCnf/Bln3YOSz4f83khn8="; # update-ai-tools: claude-hash-darwin-arm64
-
-  # ── platform selection ────────────────────────────────────────────────────
-  sys = pkgs.stdenv.hostPlatform.system;
-
-  copilotPlatform =
+  platformSuffix =
     {
       "x86_64-linux" = "linux-x64";
       "aarch64-darwin" = "darwin-arm64";
     }
     .${
-      sys
+      pkgs.stdenv.hostPlatform.system
     }
-    or (throw "github-copilot-cli: unsupported system ${sys}");
+    or null;
 
-  copilotHash =
-    {
-      "x86_64-linux" = copilotHashLinuxX64;
-      "aarch64-darwin" = copilotHashDarwinArm64;
-    }
-    .${
-      sys
-    }
-    or (throw "github-copilot-cli: unsupported system ${sys}");
+  # Override base with sources["<pkg>-<platformSuffix>"], skipping silently
+  # if there's no key for this platform.
+  override = base: pkg: let
+    key = "${pkg}-${platformSuffix}";
+  in
+    if platformSuffix == null || !(sources ? ${key})
+    then null
+    else
+      base.overrideAttrs (_: {
+        inherit (sources.${key}) version src;
+      });
 
-  claudePlatform =
-    {
-      "x86_64-linux" = "linux-x64";
-      "aarch64-darwin" = "darwin-arm64";
-    }
-    .${
-      sys
-    }
-    or (throw "claude-code: unsupported system ${sys}");
-
-  claudeHash =
-    {
-      "x86_64-linux" = claudeHashLinuxX64;
-      "aarch64-darwin" = claudeHashDarwinArm64;
-    }
-    .${
-      sys
-    }
-    or (throw "claude-code: unsupported system ${sys}");
-
-  # ── package overrides ─────────────────────────────────────────────────────
-  github-copilot-cli = pkgs.github-copilot-cli.overrideAttrs (_: {
-    version = copilotVersion;
-    src = pkgs.fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-${copilotPlatform}.tgz";
-      hash = copilotHash;
-    };
-  });
-
-  claude-code = pkgs.claude-code.overrideAttrs (_: {
-    version = claudeVersion;
-    src = pkgs.fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/${claudeVersion}/${claudePlatform}/claude";
-      hash = claudeHash;
-    };
-  });
+  # codex needs a custom derivation: nixpkgs builds it from Cargo source
+  # (would force a cargoHash bump every release), but the vendor publishes
+  # a self-contained static-musl binary. Linux-x64 only.
+  codex =
+    if pkgs.stdenv.hostPlatform.system != "x86_64-linux"
+    then null
+    else
+      pkgs.stdenv.mkDerivation {
+        pname = "codex";
+        inherit (sources.codex-linux-x64) version src;
+        sourceRoot = ".";
+        dontConfigure = true;
+        dontBuild = true;
+        installPhase = ''
+          runHook preInstall
+          install -Dm755 codex-x86_64-unknown-linux-musl $out/bin/codex
+          runHook postInstall
+        '';
+        meta.mainProgram = "codex";
+      };
 in {
-  home.packages = [
-    github-copilot-cli
-    claude-code
+  home.packages = lib.filter (p: p != null) [
+    (override pkgs.claude-code "claude-code")
+    (override pkgs.github-copilot-cli "copilot-cli")
+    codex
   ];
 }
