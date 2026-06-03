@@ -65,21 +65,21 @@
     or (throw "claude-code: unsupported system ${sys}");
 
   # ── package overrides ─────────────────────────────────────────────────────
-  github-copilot-cli = pkgs.github-copilot-cli.overrideAttrs {
+  github-copilot-cli = pkgs.github-copilot-cli.overrideAttrs (_: {
     version = copilotVersion;
     src = pkgs.fetchurl {
       url = "https://github.com/github/copilot-cli/releases/download/v${copilotVersion}/github-copilot-${copilotVersion}-${copilotPlatform}.tgz";
       hash = copilotHash;
     };
-  };
+  });
 
-  claude-code = pkgs.claude-code.overrideAttrs {
+  claude-code = pkgs.claude-code.overrideAttrs (_: {
     version = claudeVersion;
     src = pkgs.fetchurl {
       url = "https://downloads.claude.ai/claude-code-releases/${claudeVersion}/${claudePlatform}/claude";
       hash = claudeHash;
     };
-  };
+  });
 in {
   home.packages = [
     github-copilot-cli

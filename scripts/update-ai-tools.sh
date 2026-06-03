@@ -42,6 +42,7 @@ fetch_sri() {
 # Replace the value on the line that carries the given marker comment.
 # Line format in ai-tools.nix:
 #   varName = "old-value"; # update-ai-tools: marker
+# Only lines containing the '# update-ai-tools:' marker are modified.
 update_nix_var() {
   local name="$1" value="$2"
   # Use python3 for in-place substitution — portable across GNU/BSD environments.
@@ -53,7 +54,7 @@ with open(module_path) as f:
 prefix = f'  {var_name} = "'
 new_lines = []
 for line in lines:
-    if line.startswith(prefix) and '";' in line:
+    if line.startswith(prefix) and '";' in line and '# update-ai-tools:' in line:
         suffix = line[line.index('";'):]
         new_lines.append(f'{prefix}{var_value}{suffix}')
     else:
