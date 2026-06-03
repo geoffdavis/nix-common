@@ -12,6 +12,7 @@
       # cloud / infra
       ansible
       azure-cli
+      google-cloud-sdk
       azure-storage-azcopy
       awscli2
       cilium-cli
