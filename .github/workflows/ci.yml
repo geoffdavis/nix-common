@@ -8,6 +8,11 @@ on:
 jobs:
   lint:
     uses: ./.github/workflows/lint.yml
+    with:
+      # nvfetcher-generated lockfile carries fetcher params (fetchgit etc.)
+      # that aren't used by every entry; deadnix would flag them as unused.
+      deadnix-exclude: |
+        _sources/
 
   flake-check:
     runs-on: ubuntu-latest

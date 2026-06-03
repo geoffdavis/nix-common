@@ -35,6 +35,9 @@ jobs:
       - name: Bump pinned sources
         run: nix run nixpkgs#nvfetcher --
 
+      - name: Format nvfetcher output so lint.yml passes
+        run: nix --accept-flake-config run nixpkgs#alejandra -- _sources/generated.nix
+
       - name: Validate generated sources eval cleanly
         run: nix --accept-flake-config flake check
 

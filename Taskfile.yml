@@ -26,3 +26,6 @@ tasks:
     desc: Bump every pinned upstream source (claude-code, github-copilot-cli, codex, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
     cmds:
       - nix run nixpkgs#nvfetcher --
+      # Format nvfetcher's output so it passes the repo's alejandra check
+      # (lint.yml runs `alejandra --check .` over everything).
+      - nix run nixpkgs#alejandra -- _sources/generated.nix
