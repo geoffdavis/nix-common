@@ -85,21 +85,4 @@ in {
     github-copilot-cli
     claude-code
   ];
-
-  # Claude Code CLI settings: route auth through the GitHub Copilot subscription.
-  # apiKeyHelper runs `gh auth token` to obtain the OAuth token with Copilot
-  # scope; Claude Code sends it as Authorization: Bearer to the configured URL.
-  #
-  # home-manager creates this as a read-only symlink; Claude writes runtime
-  # state to ~/.claude.json (not here), so the read-only nature is fine.
-  #
-  # If ANTHROPIC_BASE_URL causes issues (GitHub Copilot serves an OpenAI-
-  # compatible endpoint, not the Anthropic Messages API), remove the env block
-  # and run `claude auth login` interactively, choosing the GitHub/Copilot path.
-  home.file.".claude/settings.json".text = builtins.toJSON {
-    apiKeyHelper = "gh auth token";
-    env = {
-      ANTHROPIC_BASE_URL = "https://api.githubcopilot.com";
-    };
-  };
 }
