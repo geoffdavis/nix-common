@@ -35,6 +35,7 @@ in {
     homebrew.onActivation.autoUpdate = true; # can slow darwin-rebuild down
     homebrew.onActivation.upgrade = true;
     homebrew.onActivation.cleanup = "uninstall"; # remove brews/casks not in config
+    homebrew.onActivation.extraFlags = ["--force"]; # required since homebrew added safety check for --cleanup
     # Ensure terminal/editor glyph support on every interactive macOS host.
     homebrew.casks = [
       "1password"
