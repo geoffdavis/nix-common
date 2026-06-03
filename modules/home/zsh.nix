@@ -4,7 +4,7 @@
     oh-my-zsh = {
       enable = true;
       theme = lib.mkDefault "agnoster";
-      plugins = ["git" "python"];
+      plugins = ["git" "python" "terraform"];
     };
 
     # Shared interactive aliases + functions. Curated subset originally
@@ -78,6 +78,39 @@
       alias ghprvw='gh pr view --web'
       alias ghw='gh workflow'
       alias ghwl='gh workflow list'
+      alias ghwr='gh workflow run'
+      alias ghr='gh run'
+      alias ghrw='gh run watch'
+
+      # GitHub Copilot assignment
+      alias ghiassigncopilot='gh issue edit --add-assignee @copilot'
+      alias ghiacopilot='gh issue edit --add-assignee @copilot'
+      alias ghiunassigncopilot='gh issue edit --remove-assignee @copilot'
+
+      # git extras not in oh-my-zsh git plugin
+      alias grbom='git rebase origin/main'
+
+      # terraform utilities (basic aliases provided by oh-my-zsh terraform plugin)
+      alias tm=terramate
+      alias tf_get_lock_id='terraform plan 2>&1 | grep ID | rev | cut -d" " -f1 | rev'
+      tf_force_unlock() {
+        local lock_id
+        lock_id=$(tf_get_lock_id)
+        terraform force-unlock "$lock_id"
+      }
+      alias tf_fu='tf_force_unlock'
+
+      set_arm_subscription_id() {
+        export ARM_SUBSCRIPTION_ID="$(az account show --query 'id' -o tsv)"
+      }
+
+      tfctx() {
+        echo "Cloud:               $(az cloud show --query name -o tsv 2>/dev/null || echo unknown)"
+        echo "Subscription:        $(az account show --query name -o tsv 2>/dev/null || echo unknown)"
+        echo "Subscription ID:     $(az account show --query id -o tsv 2>/dev/null || echo unknown)"
+        echo "Workspace:           $(terraform workspace show 2>/dev/null || echo unknown)"
+        echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+      }
     '';
   };
 }
