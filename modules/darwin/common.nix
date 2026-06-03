@@ -59,6 +59,7 @@ in {
           # bundles cli-tools/git/graphics/ssh + the macOS/Linux GUI bits.
           ../home/neovim.nix
           ../home/desktop-base.nix
+          ../home/ai-tools.nix
         ];
         home.stateVersion = "25.11";
 

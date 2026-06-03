@@ -35,5 +35,6 @@
     homeModules.gnome-desktop-base = ./modules/home/gnome-desktop-base.nix;
     homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
     homeModules.op-json-secrets = ./modules/home/op-json-secrets.nix;
+    homeModules.ai-tools = ./modules/home/ai-tools.nix;
   };
 }
