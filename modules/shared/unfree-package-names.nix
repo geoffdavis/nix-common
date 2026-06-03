@@ -3,6 +3,7 @@
   "1password-cli"
   "claude-code"
   "code" # vscode-fhs's derivation is named code-<ver> (lib.getName -> "code")
+  "github-copilot-cli"
   "drawio"
   "obsidian"
   "terraform"
