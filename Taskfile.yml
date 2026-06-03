@@ -1,0 +1,28 @@
+version: '3'
+
+tasks:
+  lint:
+    desc: Run every pre-commit hook against all files
+    cmds:
+      - pre-commit run --all-files
+
+  fmt:
+    desc: Auto-format Nix files (alejandra)
+    cmds:
+      - alejandra .
+
+  fix:
+    desc: Auto-fix common Nix issues (statix + deadnix; will modify files)
+    cmds:
+      - statix fix .
+      - deadnix --edit .
+
+  check:
+    desc: Evaluate all flake outputs (nix flake check)
+    cmds:
+      - nix flake check
+
+  update:ai-tools:
+    desc: Fetch latest github-copilot-cli and claude-code versions and update modules/home/ai-tools.nix
+    cmds:
+      - ./scripts/update-ai-tools.sh
