@@ -5,6 +5,9 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # Guard direct commits to main/master — branch protection is on, so
+      # those commits would be unpushable anyway; fail fast at commit time.
+      - id: no-commit-to-branch
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-merge-conflict
