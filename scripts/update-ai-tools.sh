@@ -31,7 +31,7 @@ latest_gh_release() {
 fetch_sri() {
   local url="$1"
   local tmp
-  tmp="$(mktemp)"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/update-ai-tools.XXXXXX")"
   curl -fsSL "$url" -o "$tmp"
   local b64
   b64="$(openssl dgst -sha256 -binary "$tmp" | openssl base64 -A)"
@@ -66,8 +66,8 @@ PYEOF
 
 # ── check current pins ────────────────────────────────────────────────────────
 
-current_copilot="$(grep 'copilotVersion' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
-current_claude="$(grep 'claudeVersion' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
+current_copilot="$(grep '# update-ai-tools: copilot-version' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
+current_claude="$(grep '# update-ai-tools: claude-version' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
 
 echo "Current pins: copilot=${current_copilot}  claude=${current_claude}"
 
