@@ -27,6 +27,10 @@ repos:
         entry: deadnix --fail
         language: system
         types: [nix]
+        # nvfetcher's generated.nix carries fetchgit/fetchFromGitHub/dockerTools
+        # in its lambda signature even when no entry currently uses them; they
+        # are needed for future entries, so don't trip on unused-pattern.
+        exclude: ^_sources/
 
       - id: statix
         name: statix (nix linter)

@@ -22,7 +22,10 @@ tasks:
     cmds:
       - nix flake check
 
-  update:ai-tools:
-    desc: Fetch latest github-copilot-cli and claude-code versions and update modules/home/ai-tools.nix
+  update:sources:
+    desc: Bump every pinned upstream source (claude-code, github-copilot-cli, codex, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
     cmds:
-      - ./scripts/update-ai-tools.sh
+      - nix run nixpkgs#nvfetcher --
+      # Format nvfetcher's output so it passes the repo's alejandra check
+      # (lint.yml runs `alejandra --check .` over everything).
+      - nix run nixpkgs#alejandra -- _sources/generated.nix

@@ -1,0 +1,73 @@
+# nvfetcher.toml — declarative upstream-tracking for pinned packages.
+#
+# Each entry pairs a version source (`src.*`) with a fetch URL templated on
+# `$ver`. `nix run nixpkgs#nvfetcher` resolves the latest version, downloads
+# the artifact, computes the SRI hash, and writes _sources/generated.{nix,json}
+# (both committed — they are the lockfile).
+#
+# Consumers:
+#   modules/home/ai-tools.nix     — claude-code, copilot-cli, codex
+#   modules/home/onepassword.nix  — _1password-cli, _1password-gui
+#
+# Adding a package: declare one entry per (package, platform). Run
+# `task update:sources` (or `nix run nixpkgs#nvfetcher`) to populate
+# _sources/generated.nix, then reference `sources.<key>.{version, src}` in
+# the consuming module's overrideAttrs call.
+
+# ── claude-code (per-platform binary, GH releases on anthropics/claude-code).
+# Tags are `vX.Y.Z`; download URLs use the bare version, so strip the `v`.
+[claude-code-linux-x64]
+src.github = "anthropics/claude-code"
+src.prefix = "v"
+fetch.url = "https://downloads.claude.ai/claude-code-releases/$ver/linux-x64/claude"
+
+[claude-code-darwin-arm64]
+src.github = "anthropics/claude-code"
+src.prefix = "v"
+fetch.url = "https://downloads.claude.ai/claude-code-releases/$ver/darwin-arm64/claude"
+
+# ── github-copilot-cli (tgz on GH releases). Tags are `vX.Y.Z`; download URL
+# also uses `v$ver` in the path, but the filename uses bare `$ver` — strip the
+# leading `v` from the tag so both interpolations are consistent.
+[copilot-cli-linux-x64]
+src.github = "github/copilot-cli"
+src.prefix = "v"
+fetch.url = "https://github.com/github/copilot-cli/releases/download/v$ver/github-copilot-$ver-linux-x64.tgz"
+
+[copilot-cli-darwin-arm64]
+src.github = "github/copilot-cli"
+src.prefix = "v"
+fetch.url = "https://github.com/github/copilot-cli/releases/download/v$ver/github-copilot-$ver-darwin-arm64.tgz"
+
+# ── codex (openai/codex). Linux-only; darwin uses Homebrew cask
+# (see nix-personal hosts/windansea/default.nix casks).
+# We ship the vendor's prebuilt static-musl binary directly (NOT the source
+# archive) — overriding nixpkgs' buildRustPackage would need a cargoHash
+# bump every release, which defeats the auto-update story. The binary
+# tarball contains a single file `codex-x86_64-unknown-linux-musl`; ai-tools.nix
+# installs it as `bin/codex`. Tag prefix is `rust-v<ver>`.
+[codex-linux-x64]
+src.github = "openai/codex"
+src.prefix = "rust-v"
+fetch.url = "https://github.com/openai/codex/releases/download/rust-v$ver/codex-x86_64-unknown-linux-musl.tar.gz"
+
+# ── 1Password CLI (linux-x64 zip from cache.agilebits.com). 1Password does
+# not publish CLI releases on GitHub — scrape the same-shaped RSS feed that
+# the GUI uses, but under /developers/cli/. Title format is consistent:
+# "1Password CLI X.Y.Z".
+# Darwin handled by Homebrew cask (see modules/darwin/common.nix).
+[_1password-cli-linux-x64]
+src.webpage = "https://releases.1password.com/developers/cli/index.xml"
+src.regex = '1Password CLI ([0-9]+\.[0-9]+\.[0-9]+)'
+fetch.url = "https://cache.agilebits.com/dist/1P/op2/pkg/v$ver/op_linux_amd64_v$ver.zip"
+
+# ── 1Password GUI (Linux desktop). No public GH releases.
+# Scrape the canonical stable RSS feed that 1Password's own infrastructure
+# publishes (releases.1password.com/linux/stable/). Title format varies across
+# the feed's history — the earliest items are "1Password Linux X.Y.Z", later
+# ones "1Password for Linux, X.Y X.Y.Z-N", current ones "1Password for Linux
+# X.Y.Z". The regex tolerates all three; nvchecker picks the highest semver.
+[_1password-gui-linux-x64]
+src.webpage = "https://releases.1password.com/linux/stable/index.xml"
+src.regex = '1Password[^<]*? ([0-9]+\.[0-9]+\.[0-9]+)'
+fetch.url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-$ver.x64.tar.gz"
