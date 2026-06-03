@@ -28,7 +28,6 @@
     {
       "x86_64-linux" = "linux-x64";
       "aarch64-darwin" = "darwin-arm64";
-      "x86_64-darwin" = "darwin-x64";
     }
     .${
       sys
@@ -39,7 +38,6 @@
     {
       "x86_64-linux" = copilotHashLinuxX64;
       "aarch64-darwin" = copilotHashDarwinArm64;
-      "x86_64-darwin" = copilotHashDarwinArm64; # placeholder — update script fills this in
     }
     .${
       sys
@@ -50,7 +48,6 @@
     {
       "x86_64-linux" = "linux-x64";
       "aarch64-darwin" = "darwin-arm64";
-      "x86_64-darwin" = "darwin-x64";
     }
     .${
       sys
@@ -61,7 +58,6 @@
     {
       "x86_64-linux" = claudeHashLinuxX64;
       "aarch64-darwin" = claudeHashDarwinArm64;
-      "x86_64-darwin" = claudeHashDarwinArm64; # placeholder — update script fills this in
     }
     .${
       sys
@@ -81,7 +77,7 @@
     version = claudeVersion;
     src = pkgs.fetchurl {
       url = "https://downloads.claude.ai/claude-code-releases/${claudeVersion}/${claudePlatform}/claude";
-      sha256 = claudeHash;
+      hash = claudeHash;
     };
   };
 in {

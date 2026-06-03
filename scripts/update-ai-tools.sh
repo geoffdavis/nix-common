@@ -44,15 +44,29 @@ fetch_sri() {
 #   varName = "old-value"; # update-ai-tools: marker
 update_nix_var() {
   local name="$1" value="$2"
-  # Escape / in value for sed (hashes contain +, = which are fine)
-  local escaped_value="${value//\//\\/}"
-  sed -i "s|  ${name} *= *\"[^\"]*\";|  ${name} = \"${escaped_value}\";|" "$MODULE"
+  # Use python3 for in-place substitution — portable across GNU/BSD environments.
+  python3 - "$MODULE" "$name" "$value" <<'PYEOF'
+import sys
+module_path, var_name, var_value = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(module_path) as f:
+    lines = f.readlines()
+prefix = f'  {var_name} = "'
+new_lines = []
+for line in lines:
+    if line.startswith(prefix) and '";' in line:
+        suffix = line[line.index('";'):]
+        new_lines.append(f'{prefix}{var_value}{suffix}')
+    else:
+        new_lines.append(line)
+with open(module_path, 'w') as f:
+    f.writelines(new_lines)
+PYEOF
 }
 
 # ── check current pins ────────────────────────────────────────────────────────
 
-current_copilot="$(grep 'copilotVersion' "$MODULE" | grep -oP '(?<=\")[^\"]+(?=\")')"
-current_claude="$(grep 'claudeVersion' "$MODULE" | grep -oP '(?<=\")[^\"]+(?=\")')"
+current_copilot="$(grep 'copilotVersion' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
+current_claude="$(grep 'claudeVersion' "$MODULE" | sed -E 's/.*"([^"]+)".*/\1/')"
 
 echo "Current pins: copilot=${current_copilot}  claude=${current_claude}"
 
