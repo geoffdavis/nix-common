@@ -3,11 +3,9 @@
 # Provides claude-code (Anthropic), github-copilot-cli (GitHub), and
 # codex (OpenAI), pinned past whatever nixpkgs-25.11 ships and tracking
 # each vendor's PRODUCTION/stable release channel via nvfetcher
-# (/nvfetcher.toml → /_sources/generated.nix).
-#
-# claude-code is wired through the GitHub Copilot subscription via
-# apiKeyHelper so the same Copilot OAuth token authenticates both
-# claude-code and gh's copilot extensions.
+# (/nvfetcher.toml → /_sources/generated.nix). Auth configuration
+# (apiKeyHelper, ANTHROPIC_BASE_URL, etc.) is intentionally not set
+# here — each consumer host wires its own; see PR #15 for context.
 #
 # Versions bumped automatically by .github/workflows/update-sources.yml;
 # also manually via `task update:sources`.
