@@ -29,6 +29,7 @@
     };
 
     extraPackages = with pkgs; [
+      tree-sitter # required by nvim-treesitter; mason is disabled in nix setups
       nixd # Nix LSP
       alejandra # Nix formatter
       statix # Nix linter (LazyVim lang.nix expects it on PATH)
