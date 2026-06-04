@@ -39,10 +39,10 @@
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.136.0";
+    version = "0.137.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.136.0/codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-2trWydt0UArVQx+heLMCiP292mvfM5djTbbh9ZgTIc8=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.137.0/codex-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-2W6IMTuVWX6cu4cE9tsW27gcBxQrCM+2KEeatDNpaTE=";
     };
   };
   copilot-cli-darwin-arm64 = {
