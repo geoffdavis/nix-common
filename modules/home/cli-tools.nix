@@ -1,7 +1,10 @@
 # Shared CLI tooling, cross-platform (macOS + Linux).
 # Imported from each host's home-manager user config.
 {pkgs, ...}: {
-  imports = [./onepassword.nix];
+  imports = [
+    ./onepassword.nix
+    ./terraform.nix
+  ];
 
   home.sessionPath = ["$HOME/.local/bin"];
 
@@ -22,7 +25,9 @@
     k9s
     opentofu
     pulumi
-    terraform
+    # terraform itself is pinned via modules/home/terraform.nix (imported
+    # above) so it tracks HashiCorp's stable channel rather than lagging
+    # nixpkgs.
     talhelper
     talosctl
     terragrunt
