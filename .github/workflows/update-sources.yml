@@ -6,10 +6,12 @@
 # Trigger an ad-hoc run from the Actions tab or via:
 #   gh workflow run update-sources.yml
 #
-# Note: PRs opened by GITHUB_TOKEN do not trigger downstream CI by default
-# (GitHub security feature). The diff is small (just _sources/generated.{nix,json})
-# so eyeball-review is fine; switch to a PAT later if you want auto-CI on
-# bump PRs.
+# Note: PRs opened by the default GITHUB_TOKEN do not trigger downstream
+# workflows (GitHub anti-recursion feature), which leaves bump PRs BLOCKED
+# when branch protection requires lint / flake-check. The BOT_PAT secret (a
+# fine-grained PAT with contents + pull-requests write) makes the PR come
+# from a user token so CI fires normally; if the secret is absent we fall
+# back to GITHUB_TOKEN and the old close-and-reopen dance applies.
 
 name: update-sources
 
@@ -44,6 +46,7 @@ jobs:
       - name: Open PR if anything changed
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ secrets.BOT_PAT || github.token }}
           commit-message: "chore: bump pinned sources via nvfetcher"
           branch: chore/update-sources
           delete-branch: true
