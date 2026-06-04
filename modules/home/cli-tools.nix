@@ -73,6 +73,7 @@
     markdownlint-cli
     mise
     ripgrep
+    shellcheck # shell linter; used by pre-commit language:system hooks
     tree
     yamllint
     yq-go
@@ -81,6 +82,9 @@
     alejandra
     deadnix
     statix
+
+    # python linting (the runtime is python312 above)
+    ruff
 
     # editor support
     # (neovim itself is provided by lazyvim-nix)
