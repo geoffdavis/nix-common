@@ -61,4 +61,20 @@
       sha256 = "sha256-dmPk5+sWQVyfrplEudBlZhYKA0j8nzS2rkVUh9FVfZk=";
     };
   };
+  terraform-darwin-arm64 = {
+    pname = "terraform-darwin-arm64";
+    version = "1.15.5";
+    src = fetchurl {
+      url = "https://releases.hashicorp.com/terraform/1.15.5/terraform_1.15.5_darwin_arm64.zip";
+      sha256 = "sha256-ARN2YFEABbkYu6ghVIZvvqxDkxY9gnfCq+hh37WELDw=";
+    };
+  };
+  terraform-linux-x64 = {
+    pname = "terraform-linux-x64";
+    version = "1.15.5";
+    src = fetchurl {
+      url = "https://releases.hashicorp.com/terraform/1.15.5/terraform_1.15.5_linux_amd64.zip";
+      sha256 = "sha256-cCshNq9nKMj/A3+EPdLbzit62IeGtzgdHXKu+iUPYBw=";
+    };
+  };
 }

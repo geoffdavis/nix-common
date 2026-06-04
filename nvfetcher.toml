@@ -61,6 +61,20 @@ src.webpage = "https://releases.1password.com/developers/cli/index.xml"
 src.regex = '1Password CLI ([0-9]+\.[0-9]+\.[0-9]+)'
 fetch.url = "https://cache.agilebits.com/dist/1P/op2/pkg/v$ver/op_linux_amd64_v$ver.zip"
 
+# ── terraform (HashiCorp). nixpkgs lags upstream (25.11 ships 1.14.0 while
+# the user needs >=1.15). Override with HashiCorp's signed prebuilt binary
+# instead of buildGoModule (which would force a vendorHash bump every
+# release, defeating the auto-update story). Tags are `vX.Y.Z`.
+[terraform-linux-x64]
+src.github = "hashicorp/terraform"
+src.prefix = "v"
+fetch.url = "https://releases.hashicorp.com/terraform/$ver/terraform_$ver_linux_amd64.zip"
+
+[terraform-darwin-arm64]
+src.github = "hashicorp/terraform"
+src.prefix = "v"
+fetch.url = "https://releases.hashicorp.com/terraform/$ver/terraform_$ver_darwin_arm64.zip"
+
 # ── 1Password GUI (Linux desktop). No public GH releases.
 # Scrape the canonical stable RSS feed that 1Password's own infrastructure
 # publishes (releases.1password.com/linux/stable/). Title format varies across
