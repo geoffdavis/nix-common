@@ -22,6 +22,7 @@
   outputs = _: {
     darwinModules.common = ./modules/darwin/common.nix;
     nixosModules.common = ./modules/nixos/common.nix;
+    nixosModules.onepassword = ./modules/nixos/onepassword.nix;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
     homeModules.neovim = ./modules/home/neovim.nix;
     homeModules.profile = ./modules/home/profile.nix;
