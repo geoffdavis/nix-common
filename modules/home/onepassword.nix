@@ -1,14 +1,7 @@
 # modules/home/onepassword.nix — version-pinned 1Password CLI + GUI on Linux.
 #
-# Tracks 1Password's PRODUCTION/stable release channel via nvfetcher
-# (/nvfetcher.toml → /_sources/generated.nix). nixpkgs-25.11 lags upstream
-# (e.g. nixpkgs ships _1password-cli 2.32.0 while the apt repo on Ubuntu is
-# at 2.34.0); the older nix builds cannot read config/cache written by the
-# newer apt builds, so we override both packages to the vendor's current
-# release.
-#
-# Bumped automatically by .github/workflows/update-sources.yml; also
-# manually via `task update:sources`.
+# The pinned derivations live in modules/shared/onepassword-packages.nix
+# (vendor stable channel via nvfetcher; see the rationale there).
 #
 # Linux-x86_64 only. macOS hosts install 1Password via Homebrew casks
 # declared in modules/darwin/common.nix.
@@ -16,37 +9,33 @@
 # Imported transitively by cli-tools.nix, so every consumer of cli-tools /
 # desktop-base / gnome-desktop-base picks up the pinned versions
 # transparently — no host-side opt-in needed.
+#
+# NixOS hosts: set onepassword.installPackages = false here and import
+# nixosModules.onepassword at the system layer instead. The 1Password app
+# only accepts CLI-integration connections from the setgid `op` wrapper
+# that programs._1password creates — a plain home.packages `op` gets
+# "connecting to desktop app: read: connection reset".
 {
   lib,
   pkgs,
+  config,
   ...
 }: let
-  sources = import ../../_sources/generated.nix {
-    inherit (pkgs) fetchgit fetchurl fetchFromGitHub dockerTools;
-  };
+  pinned = import ../shared/onepassword-packages.nix {inherit lib pkgs;};
   isLinuxX64 = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
-
-  # Upstream nixpkgs derivations use fetchzip / fetchTarball, which extract
-  # at fetch time. nvfetcher emits fetchurl (raw archive), so we let stdenv
-  # unpack at build time — adding the matching unpacker to nativeBuildInputs,
-  # and overriding sourceRoot for archives that extract flat (the CLI zip
-  # contains `op` at the root, no enclosing directory).
-  override = base: srcKey: {
-    extraUnpackers ? [],
-    sourceRoot ? null,
-  }:
-    base.overrideAttrs (old:
-      {
-        inherit (sources.${srcKey}) version src;
-        nativeBuildInputs = (old.nativeBuildInputs or []) ++ extraUnpackers;
-      }
-      // lib.optionalAttrs (sourceRoot != null) {inherit sourceRoot;});
 in {
-  home.packages = lib.optionals isLinuxX64 [
-    (override pkgs._1password-cli "_1password-cli-linux-x64" {
-      extraUnpackers = [pkgs.unzip];
-      sourceRoot = ".";
-    })
-    (override pkgs._1password-gui "_1password-gui-linux-x64" {})
-  ];
+  options.onepassword.installPackages = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = ''
+      Install the pinned 1Password CLI + GUI as user packages (Linux-x64
+      only). Set to false on NixOS hosts, where nixosModules.onepassword
+      installs the same pinned versions via programs._1password /
+      programs._1password-gui so the desktop-app CLI integration works.
+    '';
+  };
+
+  config.home.packages =
+    lib.mkIf (config.onepassword.installPackages && isLinuxX64)
+    [pinned.cli pinned.gui];
 }
