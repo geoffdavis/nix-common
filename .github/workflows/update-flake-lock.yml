@@ -2,11 +2,12 @@
 # Trigger an ad-hoc bump from the Actions tab or via:
 #   gh workflow run update-flake-lock.yml
 #
-# Note: PRs opened by GITHUB_TOKEN do not trigger downstream workflows by
-# default (GitHub security feature). Lint / build CI won't run on these PRs
-# without extra wiring (PAT or GitHub App token via the action's `token`
-# input). The diff is usually small enough to eyeball-review; switch to a
-# PAT later if you want auto-CI on bump PRs.
+# Note: PRs opened by the default GITHUB_TOKEN do not trigger downstream
+# workflows (GitHub anti-recursion feature), which leaves bump PRs BLOCKED
+# when branch protection requires lint / flake-check. The BOT_PAT secret (a
+# fine-grained PAT with contents + pull-requests write) makes the PR come
+# from a user token so CI fires normally; if the secret is absent we fall
+# back to GITHUB_TOKEN and the old close-and-reopen dance applies.
 
 name: update-flake-lock
 
@@ -30,6 +31,7 @@ jobs:
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@main
         with:
+          token: ${{ secrets.BOT_PAT || github.token }}
           pr-labels: |
             dependencies
             automated
