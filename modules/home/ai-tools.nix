@@ -66,9 +66,14 @@
         meta.mainProgram = "codex";
       };
 in {
-  home.packages = lib.filter (p: p != null) [
-    (override pkgs.claude-code "claude-code")
-    (override pkgs.github-copilot-cli "copilot-cli")
-    codex
-  ];
+  home.packages =
+    lib.filter (p: p != null) [
+      (override pkgs.claude-code "claude-code")
+      (override pkgs.github-copilot-cli "copilot-cli")
+      codex
+    ]
+    # codex's Linux sandbox shells out to bubblewrap (bwrap) and degrades
+    # noisily without it. Linux-only tool (namespaces); darwin codex uses
+    # Seatbelt instead.
+    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.bubblewrap;
 }
