@@ -13,18 +13,13 @@
   allowedSignersFile = "${config.home.homeDirectory}/.config/git/allowed_signers";
 
   # Default op-ssh-sign location per platform: the macOS app bundle on
-  # darwin; on Linux-x64 the pinned 1Password GUI package — installed by
-  # modules/home/onepassword.nix on non-NixOS hosts and by
-  # nixosModules.onepassword (programs._1password-gui) on NixOS, both from
-  # the same derivation, so the path is valid either way. The old
-  # /opt/1Password .deb path remains only as the fallback for platforms
-  # the pin doesn't cover.
-  pinned = import ../shared/onepassword-packages.nix {inherit lib pkgs;};
+  # darwin, the 1Password .deb install path on Linux (non-NixOS desktops
+  # run the vendor deb). NixOS hosts override
+  # `programs.git.settings.gpg.ssh.program` to the nix store path of the
+  # GUI that nixosModules.onepassword installs.
   defaultOpSshSign =
     if pkgs.stdenv.hostPlatform.isDarwin
     then "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
-    else if pkgs.stdenv.hostPlatform.system == "x86_64-linux"
-    then "${pinned.gui}/share/1password/op-ssh-sign"
     else "/opt/1Password/op-ssh-sign";
 in {
   programs.git = {
