@@ -44,6 +44,16 @@ in {
       '';
     };
 
+    installGui = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether installPackages includes the GUI. Disable on headless
+        hosts that only need `op` (there's no desktop session for the GUI
+        — or the CLI's app integration — to talk to anyway).
+      '';
+    };
+
     setgidShim = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -79,7 +89,7 @@ in {
     {
       home.packages =
         lib.mkIf (cfg.installPackages && isLinuxX64)
-        [pinned.cli pinned.gui];
+        ([pinned.cli] ++ lib.optional cfg.installGui pinned.gui);
     }
 
     (lib.mkIf cfg.setgidShim.enable {

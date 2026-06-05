@@ -8,6 +8,10 @@
     ./cli-tools.nix
     ./git.nix
     ./zsh.nix
+    # cli-tools pulls in unfree packages (the pinned 1Password CLI via
+    # onepassword.nix, terraform, ...) — headless hosts need the same
+    # allowlist as desktops.
+    ./unfree-desktop.nix
   ];
 
   # Standalone home-manager on non-NixOS Linux: source the nix daemon profile
