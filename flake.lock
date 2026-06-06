@@ -148,6 +148,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-unstable": {
+      "locked": {
+        "lastModified": 1780243769,
+        "narHash": "sha256-x5UQuRsH3MqI0U9afaXSNqzTPSeZlRLvFAav2Ux1pNw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1779560665,
@@ -210,6 +226,7 @@
         "lazyvim": "lazyvim",
         "nixpkgs-darwin": "nixpkgs-darwin",
         "nixpkgs-nixos": "nixpkgs-nixos",
+        "nixpkgs-unstable": "nixpkgs-unstable",
         "opendeck-nix": "opendeck-nix",
         "opendeck-teams-for-linux": "opendeck-teams-for-linux"
       }
