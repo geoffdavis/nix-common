@@ -131,6 +131,17 @@ in {
 
     home.activation.opJsonSecrets = lib.hm.dag.entryAfter ["writeBoundary"] ''
       _op=$(command -v op 2>/dev/null) || true
+      # HM-as-NixOS-module activations run with a minimal PATH that lacks op;
+      # fall back to the host's well-known locations (setgid wrapper first --
+      # it is required for the 1Password desktop-app CLI integration on NixOS).
+      if [ -z "$_op" ]; then
+        for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op; do
+          if [ -x "$_c" ]; then
+            _op="$_c"
+            break
+          fi
+        done
+      fi
       if [ -z "$_op" ]; then
         echo "[op-json-secrets] 1Password CLI not in PATH — skipping secret injection" >&2
       else
