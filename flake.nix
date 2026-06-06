@@ -17,12 +17,23 @@
     darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     lazyvim.url = "github:pfassina/lazyvim-nix";
+
+    # OpenDeck (Stream Deck software) built from source. Deliberately NO
+    # nixpkgs follows — upstream README warns of FOD hash mismatches when
+    # the pin changes.
+    opendeck-nix.url = "github:Kitt3120/opendeck-nix";
+
+    # Stream Deck mute-button plugin for teams-for-linux (HM module + package).
+    opendeck-teams-for-linux.url = "github:geoffdavis/opendeck-teams-for-linux";
+    opendeck-teams-for-linux.inputs.nixpkgs.follows = "nixpkgs-nixos";
   };
 
-  outputs = _: {
+  outputs = inputs: {
     darwinModules.common = ./modules/darwin/common.nix;
     nixosModules.common = ./modules/nixos/common.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
+    # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
+    nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
     homeModules.neovim = ./modules/home/neovim.nix;
     homeModules.profile = ./modules/home/profile.nix;
@@ -36,6 +47,9 @@
     homeModules.gnome-desktop-base = ./modules/home/gnome-desktop-base.nix;
     homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
     homeModules.op-json-secrets = ./modules/home/op-json-secrets.nix;
+    homeModules.op-file-secrets = ./modules/home/op-file-secrets.nix;
+    # Needs flake inputs (the plugin's HM module), hence the import-with-args.
+    homeModules.teams-for-linux = import ./modules/home/teams-for-linux.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
