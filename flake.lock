@@ -189,11 +189,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780712377,
-        "narHash": "sha256-MK+4k9LG0iPsYFB7vUfuWygOF9v4xUGjZHY5VJAsLpY=",
+        "lastModified": 1780761212,
+        "narHash": "sha256-XWizwSwOtcH7qZdKPaSBy66EF4WC8P4PCYppKMyJSm4=",
         "owner": "geoffdavis",
         "repo": "opendeck-teams-for-linux",
-        "rev": "827bd6b6d8b632fdf02b94194489c8b6d5e18c75",
+        "rev": "a8b2255b7752f45d0c1bd11c143b61dc591af461",
         "type": "github"
       },
       "original": {
