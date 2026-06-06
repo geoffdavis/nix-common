@@ -19,6 +19,26 @@ branch) plus **OpenDeck** (not in nixpkgs) — implemented as a **shared
 nix-common module** that the work repo can adopt later (its planned migration
 onto the published plugin flake).
 
+## Runtime overview
+
+```mermaid
+flowchart LR
+    subgraph birdrock["birdrock (NixOS laptop)"]
+        teams["teams-for-linux\n(dev build from ~/src/teams-for-linux)"]
+        broker[("mosquitto\n127.0.0.1:1883")]
+        plugin["opendeck-teams-for-linux\nplugin (Rust)"]
+        opendeck["OpenDeck"]
+    end
+    deck["Stream Deck\n(when attached)"]
+
+    teams -- "state topics (retained):\nteams/microphone,\nteams/microphone/control, teams/in-call" --> broker
+    broker -- "state topics" --> plugin
+    plugin -- "key press:\n{action: toggle-mute}\n→ teams/command" --> broker
+    broker -- "teams/command" --> teams
+    plugin <-- "WebSocket: setState/setTitle/\nsetImage ↑, keyDown ↓" --> opendeck
+    opendeck <--> deck
+```
+
 ## Decisions (settled during brainstorming)
 
 | Decision | Choice |
@@ -31,6 +51,36 @@ onto the published plugin flake).
 | Rollout | Dev branches: nix-common `gdavis/teams-opendeck`; nix-personal pins its `nix-common` input to that branch (or `--override-input` to the local checkout during iteration); merge common first, then `task bump:common` + merge personal |
 
 ## nix-common changes
+
+```mermaid
+flowchart TD
+    nixpkgs["nixpkgs\n(teams-for-linux, mosquitto)"]
+    odnix["opendeck-nix flake\n(OpenDeck source build + udev)"]
+    pluginflake["opendeck-teams-for-linux flake\n(plugin package + HM module)"]
+
+    subgraph common["nix-common · branch gdavis/teams-opendeck"]
+        tfl["homeModules.teams-for-linux\n(app + devOverlay + broker + config.json + plugin glue)"]
+        ofs["homeModules.op-file-secrets (new)"]
+        ojs["homeModules.op-json-secrets (existing)"]
+        od["nixosModules.opendeck (re-export)"]
+    end
+
+    subgraph personal["nix-personal · birdrock"]
+        host["hosts/birdrock/teams.nix"]
+    end
+
+    work["work repo\n(adopts later — Follow-up B)"]
+
+    nixpkgs --> tfl
+    pluginflake --> tfl
+    odnix --> od
+    ofs --> tfl
+    ojs --> tfl
+    tfl --> host
+    od --> host
+    personal -. "input pin: dev branch /\n--override-input (local)" .-> common
+    common -.-> work
+```
 
 ### New flake inputs
 
@@ -106,6 +156,27 @@ opendeck-teams-for-linux.inputs.nixpkgs.follows = "nixpkgs-nixos";
      (registered via op-file-secrets from the same `passwordRef`) + topic
      prefix/suffix values mirroring `mqtt.*` so app and plugin can never
      drift apart.
+
+### Secrets flow
+
+```mermaid
+flowchart LR
+    op["1Password item\nop://Private/Teams for Linux MQTT/password"]
+    act["home-manager activation\n(op read — skips gracefully if locked)"]
+    cfg["config.json → .mqtt.password\n(op-json-secrets jq patch)"]
+    pwf["~/.config/mosquitto/passwordfile\n(mosquitto_passwd hash)"]
+    plf["~/.config/opendeck-teams-for-linux/password\n(op-file-secrets, 0600)"]
+    teams["teams-for-linux"]
+    broker[("mosquitto")]
+    plugin["OpenDeck plugin"]
+
+    op --> act
+    act --> cfg --> teams
+    act --> pwf --> broker
+    act --> plf --> plugin
+    teams -- "auth" --> broker
+    plugin -- "auth" --> broker
+```
 
 ## nix-personal changes (birdrock)
 
