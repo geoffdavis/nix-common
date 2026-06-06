@@ -7,6 +7,12 @@
     # nixos channel — for NixOS systems and standalone home-manager on Linux
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
 
+    # unstable channel — for individual packages that must track upstream
+    # faster than the stable release allows (e.g. netbird, frozen at 0.60.x
+    # on 25.11 while upstream ships 0.7x). Consumers follow this pin and
+    # cherry-pick packages from it; whole systems stay on the stable channels.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";
     home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
