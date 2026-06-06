@@ -31,11 +31,19 @@ inputs: {
   # Dev build: electron-builder's renamed binary in the checkout. The process
   # name then matches StartupWMClass (and any 1Password custom_allowed_browsers
   # entry). Build first: cd <checkoutPath> && npm run pack
-  devWrapper = pkgs.writeShellScriptBin "teams-for-linux" ''
-    exec "${cfg.devOverlay.checkoutPath}/dist/linux-unpacked/teams-for-linux" \
-      --user-data-dir="${configDir}" \
-      "$@"
-  '';
+  #
+  # The checkout binary is a prebuilt (FHS) Electron, which NixOS's stub-ld
+  # refuses to run directly — wrap it in an FHS env with the standard
+  # generic-linux runtime set (same lib set AppImages get).
+  devWrapper = pkgs.buildFHSEnv (pkgs.appimageTools.defaultFhsEnvArgs
+    // {
+      name = "teams-for-linux";
+      runScript = pkgs.writeShellScript "teams-for-linux-dev" ''
+        exec "${cfg.devOverlay.checkoutPath}/dist/linux-unpacked/teams-for-linux" \
+          --user-data-dir="${configDir}" \
+          "$@"
+      '';
+    });
 
   devDesktopEntry = pkgs.writeText "teams-for-linux.desktop" ''
     [Desktop Entry]
