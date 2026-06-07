@@ -1,4 +1,22 @@
-{lib, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
+  # zoxide: frecency-ranked directory jumping; the zsh hook is required for
+  # it to learn paths. zsh.nix aliases `cd` onto its zd wrapper below.
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # fzf keybindings (Ctrl-R history, Ctrl-T files, Alt-C dirs). The fzf
+  # binary itself also sits in cli-tools for consumers without this module.
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
   programs.zsh = {
     enable = true;
     oh-my-zsh = {
@@ -110,6 +128,177 @@
         echo "Subscription ID:     $(az account show --query id -o tsv 2>/dev/null || echo unknown)"
         echo "Workspace:           $(terraform workspace show 2>/dev/null || echo unknown)"
         echo "ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+      }
+
+      # ---- Omarchy-inspired layer (adapted from basecamp/omarchy
+      # default/bash; ported bash->zsh, collisions with the oh-my-zsh git
+      # plugin renamed, tool deps swapped for what cli-tools ships). ----
+
+      # eza over ls: long listings, dirs first, icons; lt = git-aware tree.
+      alias ls='eza -lh --group-directories-first --icons=auto'
+      alias lsa='ls -a'
+      alias lt='eza --tree --level=2 --long --icons --git'
+      alias lta='lt -a'
+
+      # fzf pickers with bat previews; kitty additionally gets inline image
+      # previews via icat. eff opens the pick in $EDITOR; sff scps it.
+      if [[ "$TERM" == "xterm-kitty" ]]; then
+        alias ff="fzf --preview 'case \$(file --mime-type -b {}) in image/*) kitty icat --clear --transfer-mode=memory --stdin=no --place=\''${FZF_PREVIEW_COLUMNS}x\''${FZF_PREVIEW_LINES}@0x0 {} ;; *) bat --style=numbers --color=always {} ;; esac'"
+      else
+        alias ff="fzf --preview 'bat --style=numbers --color=always {}'"
+      fi
+      alias eff='$EDITOR "$(ff)"'
+      # (upstream sorts candidates by mtime via GNU find -printf; dropped
+      # for BSD-find/macOS portability)
+      sff() {
+        if [ $# -eq 0 ]; then
+          echo "Usage: sff <destination> (e.g. sff host:/tmp/)"
+          return 1
+        fi
+        local file
+        file=$(find . -type f 2>/dev/null | ff) && [ -n "$file" ] && scp "$file" "$1"
+      }
+
+      # Colored man pages via bat.
+      export BAT_THEME=ansi
+      export MANROFFOPT="-c"
+      export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+
+      # zoxide owns cd: real paths behave exactly like cd; misses fall
+      # through to a frecency jump (with the landing dir echoed back).
+      zd() {
+        if (( $# == 0 )); then
+          builtin cd ~ || return
+        elif [[ -d $1 ]]; then
+          builtin cd "$1" || return
+        else
+          if ! z "$@"; then
+            echo "zd: no match: $*" >&2
+            return 1
+          fi
+          printf "\U000F17A9 "
+          pwd
+        fi
+      }
+      alias cd='zd'
+      ${lib.optionalString pkgs.stdenv.isLinux ''
+        # macOS ships a native `open`; give Linux the same verb.
+        open() (
+          xdg-open "$@" >/dev/null 2>&1 &
+        )
+      ''}
+      # Worktree trio: gw (above) fzf-jumps between worktrees; gwa creates
+      # a sibling ../repo--branch worktree+branch and enters it; gwd removes
+      # the current one (and its branch) after a gum confirm. Named gw* —
+      # upstream's ga/gd collide with oh-my-zsh git add/diff aliases.
+      gwa() {
+        if [[ -z "$1" ]]; then
+          echo "Usage: gwa <branch>"
+          return 1
+        fi
+        local branch="$1"
+        local base="$(basename "$PWD")"
+        local wt_path="../''${base}--''${branch}"
+        git worktree add -b "$branch" "$wt_path" && cd "$wt_path"
+      }
+      gwd() {
+        gum confirm "Remove worktree and branch?" || return
+        local cwd worktree root branch
+        cwd="$(pwd)"
+        worktree="$(basename "$cwd")"
+        root="''${worktree%%--*}"
+        branch="''${worktree#*--}"
+        # only act when the dir matches the repo--branch worktree pattern
+        if [[ "$root" != "$worktree" ]]; then
+          cd "../$root" || return
+          git worktree remove "$cwd" --force || return 1
+          git branch -D "$branch"
+        fi
+      }
+
+      # tmux: t attaches to (or starts) the Work session; the layout fns
+      # below take the AI command as an argument (e.g. `tdl claude`).
+      alias t='tmux attach || tmux new -s Work'
+
+      # Tmux Dev Layout: editor (top-left) + AI column (right) + terminal
+      # strip (bottom). Usage: tdl <ai-cmd> [<second-ai-cmd>]
+      tdl() {
+        [[ -z $1 ]] && { echo "Usage: tdl <ai-cmd> [<second-ai-cmd>]"; return 1; }
+        [[ -z $TMUX ]] && { echo "tdl requires a tmux session."; return 1; }
+        local current_dir="$PWD" editor_pane ai_pane ai2_pane
+        local ai="$1" ai2="$2"
+        editor_pane="$TMUX_PANE"
+        tmux rename-window -t "$editor_pane" "$(basename "$current_dir")"
+        tmux split-window -v -l '15%' -t "$editor_pane" -c "$current_dir"
+        ai_pane=$(tmux split-window -h -l '30%' -t "$editor_pane" -c "$current_dir" -P -F '#{pane_id}')
+        if [[ -n $ai2 ]]; then
+          ai2_pane=$(tmux split-window -v -t "$ai_pane" -c "$current_dir" -P -F '#{pane_id}')
+          tmux send-keys -t "$ai2_pane" "$ai2" C-m
+        fi
+        tmux send-keys -t "$ai_pane" "$ai" C-m
+        tmux send-keys -t "$editor_pane" "$EDITOR ." C-m
+        # focus the editor (upstream selects an unset variable here)
+        tmux select-pane -t "$editor_pane"
+      }
+
+      # Tmux Dev Square: editor / live-diff / terminal / AI quadrants.
+      # Usage: tds [<ai-cmd>] (default claude). The diff pane is a plain
+      # color git-diff loop (upstream uses their `hunk` watcher).
+      tds() {
+        [[ -z $TMUX ]] && { echo "tds requires a tmux session."; return 1; }
+        local current_dir="$PWD" editor_pane diff_pane terminal_pane ai_pane
+        local ai="''${1:-claude}"
+        editor_pane="$TMUX_PANE"
+        tmux rename-window -t "$editor_pane" "$(basename "$current_dir")"
+        terminal_pane=$(tmux split-window -v -l '50%' -t "$editor_pane" -c "$current_dir" -P -F '#{pane_id}')
+        diff_pane=$(tmux split-window -h -l '50%' -t "$editor_pane" -c "$current_dir" -P -F '#{pane_id}')
+        ai_pane=$(tmux split-window -h -l '50%' -t "$terminal_pane" -c "$current_dir" -P -F '#{pane_id}')
+        tmux send-keys -t "$editor_pane" "$EDITOR ." C-m
+        tmux send-keys -t "$diff_pane" 'while :; do clear; git -c color.ui=always diff | head -n "$LINES"; sleep 2; done' C-m
+        tmux send-keys -t "$ai_pane" "$ai" C-m
+        tmux select-pane -t "$editor_pane"
+      }
+
+      # One tdl window per subdirectory of the cwd. Usage: tdlm <ai-cmd> [<ai2>]
+      tdlm() {
+        [[ -z $1 ]] && { echo "Usage: tdlm <ai-cmd> [<second-ai-cmd>]"; return 1; }
+        [[ -z $TMUX ]] && { echo "tdlm requires a tmux session."; return 1; }
+        local ai="$1" ai2="$2" base_dir="$PWD" first=true
+        # tmux session names disallow dots/colons
+        tmux rename-session "$(basename "$base_dir" | tr '.:' '--')"
+        local dir dirpath pane_id
+        for dir in "$base_dir"/*/; do
+          [[ -d $dir ]] || continue
+          dirpath="''${dir%/}"
+          if $first; then
+            tmux send-keys -t "$TMUX_PANE" "cd '$dirpath' && tdl $ai $ai2" C-m
+            first=false
+          else
+            pane_id=$(tmux new-window -c "$dirpath" -P -F '#{pane_id}')
+            tmux send-keys -t "$pane_id" "tdl $ai $ai2" C-m
+          fi
+        done
+      }
+
+      # Swarm layout: N tiled panes all running the same command.
+      # Usage: tsl <pane-count> <command>
+      tsl() {
+        [[ -z $1 || -z $2 ]] && { echo "Usage: tsl <pane-count> <command>"; return 1; }
+        [[ -z $TMUX ]] && { echo "tsl requires a tmux session."; return 1; }
+        local count="$1" cmd="$2" current_dir="$PWD" new_pane pane
+        local -a panes
+        tmux rename-window -t "$TMUX_PANE" "$(basename "$current_dir")"
+        panes+=("$TMUX_PANE")
+        # NB zsh arrays are 1-indexed (upstream bash uses panes[0])
+        while (( ''${#panes[@]} < count )); do
+          new_pane=$(tmux split-window -h -t "''${panes[-1]}" -c "$current_dir" -P -F '#{pane_id}')
+          panes+=("$new_pane")
+          tmux select-layout -t "''${panes[1]}" tiled
+        done
+        for pane in "''${panes[@]}"; do
+          tmux send-keys -t "$pane" "$cmd" C-m
+        done
+        tmux select-pane -t "''${panes[1]}"
       }
     '';
   };
