@@ -1,6 +1,6 @@
 # Per-host home-manager config. Keep host-specific settings here; pull shared
 # behaviour from nix-common modules in flake.nix rather than copying it in.
-{...}: {
+_: {
   # CHANGEME: match the actual login user and home directory.
   home.username = "user";
   home.homeDirectory = "/home/user";
