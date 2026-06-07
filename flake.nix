@@ -34,7 +34,52 @@
     opendeck-teams-for-linux.inputs.nixpkgs.follows = "nixpkgs-nixos";
   };
 
-  outputs = inputs: {
+  outputs = inputs: let
+    lib = inputs.nixpkgs-nixos.lib;
+    systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    pkgsFor = system:
+      if lib.hasSuffix "-darwin" system
+      then inputs.nixpkgs-darwin.legacyPackages.${system}
+      else inputs.nixpkgs-nixos.legacyPackages.${system};
+    forAllSystems = f: lib.genAttrs systems (system: f (pkgsFor system));
+  in {
+    # Dev helper, single source of truth for the ci.yml pin rewrite. Consumers
+    # call `nix run github:geoffdavis/nix-common#sync-pin` from their Taskfile
+    # (after `nix flake update nix-common`) instead of carrying the shell
+    # inline. It reads the *consumer's* flake.lock in CWD, so the locked rev —
+    # not this flake's version — is what lands in ci.yml.
+    apps = forAllSystems (pkgs: {
+      sync-pin = {
+        type = "app";
+        program = "${pkgs.writeShellScriptBin "sync-pin" ''
+          set -eu
+          ci="''${1:-.github/workflows/ci.yml}"
+          if [ ! -f "$ci" ]; then
+            echo "sync-pin: workflow file not found: $ci" >&2
+            exit 1
+          fi
+          if [ ! -f flake.lock ]; then
+            echo "sync-pin: flake.lock not found in $PWD" >&2
+            exit 1
+          fi
+          sha=$(${pkgs.jq}/bin/jq -r '.nodes."nix-common".locked.rev' flake.lock)
+          if [ -z "$sha" ] || [ "$sha" = "null" ]; then
+            echo "sync-pin: could not read nix-common rev from flake.lock" >&2
+            exit 1
+          fi
+          tmp=$(${pkgs.coreutils}/bin/mktemp "''${TMPDIR:-/tmp}/sync-pin.XXXXXXXX")
+          ${pkgs.gnused}/bin/sed "s|geoffdavis/nix-common/\.github/workflows/lint\.yml@[a-f0-9]\{7,\}|geoffdavis/nix-common/.github/workflows/lint.yml@$sha|" "$ci" > "$tmp"
+          if ! ${pkgs.gnugrep}/bin/grep -qF "geoffdavis/nix-common/.github/workflows/lint.yml@$sha" "$tmp"; then
+            echo "sync-pin: sed did not produce the expected pin in $ci" >&2
+            ${pkgs.coreutils}/bin/rm -f "$tmp"
+            exit 1
+          fi
+          ${pkgs.coreutils}/bin/mv "$tmp" "$ci"
+          echo "sync-pin: nix-common workflow pin -> $sha"
+        ''}/bin/sync-pin";
+      };
+    });
+
     # Scaffolding for the two most common "new thing" operations. See
     # docs/module-contract.md and templates/*/README.md.
     #   nix flake new -t github:geoffdavis/nix-common#consumer ./my-config

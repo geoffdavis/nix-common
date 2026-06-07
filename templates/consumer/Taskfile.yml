@@ -39,7 +39,7 @@ tasks:
     desc: Bump nix-common in flake.lock AND the ci.yml workflow pin (no commit)
     cmds:
       - nix --accept-flake-config flake update nix-common
-      - task: ci:sync-pin
+      - nix --accept-flake-config run github:geoffdavis/nix-common#sync-pin
 
   bump:common:commit:
     desc: Bump nix-common + sync ci.yml pin + commit on current branch (refuses on main/master/detached HEAD)
@@ -83,7 +83,7 @@ tasks:
     desc: Bump every flake input (also resyncs the ci.yml workflow pin)
     cmds:
       - nix --accept-flake-config flake update
-      - task: ci:sync-pin
+      - nix --accept-flake-config run github:geoffdavis/nix-common#sync-pin
 
   _guard:committable-branch:
     internal: true
@@ -102,29 +102,3 @@ tasks:
             exit 1
             ;;
         esac
-
-  ci:sync-pin:
-    internal: true
-    desc: Rewrite the @<sha> in ci.yml to match flake.lock's nix-common rev.
-    cmds:
-      - |
-        set -eu
-        ci=.github/workflows/ci.yml
-        if [ ! -f "$ci" ]; then
-          echo "ci:sync-pin: workflow file not found: $ci" >&2
-          exit 1
-        fi
-        sha=$(nix --accept-flake-config run nixpkgs#jq -- -r '.nodes."nix-common".locked.rev' flake.lock)
-        if [ -z "$sha" ] || [ "$sha" = "null" ]; then
-          echo "ci:sync-pin: could not read nix-common rev from flake.lock" >&2
-          exit 1
-        fi
-        tmp=$(mktemp "${TMPDIR:-/tmp}/ci-sync-pin.XXXXXXXX")
-        sed "s|geoffdavis/nix-common/\.github/workflows/lint\.yml@[a-f0-9]\{7,\}|geoffdavis/nix-common/.github/workflows/lint.yml@$sha|" "$ci" > "$tmp"
-        if ! grep -qF "geoffdavis/nix-common/.github/workflows/lint.yml@$sha" "$tmp"; then
-          echo "ci:sync-pin: sed did not produce the expected pin in $ci" >&2
-          rm -f "$tmp"
-          exit 1
-        fi
-        mv "$tmp" "$ci"
-        echo "ci:sync-pin: nix-common workflow pin -> $sha"
