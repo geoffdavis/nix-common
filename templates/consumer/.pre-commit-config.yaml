@@ -5,8 +5,8 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      # Guard direct commits to main/master — branch protection is on, so
-      # those commits would be unpushable anyway; fail fast at commit time.
+      # Branch protection is on for main, so direct commits there would be
+      # unpushable anyway — fail fast at commit time.
       - id: no-commit-to-branch
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -27,10 +27,9 @@ repos:
         entry: deadnix --fail
         language: system
         types: [nix]
-        # nvfetcher's generated.nix carries fetchgit/fetchFromGitHub/dockerTools
-        # in its lambda signature even when no entry currently uses them; they
-        # are needed for future entries, so don't trip on unused-pattern.
-        exclude: ^_sources/
+        # CHANGEME: exclude generated files if any, e.g. a host's
+        # hardware-configuration.nix:
+        # exclude: ^hosts/.*/hardware-configuration\.nix$
 
       - id: statix
         name: statix (nix linter)
@@ -38,17 +37,3 @@ repos:
         language: system
         pass_filenames: false
         files: '\.nix$'
-
-      - id: nix-flake-check
-        name: nix flake check
-        entry: nix flake check
-        language: system
-        pass_filenames: false
-        files: '\.(nix|lock)$'
-
-      - id: module-contract
-        name: module contract (modules/ <-> flake.nix exports)
-        entry: scripts/check-module-contract.sh
-        language: system
-        pass_filenames: false
-        files: '(^modules/.*\.nix$|^flake\.nix$)'

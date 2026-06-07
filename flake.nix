@@ -35,6 +35,25 @@
   };
 
   outputs = inputs: {
+    # Scaffolding for the two most common "new thing" operations. See
+    # docs/module-contract.md and templates/*/README.md.
+    #   nix flake new -t github:geoffdavis/nix-common#consumer ./my-config
+    #   nix flake init -t github:geoffdavis/nix-common#home-module
+    templates = {
+      consumer = {
+        path = ./templates/consumer;
+        description = "Standalone home-manager repo that consumes nix-common (flake, Taskfile, CI, pre-commit, AGENTS/CLAUDE).";
+      };
+      home-module = {
+        path = ./templates/home-module;
+        description = "Skeleton for a new shared home-manager module following the nix-common module contract.";
+      };
+      default = {
+        path = ./templates/consumer;
+        description = "Alias for the consumer template.";
+      };
+    };
+
     darwinModules.common = ./modules/darwin/common.nix;
     # NAS binary cache + x86_64-linux remote builder for system-level consumers
     # (nix-darwin + NixOS). Same file — both platforms share these option
