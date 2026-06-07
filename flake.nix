@@ -36,7 +36,13 @@
 
   outputs = inputs: {
     darwinModules.common = ./modules/darwin/common.nix;
+    # NAS binary cache + x86_64-linux remote builder for system-level consumers
+    # (nix-darwin + NixOS). Same file — both platforms share these option
+    # namespaces (nix.settings, nix.buildMachines, programs.ssh.extraConfig).
+    darwinModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.common = ./modules/nixos/common.nix;
+    # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
+    nixosModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
@@ -59,5 +65,9 @@
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
+    # NAS binary cache (substituter only) for standalone home-manager on
+    # Linux. buildMachines is not a home-manager option; system-level
+    # consumers should use nixosModules.nas-cache / darwinModules.nas-cache.
+    homeModules.nas-cache = ./modules/home/nas-cache.nix;
   };
 }
