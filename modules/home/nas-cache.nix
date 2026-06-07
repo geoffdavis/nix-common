@@ -6,10 +6,19 @@
 #
 # For system-level consumers (NixOS, nix-darwin) use nixosModules.nas-cache
 # or darwinModules.nas-cache instead — those include the full builder config.
-{lib, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   cacheUrl = "http://nas-sdg.netbird.cloud:30500";
   cachePublicKey = "nas-sdg-nix-cache-1:5FXUg5ik7av8CDnsngWpuM2Xe9RJ3WYoewH6t+rt9mo=";
 in {
+  # home-manager requires nix.package to be set before it will write nix.conf.
+  # mkDefault so a host that already sets nix.package (e.g. to nix-unstable)
+  # keeps its own choice.
+  nix.package = lib.mkDefault pkgs.nix;
+
   nix.settings = lib.mkIf (cachePublicKey != null) {
     extra-substituters = [cacheUrl];
     extra-trusted-public-keys = [cachePublicKey];
