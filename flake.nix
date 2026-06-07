@@ -7,6 +7,12 @@
     # nixos channel — for NixOS systems and standalone home-manager on Linux
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
 
+    # unstable channel — for individual packages that must track upstream
+    # faster than the stable release allows (e.g. netbird, frozen at 0.60.x
+    # on 25.11 while upstream ships 0.7x). Consumers follow this pin and
+    # cherry-pick packages from it; whole systems stay on the stable channels.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";
     home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
@@ -17,12 +23,93 @@
     darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     lazyvim.url = "github:pfassina/lazyvim-nix";
+
+    # OpenDeck (Stream Deck software) built from source. Deliberately NO
+    # nixpkgs follows — upstream README warns of FOD hash mismatches when
+    # the pin changes.
+    opendeck-nix.url = "github:Kitt3120/opendeck-nix";
+
+    # Stream Deck mute-button plugin for teams-for-linux (HM module + package).
+    opendeck-teams-for-linux.url = "github:geoffdavis/opendeck-teams-for-linux";
+    opendeck-teams-for-linux.inputs.nixpkgs.follows = "nixpkgs-nixos";
   };
 
-  outputs = _: {
+  outputs = inputs: let
+    lib = inputs.nixpkgs-nixos.lib;
+    systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    pkgsFor = system:
+      if lib.hasSuffix "-darwin" system
+      then inputs.nixpkgs-darwin.legacyPackages.${system}
+      else inputs.nixpkgs-nixos.legacyPackages.${system};
+    forAllSystems = f: lib.genAttrs systems (system: f (pkgsFor system));
+  in {
+    # Dev helper, single source of truth for the ci.yml pin rewrite. Consumers
+    # call `nix run github:geoffdavis/nix-common#sync-pin` from their Taskfile
+    # (after `nix flake update nix-common`) instead of carrying the shell
+    # inline. It reads the *consumer's* flake.lock in CWD, so the locked rev —
+    # not this flake's version — is what lands in ci.yml.
+    apps = forAllSystems (pkgs: {
+      sync-pin = {
+        type = "app";
+        program = "${pkgs.writeShellScriptBin "sync-pin" ''
+          set -eu
+          ci="''${1:-.github/workflows/ci.yml}"
+          if [ ! -f "$ci" ]; then
+            echo "sync-pin: workflow file not found: $ci" >&2
+            exit 1
+          fi
+          if [ ! -f flake.lock ]; then
+            echo "sync-pin: flake.lock not found in $PWD" >&2
+            exit 1
+          fi
+          sha=$(${pkgs.jq}/bin/jq -r '.nodes."nix-common".locked.rev' flake.lock)
+          if [ -z "$sha" ] || [ "$sha" = "null" ]; then
+            echo "sync-pin: could not read nix-common rev from flake.lock" >&2
+            exit 1
+          fi
+          tmp=$(${pkgs.coreutils}/bin/mktemp "''${TMPDIR:-/tmp}/sync-pin.XXXXXXXX")
+          ${pkgs.gnused}/bin/sed "s|geoffdavis/nix-common/\.github/workflows/lint\.yml@[a-f0-9]\{7,\}|geoffdavis/nix-common/.github/workflows/lint.yml@$sha|" "$ci" > "$tmp"
+          if ! ${pkgs.gnugrep}/bin/grep -qF "geoffdavis/nix-common/.github/workflows/lint.yml@$sha" "$tmp"; then
+            echo "sync-pin: sed did not produce the expected pin in $ci" >&2
+            ${pkgs.coreutils}/bin/rm -f "$tmp"
+            exit 1
+          fi
+          ${pkgs.coreutils}/bin/mv "$tmp" "$ci"
+          echo "sync-pin: nix-common workflow pin -> $sha"
+        ''}/bin/sync-pin";
+      };
+    });
+
+    # Scaffolding for the two most common "new thing" operations. See
+    # docs/module-contract.md and templates/*/README.md.
+    #   nix flake new -t github:geoffdavis/nix-common#consumer ./my-config
+    #   nix flake init -t github:geoffdavis/nix-common#home-module
+    templates = {
+      consumer = {
+        path = ./templates/consumer;
+        description = "Standalone home-manager repo that consumes nix-common (flake, Taskfile, CI, pre-commit, AGENTS/CLAUDE).";
+      };
+      home-module = {
+        path = ./templates/home-module;
+        description = "Skeleton for a new shared home-manager module following the nix-common module contract.";
+      };
+      default = {
+        path = ./templates/consumer;
+        description = "Alias for the consumer template.";
+      };
+    };
+
     darwinModules.common = ./modules/darwin/common.nix;
+    # NAS binary cache + x86_64-linux remote builder for system-level consumers
+    # (nix-darwin + NixOS). Same file — both platforms share these option
+    # namespaces (nix.settings, nix.buildMachines, programs.ssh.extraConfig).
+    darwinModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.common = ./modules/nixos/common.nix;
+    # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
+    nixosModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
+    # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
+    nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
     homeModules.neovim = ./modules/home/neovim.nix;
     homeModules.profile = ./modules/home/profile.nix;
@@ -36,8 +123,15 @@
     homeModules.gnome-desktop-base = ./modules/home/gnome-desktop-base.nix;
     homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
     homeModules.op-json-secrets = ./modules/home/op-json-secrets.nix;
+    homeModules.op-file-secrets = ./modules/home/op-file-secrets.nix;
+    # Needs flake inputs (the plugin's HM module), hence the import-with-args.
+    homeModules.teams-for-linux = import ./modules/home/teams-for-linux.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
+    # NAS binary cache (substituter only) for standalone home-manager on
+    # Linux. buildMachines is not a home-manager option; system-level
+    # consumers should use nixosModules.nas-cache / darwinModules.nas-cache.
+    homeModules.nas-cache = ./modules/home/nas-cache.nix;
   };
 }

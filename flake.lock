@@ -148,6 +148,76 @@
         "type": "github"
       }
     },
+    "nixpkgs-unstable": {
+      "locked": {
+        "lastModified": 1780243769,
+        "narHash": "sha256-x5UQuRsH3MqI0U9afaXSNqzTPSeZlRLvFAav2Ux1pNw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "331800de5053fcebacf6813adb5db9c9dca22a0c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1779560665,
+        "narHash": "sha256-tpyBcxPpcQb8ukyNF7DoCwfSY3VPsxHoYwj00Cayv5o=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "opendeck-nix": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1780184505,
+        "narHash": "sha256-sCN7HPuFbN+C8AS+3Kh1L99JNUQzSQR4DX8mAqtruYo=",
+        "owner": "Kitt3120",
+        "repo": "opendeck-nix",
+        "rev": "7fa03f15716aa22d0a0c3bf18124b723bd0bfa23",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Kitt3120",
+        "repo": "opendeck-nix",
+        "type": "github"
+      }
+    },
+    "opendeck-teams-for-linux": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs-nixos"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780761212,
+        "narHash": "sha256-XWizwSwOtcH7qZdKPaSBy66EF4WC8P4PCYppKMyJSm4=",
+        "owner": "geoffdavis",
+        "repo": "opendeck-teams-for-linux",
+        "rev": "a8b2255b7752f45d0c1bd11c143b61dc591af461",
+        "type": "github"
+      },
+      "original": {
+        "owner": "geoffdavis",
+        "repo": "opendeck-teams-for-linux",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "darwin": "darwin",
@@ -155,7 +225,10 @@
         "home-manager-nixos": "home-manager-nixos",
         "lazyvim": "lazyvim",
         "nixpkgs-darwin": "nixpkgs-darwin",
-        "nixpkgs-nixos": "nixpkgs-nixos"
+        "nixpkgs-nixos": "nixpkgs-nixos",
+        "nixpkgs-unstable": "nixpkgs-unstable",
+        "opendeck-nix": "opendeck-nix",
+        "opendeck-teams-for-linux": "opendeck-teams-for-linux"
       }
     },
     "systems": {

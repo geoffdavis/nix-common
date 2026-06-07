@@ -28,6 +28,17 @@ in {
     system.stateVersion = 6;
     system.primaryUser = username;
 
+    # Mirror of nixosModules.common's nix.settings. trusted-users so
+    # the daemon honors the primary user's client-side overrides of
+    # restricted settings (--builders, extra substituters, ...)
+    # instead of silently ignoring them; experimental-features
+    # system-wide so root/sudo nix invocations get nix-command +
+    # flakes too, not just users with home-level nix.conf.
+    nix.settings = {
+      experimental-features = ["nix-command" "flakes"];
+      trusted-users = ["root" username];
+    };
+
     # zsh sourcing of nix-darwin's environment changes.
     programs.zsh.enable = true;
 
