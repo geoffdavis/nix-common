@@ -64,7 +64,6 @@
     # general utilities
     bat # cat/pager with syntax highlighting; also colored MANPAGER (zsh.nix)
     btop
-    cliamp # terminal Winamp music player
     dtc
     expect
     eza # iconified ls/tree, aliased over ls (zsh.nix)
