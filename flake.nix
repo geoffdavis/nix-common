@@ -35,7 +35,7 @@
   };
 
   outputs = inputs: let
-    lib = inputs.nixpkgs-nixos.lib;
+    inherit (inputs.nixpkgs-nixos) lib;
     systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     pkgsFor = system:
       if lib.hasSuffix "-darwin" system
