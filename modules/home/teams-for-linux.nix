@@ -31,19 +31,56 @@ inputs: {
   # Dev build: electron-builder's renamed binary in the checkout. The process
   # name then matches StartupWMClass (and any 1Password custom_allowed_browsers
   # entry). Build first: cd <checkoutPath> && npm run pack
-  #
-  # The checkout binary is a prebuilt (FHS) Electron, which NixOS's stub-ld
-  # refuses to run directly — wrap it in an FHS env with the standard
-  # generic-linux runtime set (same lib set AppImages get).
-  devWrapper = pkgs.buildFHSEnv (pkgs.appimageTools.defaultFhsEnvArgs
-    // {
-      name = "teams-for-linux";
-      runScript = pkgs.writeShellScript "teams-for-linux-dev" ''
-        exec "${cfg.devOverlay.checkoutPath}/dist/linux-unpacked/teams-for-linux" \
+  devBin = "${cfg.devOverlay.checkoutPath}/dist/linux-unpacked/teams-for-linux";
+
+  # Flags mirroring the nixpkgs package wrapper. WaylandWindowDecorations is
+  # the load-bearing one: GNOME's Wayland compositor draws no server-side
+  # decorations, so without it the window has no minimize/maximize controls
+  # (only a close button) and an unthemed frame. All four are safe no-ops
+  # under X11, so we pass them unconditionally rather than gating on a
+  # session env var (NIXOS_OZONE_WL is unset on non-NixOS Wayland sessions).
+  devFlags = "--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,WebRTCPipeWireCapturer --enable-wayland-ime=true";
+
+  # The checkout binary is a prebuilt (FHS) Electron. On NixOS there is no
+  # /lib64/ld-linux for it to run against (stub-ld refuses), so it must run
+  # inside an FHS sandbox. But that sandbox binds its own /usr over the host's
+  # — hiding system fonts and the GTK/icon/cursor themes the window frame needs
+  # — which on a normal FHS distro (Ubuntu, etc.) just breaks desktop
+  # integration for no benefit. So: FHS-wrap only where required (useFHS),
+  # otherwise run the binary directly against the host. The FHS path also
+  # bundles fonts/themes the appimage default set omits.
+  devWrapper =
+    if cfg.devOverlay.useFHS
+    then
+      pkgs.buildFHSEnv (pkgs.appimageTools.defaultFhsEnvArgs
+        // {
+          name = "teams-for-linux";
+          targetPkgs = p:
+            (pkgs.appimageTools.defaultFhsEnvArgs.targetPkgs p)
+            ++ (with p; [
+              dejavu_fonts
+              liberation_ttf
+              noto-fonts
+              gnome-themes-extra
+              adwaita-icon-theme
+            ]);
+          runScript = pkgs.writeShellScript "teams-for-linux-dev" ''
+            exec "${devBin}" \
+              --user-data-dir="${configDir}" \
+              ${devFlags} \
+              "$@"
+          '';
+        })
+    else
+      # Plain wrapper script — not makeWrapper, which build-time-asserts the
+      # target is executable, and devBin lives under $HOME (invisible to the
+      # build sandbox). writeShellScriptBin just emits bin/teams-for-linux.
+      pkgs.writeShellScriptBin "teams-for-linux" ''
+        exec "${devBin}" \
           --user-data-dir="${configDir}" \
+          ${devFlags} \
           "$@"
       '';
-    });
 
   devDesktopEntry = pkgs.writeText "teams-for-linux.desktop" ''
     [Desktop Entry]
@@ -97,6 +134,18 @@ in {
         description = ''
           Absolute path to the teams-for-linux git checkout.
           Build it first: cd <checkoutPath> && npm run pack
+        '';
+      };
+      useFHS = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Run the prebuilt dev binary inside an FHS (bubblewrap) sandbox.
+          Required on NixOS, where the binary has no host /lib64/ld-linux to
+          run against. Set false on a normal FHS distro (Ubuntu, etc.):
+          running the binary directly avoids shadowing the host's /usr, so the
+          app inherits system fonts, GTK/icon/cursor themes, and window-manager
+          decorations instead of the sandbox's minimal set.
         '';
       };
     };
