@@ -37,6 +37,7 @@
     git-filter-repo
     git-secrets
     gitleaks
+    lazygit # git TUI
 
     # shells & terminal
     bashInteractive
@@ -63,9 +64,11 @@
     # general utilities
     bat # cat/pager with syntax highlighting; also colored MANPAGER (zsh.nix)
     btop
+    cliamp # terminal Winamp music player
     dtc
     expect
     eza # iconified ls/tree, aliased over ls (zsh.nix)
+    fastfetch # neofetch-like system info
     file # mime detection for the ff fzf preview (zsh.nix)
     fzf
     gnugrep
@@ -74,6 +77,7 @@
     gum # confirm prompts in shell functions (gwd in zsh.nix)
     ipcalc
     jq
+    lazydocker # docker/compose TUI
     markdownlint-cli
     mise
     ripgrep
