@@ -100,6 +100,9 @@
     };
 
     darwinModules.common = ./modules/darwin/common.nix;
+    # Opt-in scheduled GC + store optimisation for Determinate-managed Macs
+    # (nix.enable = false), where darwinModules.common's nix.gc is inert.
+    darwinModules.determinate-gc = ./modules/darwin/determinate-gc.nix;
     # NAS binary cache + x86_64-linux remote builder for system-level consumers
     # (nix-darwin + NixOS). Same file — both platforms share these option
     # namespaces (nix.settings, nix.buildMachines, programs.ssh.extraConfig).
