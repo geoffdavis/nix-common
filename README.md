@@ -53,6 +53,23 @@ Notes:
 `neovim` is imported by both `*Modules.common`, so every host gets the editor;
 consumers pass `lazyvim` via `extraSpecialArgs`.
 
+## Scaffolding (templates)
+
+Two `nix flake` templates cover the common "new thing" operations:
+
+```sh
+# A whole new consumer repo (flake, Taskfile, CI, pre-commit, AGENTS/CLAUDE):
+nix flake new -t github:geoffdavis/nix-common#consumer ./my-config
+
+# A new shared home-manager module skeleton (or use `task new:module -- <name>`):
+nix flake init -t github:geoffdavis/nix-common#home-module
+```
+
+New shared modules must satisfy the [module contract](docs/module-contract.md),
+which `task contract` (and the `module-contract` CI job) enforce. See
+[docs/refactoring-proposal.md](docs/refactoring-proposal.md) for the broader
+guardrails roadmap.
+
 ## Consuming this flake
 
 In a downstream `flake.nix`, follow the pin set that matches your platform.

@@ -37,6 +37,7 @@
     git-filter-repo
     git-secrets
     gitleaks
+    lazygit # git TUI
 
     # shells & terminal
     bashInteractive
@@ -66,6 +67,7 @@
     dtc
     expect
     eza # iconified ls/tree, aliased over ls (zsh.nix)
+    fastfetch # neofetch-like system info
     file # mime detection for the ff fzf preview (zsh.nix)
     fzf
     gnugrep
@@ -74,6 +76,7 @@
     gum # confirm prompts in shell functions (gwd in zsh.nix)
     ipcalc
     jq
+    lazydocker # docker/compose TUI
     markdownlint-cli
     mise
     ripgrep

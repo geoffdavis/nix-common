@@ -22,6 +22,32 @@ tasks:
     cmds:
       - nix flake check
 
+  contract:
+    desc: Check the module contract (every modules/ file is exported from flake.nix, and vice-versa)
+    cmds:
+      - ./scripts/check-module-contract.sh
+
+  new:module:
+    desc: 'Scaffold a new shared home module from the skeleton: task new:module -- <name>'
+    cmds:
+      - |
+        set -eu
+        name="{{.CLI_ARGS}}"
+        if [ -z "$name" ]; then
+          echo "usage: task new:module -- <name>   (e.g. task new:module -- netbird-extra)" >&2
+          exit 1
+        fi
+        dest="modules/home/${name}.nix"
+        if [ -e "$dest" ]; then
+          echo "refusing to overwrite existing $dest" >&2
+          exit 1
+        fi
+        sed "s/myModule/${name}/g" templates/home-module/module.nix > "$dest"
+        echo "created $dest"
+        echo "next:"
+        echo "  1. export it in flake.nix   ->  homeModules.${name} = ./$dest;"
+        echo "  2. task contract && task fmt && task lint"
+
   update:sources:
     desc: Bump every pinned upstream source (claude-code, github-copilot-cli, codex, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
     cmds:

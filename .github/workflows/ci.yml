@@ -22,3 +22,12 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - run: nix --accept-flake-config flake check
+
+  # Structural guardrail: every modules/ file is exported from flake.nix (and
+  # vice-versa). Plain bash — no nix needed, so it stays fast and can't be
+  # broken by an eval error elsewhere.
+  module-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: ./scripts/check-module-contract.sh

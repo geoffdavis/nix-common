@@ -10,7 +10,24 @@ Shared nix modules and pinned flake inputs for personal multi-host configs
 
 ```sh
 nix flake check     # evaluates all module outputs
+task contract       # asserts modules/ <-> flake.nix exports are consistent
 ```
+
+## Adding a shared module
+
+Don't hand-roll one — start from the skeleton, which already satisfies the
+[module contract](docs/module-contract.md):
+
+```sh
+task new:module -- <name>     # writes modules/home/<name>.nix from the skeleton
+# then export it in flake.nix:  homeModules.<name> = ./modules/home/<name>.nix;
+task contract && task fmt && task lint
+```
+
+`task contract` (and the `module-contract` CI job + pre-commit hook) fail
+closed on an orphaned module file or a dangling export path. Scaffolding for
+a whole new consumer repo lives in `templates/consumer`
+(`nix flake new -t github:geoffdavis/nix-common#consumer ./my-config`).
 
 ## Lint (must pass before commit)
 
@@ -37,7 +54,10 @@ is intentional. CI runs the same chain via the reusable workflow at
   (`onepassword-ssh.keys`).
 - New shared modules go under `modules/home/` (cross-platform unless noted)
   or `modules/{darwin,nixos}/` for OS-specific. Add the export to
-  `flake.nix`.
+  `flake.nix`. Internal helpers that aren't flake outputs go under
+  `modules/shared/`. See [docs/module-contract.md](docs/module-contract.md).
+- One `enable` option per module, all config behind `lib.mkIf cfg.enable`,
+  `lib.mkDefault` on anything a host might override.
 
 ## Workflow
 

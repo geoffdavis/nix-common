@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    # Reusable lint workflow from nix-common (alejandra + deadnix + statix).
+    # CHANGEME: after `nix flake update nix-common`, run `task ci:sync-pin`
+    # (or `task bump:common`) to replace @main with the locked commit SHA so
+    # this pin and flake.lock stay in lockstep. verify-pin below enforces it.
+    uses: geoffdavis/nix-common/.github/workflows/lint.yml@main
+    # with:
+    #   deadnix-exclude: |
+    #     hosts/myhost/hardware-configuration.nix
+
+  # Catches drift between flake.lock's nix-common rev and the @<sha> pin above
+  # — important because update-flake-lock cron bumps the lock without running
+  # `task ci:sync-pin`. jq is preinstalled on ubuntu-latest runners.
+  verify-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Verify ci.yml workflow pin matches flake.lock
+        run: |
+          set -eu
+          sha=$(jq -r '.nodes."nix-common".locked.rev' flake.lock)
+          if [ -z "$sha" ] || [ "$sha" = "null" ]; then
+            echo "::error::Could not read nix-common rev from flake.lock"
+            exit 1
+          fi
+          # Tolerate the initial @main bootstrap; enforce once a SHA is pinned.
+          if grep -qE 'lint\.yml@main([[:space:]]|$)' .github/workflows/ci.yml; then
+            echo "ci.yml still pins @main — run 'task bump:common' to pin a SHA."
+            exit 0
+          fi
+          if ! grep -qF "lint.yml@$sha" .github/workflows/ci.yml; then
+            echo "::error::ci.yml's nix-common workflow pin does not match flake.lock ($sha)."
+            echo "Run 'task ci:sync-pin' (or 'task bump:common') to fix."
+            exit 1
+          fi
+          echo "ci.yml pin matches flake.lock rev: $sha"
