@@ -19,8 +19,21 @@ in {
   # keeps its own choice.
   nix.package = lib.mkDefault pkgs.nix;
 
-  nix.settings = lib.mkIf (cachePublicKey != null) {
-    extra-substituters = [cacheUrl];
-    extra-trusted-public-keys = [cachePublicKey];
-  };
+  nix.settings = lib.mkMerge [
+    # Flakes + the new CLI, written into the home-manager-managed
+    # ~/.config/nix/nix.conf. The Determinate installer normally enables these
+    # in /etc/nix/nix.conf, but on these standalone-HM Ubuntu hosts that file
+    # is owned by the Ansible system layer and has gone missing in practice —
+    # leaving `nix run`/`task hm:switch` dead with "experimental Nix feature
+    # 'nix-command' is disabled". Declaring it in the user config makes it
+    # self-healing: every switch rewrites nix.conf with these features. Set
+    # unconditionally (not gated on the cache key) since every consumer needs
+    # it.
+    {experimental-features = ["nix-command" "flakes"];}
+
+    (lib.mkIf (cachePublicKey != null) {
+      extra-substituters = [cacheUrl];
+      extra-trusted-public-keys = [cachePublicKey];
+    })
+  ];
 }
