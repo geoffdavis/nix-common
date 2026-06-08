@@ -49,6 +49,14 @@ in {
     };
     nix.optimise.automatic = lib.mkDefault true;
 
+    # Baseline hardware-triage tooling, present on every NixOS host so it's
+    # there the moment a device misbehaves (USB enumeration, PCI topology)
+    # rather than something to `nix shell` for mid-diagnosis.
+    environment.systemPackages = [
+      pkgs.usbutils # lsusb / lsusb -t
+      pkgs.pciutils # lspci
+    ];
+
     programs.zsh.enable = true;
 
     users.users.${username} = {
