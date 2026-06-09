@@ -31,7 +31,31 @@ in {
     nix.settings = {
       experimental-features = ["nix-command" "flakes"];
       trusted-users = ["root" username];
+      # Disk-pressure safety net: when free space drops below min-free mid-build
+      # the daemon collects garbage until max-free is available again. Bounds the
+      # worst case (a big closure landing on an almost-full disk) that scheduled
+      # GC alone can't catch. mkDefault so a host can retune.
+      min-free = lib.mkDefault (1024 * 1024 * 1024); # 1 GiB
+      max-free = lib.mkDefault (5 * 1024 * 1024 * 1024); # 5 GiB
     };
+
+    # Scheduled housekeeping. Weekly GC of generations older than 30d (keeps ~a
+    # month of rollback history) plus periodic store optimisation (hard-links
+    # identical files). All mkDefault so a host can disable or retune.
+    nix.gc = {
+      automatic = lib.mkDefault true;
+      dates = lib.mkDefault "weekly";
+      options = lib.mkDefault "--delete-older-than 30d";
+    };
+    nix.optimise.automatic = lib.mkDefault true;
+
+    # Baseline hardware-triage tooling, present on every NixOS host so it's
+    # there the moment a device misbehaves (USB enumeration, PCI topology)
+    # rather than something to `nix shell` for mid-diagnosis.
+    environment.systemPackages = [
+      pkgs.usbutils # lsusb / lsusb -t
+      pkgs.pciutils # lspci
+    ];
 
     programs.zsh.enable = true;
 

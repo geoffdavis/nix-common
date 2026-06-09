@@ -37,7 +37,25 @@ in {
     nix.settings = {
       experimental-features = ["nix-command" "flakes"];
       trusted-users = ["root" username];
+      # Disk-pressure safety net (see nixosModules.common for rationale).
+      min-free = lib.mkDefault (1024 * 1024 * 1024); # 1 GiB
+      max-free = lib.mkDefault (5 * 1024 * 1024 * 1024); # 5 GiB
     };
+
+    # Scheduled housekeeping: weekly GC (keep ~30d of rollback history) + store
+    # optimisation. Inert on hosts with nix.enable = false (Determinate-managed,
+    # e.g. viasat) — nix-darwin doesn't create the launchd jobs there, so those
+    # hosts use darwinModules.determinate-gc instead. mkDefault throughout.
+    nix.gc = {
+      automatic = lib.mkDefault true;
+      interval = lib.mkDefault {
+        Weekday = 0;
+        Hour = 3;
+        Minute = 15;
+      };
+      options = lib.mkDefault "--delete-older-than 30d";
+    };
+    nix.optimise.automatic = lib.mkDefault true;
 
     # zsh sourcing of nix-darwin's environment changes.
     programs.zsh.enable = true;
