@@ -75,8 +75,20 @@ inputs: {
       # Plain wrapper script — not makeWrapper, which build-time-asserts the
       # target is executable, and devBin lives under $HOME (invisible to the
       # build sandbox). writeShellScriptBin just emits bin/teams-for-linux.
+      #
+      # Strip the nix library/GL env before exec. devBin is a *system* FHS
+      # Electron built against the host glibc/Mesa. A nixGL-wrapped Wayland
+      # session (e.g. non-NixOS Hyprland) leaks nix LD_LIBRARY_PATH (nix
+      # alsa-lib pulling nix glibc) and the Mesa-loader vars into children; the
+      # system binary then can't resolve the newer GLIBC symbols and fails to
+      # start at all. Clearing them makes it use the host libraries it was built
+      # for. Harmless no-op on hosts without the leak. NOT applied to the FHS
+      # branch above, whose sandbox supplies its own LD_LIBRARY_PATH.
       pkgs.writeShellScriptBin "teams-for-linux" ''
-        exec "${devBin}" \
+        exec ${pkgs.coreutils}/bin/env \
+          -u LD_LIBRARY_PATH -u __EGL_VENDOR_LIBRARY_FILENAMES \
+          -u LIBGL_DRIVERS_PATH -u LIBVA_DRIVERS_PATH -u GBM_BACKENDS_PATH \
+          "${devBin}" \
           --user-data-dir="${configDir}" \
           ${devFlags} \
           "$@"
