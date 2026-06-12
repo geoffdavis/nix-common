@@ -288,11 +288,13 @@ in {
       # degradation contract.
       home.activation.teamsForLinuxBrokerPassword = lib.hm.dag.entryAfter ["writeBoundary"] ''
         _op=$(command -v op 2>/dev/null) || true
-        # HM-as-NixOS-module activations run with a minimal PATH that lacks op;
-        # fall back to the host's well-known locations (setgid wrapper first --
-        # it is required for the 1Password desktop-app CLI integration on NixOS).
+        # Activations run with a minimal PATH that often lacks op — a HM-as-NixOS
+        # module, or standalone HM on a non-NixOS host. Fall back to well-known
+        # setgid-shim locations across OSes: the NixOS wrappers, plus /usr/bin/op
+        # (the Ubuntu/Debian 1Password desktop-CLI integration shim) and a
+        # /usr/local manual-install path.
         if [ -z "$_op" ]; then
-          for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op; do
+          for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op; do
             if [ -x "$_c" ]; then
               _op="$_c"
               break
