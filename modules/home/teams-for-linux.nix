@@ -308,6 +308,12 @@ in {
           if [ -n "$_pw" ]; then
             ${pkgs.coreutils}/bin/mkdir -p \
               "$(${pkgs.coreutils}/bin/dirname ${lib.escapeShellArg mosquittoPasswordFile})"
+            # mosquitto 2.x (nixos 26.05) makes `mosquitto_passwd -c` refuse to
+            # overwrite an existing file ("Unable to open file ... for writing.
+            # File exists."), which fails activation on every switch after the
+            # first. Remove it first so -c always writes a fresh single-user
+            # hash file (the password is re-read from 1Password each run).
+            ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg mosquittoPasswordFile}
             ${pkgs.mosquitto}/bin/mosquitto_passwd -b -c \
               ${lib.escapeShellArg mosquittoPasswordFile} \
               ${lib.escapeShellArg cfg.mqtt.username} "$_pw"
