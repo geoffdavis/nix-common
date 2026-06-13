@@ -3,23 +3,24 @@
 
   inputs = {
     # darwin channel — for nix-darwin (macOS) hosts
-    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     # nixos channel — for NixOS systems and standalone home-manager on Linux
-    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     # unstable channel — for individual packages that must track upstream
-    # faster than the stable release allows (e.g. netbird, frozen at 0.60.x
-    # on 25.11 while upstream ships 0.7x). Consumers follow this pin and
-    # cherry-pick packages from it; whole systems stay on the stable channels.
+    # faster than the stable release allows (e.g. netbird, historically
+    # frozen several minor versions behind on the stable channel). Consumers
+    # follow this pin and cherry-pick packages from it; whole systems stay on
+    # the stable channels.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-darwin.url = "github:nix-community/home-manager/release-26.05";
     home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
-    home-manager-nixos.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-nixos.url = "github:nix-community/home-manager/release-26.05";
     home-manager-nixos.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
-    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
+    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     lazyvim.url = "github:pfassina/lazyvim-nix";
