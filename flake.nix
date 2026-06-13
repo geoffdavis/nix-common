@@ -3,23 +3,24 @@
 
   inputs = {
     # darwin channel — for nix-darwin (macOS) hosts
-    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     # nixos channel — for NixOS systems and standalone home-manager on Linux
-    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     # unstable channel — for individual packages that must track upstream
-    # faster than the stable release allows (e.g. netbird, frozen at 0.60.x
-    # on 25.11 while upstream ships 0.7x). Consumers follow this pin and
-    # cherry-pick packages from it; whole systems stay on the stable channels.
+    # faster than the stable release allows (e.g. netbird, historically
+    # frozen several minor versions behind on the stable channel). Consumers
+    # follow this pin and cherry-pick packages from it; whole systems stay on
+    # the stable channels.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    home-manager-darwin.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-darwin.url = "github:nix-community/home-manager/release-26.05";
     home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
-    home-manager-nixos.url = "github:nix-community/home-manager/release-25.11";
+    home-manager-nixos.url = "github:nix-community/home-manager/release-26.05";
     home-manager-nixos.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
-    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
+    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     lazyvim.url = "github:pfassina/lazyvim-nix";
@@ -79,6 +80,49 @@
         ''}/bin/sync-pin";
       };
     });
+
+    # Dev shell for building/iterating the teams-for-linux checkout that
+    # homeModules.teams-for-linux's devOverlay consumes. The module FHS-wraps
+    # the *output* of `npm run pack`; this shell provides the build-time
+    # toolchain to produce it (the missing piece — without a C compiler the
+    # native-module rebuild dies with "gcc: command not found").
+    #
+    #   nix develop github:geoffdavis/nix-common#teams-for-linux
+    #   # or, from the checkout's parent dir, an .envrc with:
+    #   #   use flake "$HOME/src/nix/nix-common#teams-for-linux"
+    #
+    # Linux-only: the dev workflow targets the NixOS host (birdrock).
+    devShells = forAllSystems (
+      pkgs:
+        lib.optionalAttrs pkgs.stdenv.isLinux {
+          teams-for-linux = pkgs.mkShell {
+            # node-gyp / @electron/rebuild compile native modules (cbor-extract)
+            # from source during `npm run pack`.
+            nativeBuildInputs = with pkgs; [
+              nodejs_22
+              python3
+              gcc
+              gnumake
+              pkg-config
+              electron_42
+            ];
+
+            # Make the checkout's own node_modules/.bin/electron launch the
+            # nixpkgs-wrapped Electron (matching package.json's pinned major 42)
+            # for `npm run start:dev`. The npm shim joins this dir with
+            # "electron", so point at the wrapper in $out/bin — NOT the raw
+            # libexec binary, which SIGILLs without the wrapper's GTK/GIO/pixbuf/
+            # sandbox environment.
+            ELECTRON_OVERRIDE_DIST_PATH = "${pkgs.electron_42}/bin";
+
+            shellHook = ''
+              echo "teams-for-linux dev: node $(node --version), gcc $(gcc -dumpversion), electron ${pkgs.electron_42.version}"
+              echo "  build:   npm run pack        (home-manager switch then picks up dist/linux-unpacked)"
+              echo "  iterate: npm run start:dev   (--no-sandbox; the Nix store sandbox binary isn't SUID)"
+            '';
+          };
+        }
+    );
 
     # Scaffolding for the two most common "new thing" operations. See
     # docs/module-contract.md and templates/*/README.md.

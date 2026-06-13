@@ -100,30 +100,31 @@ in {
       SSH_AUTH_SOCK = opAgent;
     };
 
+    # 26.05's home-manager ssh module replaced `matchBlocks` (camelCase
+    # options + `extraOptions`) with `settings`, keyed by Host/Match pattern
+    # and using upstream OpenSSH directive names. Attribute names that don't
+    # start with "Host "/"Match " are prefixed with "Host ", so "*" and the
+    # space-joined host lists become the same blocks as before.
     programs.ssh = {
       enable = true;
       enableDefaultConfig = false;
-      matchBlocks =
+      settings =
         {
           "*" =
             {
-              extraOptions = {
-                IdentityAgent = opAgentSsh;
-              };
+              IdentityAgent = opAgentSsh;
             }
             // lib.optionalAttrs (defaultKey != null) {
-              identityFile = pubFileSsh defaultKey;
-              identitiesOnly = true;
+              IdentityFile = pubFileSsh defaultKey;
+              IdentitiesOnly = true;
             };
         }
         // builtins.listToAttrs (map (k: {
             name = builtins.concatStringsSep " " k.hosts;
             value = {
-              identityFile = pubFileSsh k;
-              identitiesOnly = true;
-              extraOptions = {
-                IdentityAgent = opAgentSsh;
-              };
+              IdentityFile = pubFileSsh k;
+              IdentitiesOnly = true;
+              IdentityAgent = opAgentSsh;
             };
           })
           scopedKeys);

@@ -34,11 +34,13 @@ in {
     cosign
     crane
     fluxcd
+    fluxcd-operator-mcp # MCP server for the Flux Operator (was the controlplaneio-fluxcd brew tap)
     kubernetes-helm
     jfrog-cli
     k9s
     opentofu
-    pulumi
+    # pulumi (+ pulumi-esc) intentionally NOT here — not daily-use; pull them
+    # per-project via a direnv/devshell instead. Both are in nixpkgs.
     # terraform itself is pinned via modules/home/terraform.nix (imported
     # above) so it tracks HashiCorp's stable channel rather than lagging
     # nixpkgs.
@@ -97,7 +99,10 @@ in {
     shellcheck # shell linter; used by pre-commit language:system hooks
     tree
     yamllint
-    yq-go
+    yq # kislyuk/yq (python): bare `yq .` emits JSON, which the CCoE
+    # terraform aliases (tfcd/tfstackshow/y2j*) pipe into jq. mikefarah
+    # yq-go's `yq .` prints YAML instead, breaking those `yq . | jq`
+    # pipelines with "jq: parse error: Invalid numeric literal".
 
     # nix tooling
     alejandra

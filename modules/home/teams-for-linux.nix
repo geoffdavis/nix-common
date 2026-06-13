@@ -75,8 +75,20 @@ inputs: {
       # Plain wrapper script — not makeWrapper, which build-time-asserts the
       # target is executable, and devBin lives under $HOME (invisible to the
       # build sandbox). writeShellScriptBin just emits bin/teams-for-linux.
+      #
+      # Strip the nix library/GL env before exec. devBin is a *system* FHS
+      # Electron built against the host glibc/Mesa. A nixGL-wrapped Wayland
+      # session (e.g. non-NixOS Hyprland) leaks nix LD_LIBRARY_PATH (nix
+      # alsa-lib pulling nix glibc) and the Mesa-loader vars into children; the
+      # system binary then can't resolve the newer GLIBC symbols and fails to
+      # start at all. Clearing them makes it use the host libraries it was built
+      # for. Harmless no-op on hosts without the leak. NOT applied to the FHS
+      # branch above, whose sandbox supplies its own LD_LIBRARY_PATH.
       pkgs.writeShellScriptBin "teams-for-linux" ''
-        exec "${devBin}" \
+        exec ${pkgs.coreutils}/bin/env \
+          -u LD_LIBRARY_PATH -u __EGL_VENDOR_LIBRARY_FILENAMES \
+          -u LIBGL_DRIVERS_PATH -u LIBVA_DRIVERS_PATH -u GBM_BACKENDS_PATH \
+          "${devBin}" \
           --user-data-dir="${configDir}" \
           ${devFlags} \
           "$@"
@@ -276,11 +288,13 @@ in {
       # degradation contract.
       home.activation.teamsForLinuxBrokerPassword = lib.hm.dag.entryAfter ["writeBoundary"] ''
         _op=$(command -v op 2>/dev/null) || true
-        # HM-as-NixOS-module activations run with a minimal PATH that lacks op;
-        # fall back to the host's well-known locations (setgid wrapper first --
-        # it is required for the 1Password desktop-app CLI integration on NixOS).
+        # Activations run with a minimal PATH that often lacks op — a HM-as-NixOS
+        # module, or standalone HM on a non-NixOS host. Fall back to well-known
+        # setgid-shim locations across OSes: the NixOS wrappers, plus /usr/bin/op
+        # (the Ubuntu/Debian 1Password desktop-CLI integration shim) and a
+        # /usr/local manual-install path.
         if [ -z "$_op" ]; then
-          for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op; do
+          for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op; do
             if [ -x "$_c" ]; then
               _op="$_c"
               break
