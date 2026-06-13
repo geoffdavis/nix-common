@@ -25,7 +25,8 @@
     jfrog-cli
     k9s
     opentofu
-    pulumi
+    # pulumi (+ pulumi-esc) intentionally NOT here — not daily-use; pull them
+    # per-project via a direnv/devshell instead. Both are in nixpkgs.
     # terraform itself is pinned via modules/home/terraform.nix (imported
     # above) so it tracks HashiCorp's stable channel rather than lagging
     # nixpkgs.
