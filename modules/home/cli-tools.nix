@@ -1,6 +1,20 @@
 # Shared CLI tooling, cross-platform (macOS + Linux).
 # Imported from each host's home-manager user config.
-{pkgs, ...}: {
+{pkgs, ...}: let
+  # pipx 1.8.0's test suite fails under nixpkgs 26.05: the `packaging`
+  # library now normalizes PEP 508 direct-reference URLs with spaces
+  # around `@` (e.g. `pkg @ git+ssh://…`), so pipx's hard-coded
+  # expectations in these two parametrized tests no longer match. The
+  # package itself works fine — disable just the affected tests.
+  pipx = pkgs.pipx.overridePythonAttrs (old: {
+    disabledTests =
+      (old.disabledTests or [])
+      ++ [
+        "test_fix_package_name"
+        "test_parse_specifier_for_metadata"
+      ];
+  });
+in {
   imports = [
     ./onepassword.nix
     ./terraform.nix
