@@ -43,10 +43,12 @@ in {
     };
 
     # Scheduled housekeeping: weekly GC (keep ~30d of rollback history) + store
-    # optimisation. Inert on hosts with nix.enable = false (Determinate-managed,
-    # e.g. viasat) — nix-darwin doesn't create the launchd jobs there, so those
+    # optimisation. Gated on nix.enable: on Determinate-managed hosts
+    # (nix.enable = false, e.g. viasat) nix-darwin owns none of this, and as of
+    # nix-darwin 26.05 setting nix.gc/nix.optimise there is a hard assertion
+    # failure ("nix.gc.automatic requires nix.enable"), not a silent no-op. Such
     # hosts use darwinModules.determinate-gc instead. mkDefault throughout.
-    nix.gc = {
+    nix.gc = lib.mkIf config.nix.enable {
       automatic = lib.mkDefault true;
       interval = lib.mkDefault {
         Weekday = 0;
@@ -55,7 +57,7 @@ in {
       };
       options = lib.mkDefault "--delete-older-than 30d";
     };
-    nix.optimise.automatic = lib.mkDefault true;
+    nix.optimise.automatic = lib.mkIf config.nix.enable (lib.mkDefault true);
 
     # zsh sourcing of nix-darwin's environment changes.
     programs.zsh.enable = true;
