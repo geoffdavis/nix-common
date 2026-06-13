@@ -20,6 +20,7 @@
     cosign
     crane
     fluxcd
+    fluxcd-operator-mcp # MCP server for the Flux Operator (was the controlplaneio-fluxcd brew tap)
     kubernetes-helm
     jfrog-cli
     k9s
