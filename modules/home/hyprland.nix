@@ -424,7 +424,7 @@ in {
       # GNOME/Plasma sessions that still exist in GDM's session list. 26.05
       # renamed the singular `target` to a `targets` list.
       systemd = {
-        enable = true;
+        enable = lib.mkDefault true;
         targets = ["hyprland-session.target"];
       };
       settings.mainBar = {
@@ -777,7 +777,7 @@ in {
     # launcher opens but lists nothing.
     services.walker = {
       enable = lib.mkDefault true;
-      systemd.enable = true;
+      systemd.enable = lib.mkDefault true;
       theme = {
         name = "mocha";
         layout = walkerLayout;
