@@ -305,6 +305,39 @@
       hash = "sha256-q+5ETwj+oiZBT9j6/huwB8nwV4nbZdZmCrchL2E7tDQ=";
     };
   });
+
+  # Re-lay-out waybar after a monitor change WITHOUT restarting it: SIGUSR1
+  # hide+show recreates its layer-shell surfaces on the current outputs while
+  # keeping the process, watcher, and tray intact. A `systemctl restart` would
+  # tear down the StatusNotifier watcher waybar hosts and orphan once-only tray
+  # icons (1Password). Exposed via the read-only `waybarRelayout` option for host
+  # monitor-change handlers (lid binds, clamshell services). The mid sleep lets
+  # the hide settle so the two signals don't coalesce into a no-op.
+  waybarRelayoutScript = pkgs.writeShellScript "waybar-relayout" ''
+    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+    ${pkgs.coreutils}/bin/sleep 0.3
+    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+  '';
+
+  # 1Password registers its StatusNotifier tray icon exactly once at start and
+  # never re-registers, so a cold start that beats waybar.service (which OWNS the
+  # watcher) gets no icon. Wait up to ~15s for the watcher first. stripGlEnv
+  # additionally drops the leaked nixGL GL-discovery env so a *system* Electron
+  # 1Password under a nixGL-wrapped compositor doesn't load nix Mesa against the
+  # system libc and SIGILL (the nixpkgs 1Password on NixOS needs no strip).
+  onepasswordEnvStrip =
+    lib.optionalString cfg.onePasswordTray.stripGlEnv ''
+      ${pkgs.coreutils}/bin/env -u LD_LIBRARY_PATH -u __EGL_VENDOR_LIBRARY_FILENAMES -u LIBGL_DRIVERS_PATH -u LIBVA_DRIVERS_PATH -u GBM_BACKENDS_PATH '';
+  onepasswordTrayScript = pkgs.writeShellScript "1password-tray" ''
+    i=0
+    while [ "$i" -lt 30 ]; do
+      ${pkgs.systemd}/bin/busctl --user list 2>/dev/null \
+        | ${pkgs.gnugrep}/bin/grep -q org.kde.StatusNotifierWatcher && break
+      ${pkgs.coreutils}/bin/sleep 0.5
+      i=$((i + 1))
+    done
+    exec ${onepasswordEnvStrip}1password --silent
+  '';
 in {
   options.hyprland-desktop = {
     enable = lib.mkEnableOption "shared Hyprland desktop (waybar, walker, binds, dynamic workspaces, switch OSD)";
@@ -356,6 +389,34 @@ in {
     wlogout.enable =
       lib.mkEnableOption "the wlogout power menu (layout + Catppuccin Mocha style)" // {default = true;};
 
+    polkitAgent.enable =
+      lib.mkEnableOption "the hyprpolkitagent GUI polkit auth agent (package + exec-once)" // {default = true;};
+
+    bluetooth.enable =
+      lib.mkEnableOption "the waybar bluetooth module + blueman (manager on-click + the applet agent in exec-once)" // {default = true;};
+
+    onePasswordTray = {
+      enable =
+        lib.mkEnableOption "the 1Password tray launcher (waits for waybar's StatusNotifier watcher before `1password --silent`, so the tray icon registers)";
+      stripGlEnv = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Strip the leaked nixGL GL-discovery env before launching 1Password (needed when the compositor is nixGL-wrapped and 1Password is a system Electron app).";
+      };
+    };
+
+    waybarRelayout = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = ''
+        Read-only: path to a script that recreates waybar's layer-shell surfaces
+        on the current outputs via SIGUSR1 hide+show (NOT `systemctl restart`,
+        which tears down the StatusNotifier watcher and orphans tray icons).
+        Reference it from host-specific monitor-change handlers (lid binds,
+        clamshell services).
+      '';
+    };
+
     extraExecOnce = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [];
@@ -384,6 +445,10 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    # Read-only handle to the waybar relayout helper, for host monitor-change
+    # handlers (oceaneering lid binds, birdrock clamshell settle).
+    hyprland-desktop.waybarRelayout = "${waybarRelayoutScript}";
+
     home.packages = with pkgs;
       [
         grim # screenshots
@@ -395,14 +460,15 @@ in {
         nwg-displays # GTK GUI: drag monitor layout, mode/scale dropdowns
         hyprmon # TUI: visual monitor layout, drag-and-drop, saved profiles
         networkmanagerapplet # nm-connection-editor for the waybar network on-click
-        blueman # bluetooth manager (waybar bluetooth module on-click)
         inter # UI font waybar + wlogout reference (else they fall back to DejaVu)
         swayosd # OSD server + client (workspace switch, optionally media keys)
       ]
       ++ lib.optional cfg.wlogout.enable wlogout
       ++ lib.optional cfg.cliphist.enable cliphist
       ++ lib.optional cfg.playerctlMediaKeys playerctl
-      ++ lib.optional cfg.udiskie.enable udiskie;
+      ++ lib.optional cfg.udiskie.enable udiskie
+      ++ lib.optional cfg.bluetooth.enable blueman # waybar bluetooth on-click + applet
+      ++ lib.optional cfg.polkitAgent.enable hyprpolkitagent;
 
     # Kitty declaratively, so catppuccin/nix's kitty module auto-enables and
     # themes it (Mocha). Translucent so the wallpaper bleeds through.
@@ -443,7 +509,9 @@ in {
             "pulseaudio"
             "backlight"
             "network"
-            "bluetooth"
+          ]
+          ++ lib.optional cfg.bluetooth.enable "bluetooth"
+          ++ [
             "power-profiles-daemon"
             "cpu"
             "memory"
@@ -830,6 +898,13 @@ in {
       systemd.enable = lib.mkDefault true;
       plugins = [hyprspace];
 
+      # Stay on the hyprlang config generator (26.05 flipped the default to
+      # "lua"). The lua dialect can't set plugin config values, and hyprspace
+      # registers plugin:overview:* through the hyprlang-only addConfigValue —
+      # so under lua the overview panel can't be themed or have its gestures
+      # disabled. mkDefault so a host can opt into lua if it ever drops hyprspace.
+      configType = lib.mkDefault "hyprlang";
+
       # 1Password Quick Access: keep the picker up until dismissed (Esc/Enter),
       # not until the cursor leaves it. Written as raw extraConfig (not
       # settings.windowrule) because Hyprland 0.55's windowrule is a v3 "special
@@ -862,7 +937,11 @@ in {
         debug.disable_logs = false;
 
         exec-once =
-          ["${workspaceOsd}"]
+          # GUI polkit agent (privilege-escalation prompts under Hyprland).
+          lib.optional cfg.polkitAgent.enable "${pkgs.hyprpolkitagent}/bin/hyprpolkitagent"
+          # 1Password tray, waiting for waybar's StatusNotifier watcher first.
+          ++ lib.optional cfg.onePasswordTray.enable "${onepasswordTrayScript}"
+          ++ ["${workspaceOsd}"]
           ++ lib.optionals cfg.cliphist.enable [
             # cliphist stores every text + image selection so $mod+V can recall
             # it. Routed through cliphistStore, which drops sensitive (1Password
@@ -872,6 +951,9 @@ in {
           ]
           ++ lib.optional cfg.udiskie.enable
           "${pkgs.udiskie}/bin/udiskie --automount --notify --tray"
+          # blueman applet: provides the org.blueman.Applet D-Bus service the
+          # waybar bluetooth module's blueman-manager on-click needs.
+          ++ lib.optional cfg.bluetooth.enable "${pkgs.blueman}/bin/blueman-applet"
           ++ cfg.extraExecOnce;
 
         bind =
