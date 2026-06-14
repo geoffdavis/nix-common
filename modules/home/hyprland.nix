@@ -32,7 +32,13 @@
   glKitty = wrap "kitty";
 
   # Volume control commands per audio stack. pactl = PulseAudio,
-  # wpctl = WirePlumber/PipeWire.
+  # wpctl = WirePlumber/PipeWire. Intentionally BARE (not store-qualified): the
+  # tool is the host's *system* audio stack's client — Ubuntu's PulseAudio
+  # `pactl`, NixOS's WirePlumber `wpctl` — which talks to the system audio
+  # server. Pinning `${pkgs.pulseaudio}/bin/pactl` would put a nix client (the
+  # launcher prepends ~/.nix-profile/bin) ahead of the system one and run it
+  # against the system server — exactly the version-skew the hosts avoid. Both
+  # consumers run a desktop audio stack, so the client is always on PATH.
   vol =
     {
       pactl = {
@@ -401,7 +407,7 @@ in {
     # Kitty declaratively, so catppuccin/nix's kitty module auto-enables and
     # themes it (Mocha). Translucent so the wallpaper bleeds through.
     programs.kitty = {
-      enable = true;
+      enable = lib.mkDefault true;
       settings = {
         background_opacity = "0.90";
         dynamic_background_opacity = "yes";
@@ -413,7 +419,7 @@ in {
     # Declarative waybar. Icon glyphs are nerd-font (Symbols Nerd Font)
     # Material Design Icons.
     programs.waybar = {
-      enable = true;
+      enable = lib.mkDefault true;
       # Scope to hyprland-session.target so the bar doesn't also start under the
       # GNOME/Plasma sessions that still exist in GDM's session list. 26.05
       # renamed the singular `target` to a `targets` list.
@@ -428,22 +434,26 @@ in {
 
         modules-left = ["hyprland/workspaces" "hyprland/window"];
         modules-center = ["clock"];
-        modules-right = [
-          "idle_inhibitor"
-          "pulseaudio"
-          "backlight"
-          "network"
-          "bluetooth"
-          "power-profiles-daemon"
-          "cpu"
-          "memory"
-          "temperature"
-          "battery"
-          "custom/mouse"
-          "tray"
-          "custom/theme"
-          "custom/power"
-        ];
+        # custom/power is gated on wlogout.enable: its on-click runs `wlogout`,
+        # so without the package/menu it would be a dead button — drop it
+        # entirely rather than render a broken one.
+        modules-right =
+          [
+            "idle_inhibitor"
+            "pulseaudio"
+            "backlight"
+            "network"
+            "bluetooth"
+            "power-profiles-daemon"
+            "cpu"
+            "memory"
+            "temperature"
+            "battery"
+            "custom/mouse"
+            "tray"
+            "custom/theme"
+          ]
+          ++ lib.optional cfg.wlogout.enable "custom/power";
 
         "hyprland/workspaces" = {
           # macOS Spaces-style dots: filled = active, hollow = occupied. The
@@ -766,7 +776,7 @@ in {
     # the separate `elephant` daemon (services.elephant) — without it the
     # launcher opens but lists nothing.
     services.walker = {
-      enable = true;
+      enable = lib.mkDefault true;
       systemd.enable = true;
       theme = {
         name = "mocha";
@@ -777,7 +787,7 @@ in {
     # Scope walker + elephant to the Hyprland session (the module defaults to
     # graphical-session.target, which the GNOME/Plasma sessions also reach).
     systemd.user.services.walker.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
-    services.elephant.enable = true;
+    services.elephant.enable = lib.mkDefault true;
     systemd.user.services.elephant.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
 
     # wpaperd paints + rotates the desktop background. Same pool on every
@@ -816,7 +826,7 @@ in {
     };
 
     wayland.windowManager.hyprland = {
-      enable = true;
+      enable = lib.mkDefault true;
       systemd.enable = lib.mkDefault true;
       plugins = [hyprspace];
 
@@ -846,7 +856,7 @@ in {
 
         # Animations off: every animated frame is a large full-surface repaint
         # on these iGPUs (Intel UHD), which strains the GPU / atomic-commit path.
-        animations.enabled = false;
+        animations.enabled = lib.mkDefault false;
 
         # Keep Hyprland's session log on disk for diagnosing hot-plug/exit issues.
         debug.disable_logs = false;
@@ -931,12 +941,12 @@ in {
           ++ cfg.extraBindl;
 
         input = {
-          kb_layout = "us";
-          natural_scroll = true;
+          kb_layout = lib.mkDefault "us";
+          natural_scroll = lib.mkDefault true;
           touchpad = {
-            natural_scroll = true;
-            tap-to-click = false;
-            clickfinger_behavior = true;
+            natural_scroll = lib.mkDefault true;
+            tap-to-click = lib.mkDefault false;
+            clickfinger_behavior = lib.mkDefault true;
           };
         };
 
