@@ -166,6 +166,7 @@
     homeModules.ssh = ./modules/home/ssh.nix;
     homeModules.gnome-dconf = ./modules/home/gnome-dconf.nix;
     homeModules.graphics = ./modules/home/graphics.nix;
+    homeModules.hyprland = ./modules/home/hyprland.nix;
     homeModules.linux-headless-base = ./modules/home/linux-headless-base.nix;
     homeModules.gnome-desktop-base = ./modules/home/gnome-desktop-base.nix;
     homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
