@@ -39,6 +39,17 @@
     treesitterParsers = with pkgs.vimPlugins.nvim-treesitter-parsers; [
       wgsl # WebGPU Shading Language
       templ # Go templ files
+      # LazyVim's default ensure_installed requests these; without nix
+      # providing them nvim-treesitter downloads + compiles at runtime
+      # (slow / fails on nix). Keep prebuilt instead.
+      git_config
+      git_rebase
+      gitattributes
+      gitcommit
+      gitignore
+      hcl
+      ruby
+      terraform
     ];
   };
 }
