@@ -1,6 +1,6 @@
 # Shared Hyprland desktop (home-manager). The ~identical core of the per-host
 # Hyprland configs — helper scripts, kitty/waybar/walker/wlogout, the
-# swayosd/wpaperd/elephant services, the dynamic-workspace model + switch OSD,
+# swayosd/swww/elephant services, the dynamic-workspace model + switch OSD,
 # and the binds/gestures/input/overview — lifted out of the host files so the
 # two hosts can't silently drift (they had: birdrock missing swayosd, divergent
 # workspace models, a stale waybar). Host-specific glue (monitor layouts, nixGL,
@@ -22,7 +22,7 @@
   hyprctl = "${pkgs.hyprland}/bin/hyprctl";
 
   # GL wrapper prefix for apps launched from a systemd-user service (waybar
-  # on-click, wpaperd), which start in a clean env without the compositor's
+  # on-click, swww), which start in a clean env without the compositor's
   # leaked nixGL discovery vars. Empty on NixOS (real hardware.graphics); a
   # nixGL command path on non-NixOS. `wrap` prepends it iff set.
   wrap = c:
@@ -354,7 +354,7 @@ in {
       example = "/nix/store/…/bin/nixGLIntel";
       description = ''
         Command prefix wrapping GL apps launched from systemd-user services
-        (waybar on-click TUIs, wpaperd), which start without the compositor's
+        (waybar on-click TUIs, swww), which start without the compositor's
         leaked nixGL discovery vars. Empty on NixOS; a nixGL path on non-NixOS.
       '';
     };
@@ -368,7 +368,7 @@ in {
     wallpaperPath = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      description = "Directory of wallpapers for wpaperd (rotated every 30m). Null disables the managed wpaperd service.";
+      description = "Directory of wallpapers for swww (one random image on every output, rotated every 30m). Null disables the managed swww services.";
     };
 
     onePasswordQuickAccessCmd = lib.mkOption {
@@ -872,22 +872,53 @@ in {
     services.elephant.enable = lib.mkDefault true;
     systemd.user.services.elephant.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
 
-    # wpaperd paints + rotates the desktop background. Same pool on every
-    # output, random order, new image every 30 minutes.
-    services.wpaperd = lib.mkIf (cfg.wallpaperPath != null) {
-      enable = true;
-      settings.default = {
-        path = "${cfg.wallpaperPath}";
-        duration = "30m";
-        sorting = "random";
+    # swww paints + rotates the desktop background. This used to be wpaperd,
+    # but wpaperd does NOT support Hyprland: its per-output renderer segfaults
+    # in the draw path when an output is removed (e.g. unplugging a dock), so it
+    # crash-loops on every undock regardless of version. swww is built for
+    # Hyprland's output add/remove behaviour and re-applies the cached image to
+    # outputs as they come and go. swww-daemon renders; swww-rotate pushes one
+    # random image from the pool to every output and re-rolls every 30 minutes.
+    systemd.user.services.swww-daemon = lib.mkIf (cfg.wallpaperPath != null) {
+      Unit = {
+        Description = "swww wallpaper daemon";
+        PartOf = ["hyprland-session.target"];
+        After = ["hyprland-session.target"];
       };
+      # swww renders via EGL, so on nixGL hosts the systemd-clean env can't find
+      # a GL context; wrap injects it (empty on NixOS, so bare swww-daemon there).
+      Service = {
+        ExecStart = wrap "${pkgs.swww}/bin/swww-daemon";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = ["hyprland-session.target"];
     };
-    systemd.user.services.wpaperd = lib.mkIf (cfg.wallpaperPath != null) {
-      Install.WantedBy = lib.mkForce ["hyprland-session.target"];
-      # wpaperd renders via EGL, so on nixGL hosts the systemd-clean env can't
-      # find a GL context (bare wpaperd dies "Failed to get EGL display"). wrap
-      # injects the GL context; on NixOS glWrap is empty so this is the default.
-      Service.ExecStart = lib.mkForce (wrap "${pkgs.wpaperd}/bin/wpaperd");
+    systemd.user.services.swww-rotate = lib.mkIf (cfg.wallpaperPath != null) {
+      Unit = {
+        Description = "Rotate the swww wallpaper (random image, every 30m)";
+        After = ["swww-daemon.service"];
+        Requires = ["swww-daemon.service"];
+        PartOf = ["hyprland-session.target"];
+      };
+      Service = {
+        ExecStart = pkgs.writeShellScript "swww-rotate" ''
+          # swww-daemon may not have created its socket yet when this starts;
+          # wait (up to ~10s) for it to answer before the first `swww img`.
+          for _ in $(${pkgs.coreutils}/bin/seq 1 100); do
+            ${pkgs.swww}/bin/swww query >/dev/null 2>&1 && break
+            ${pkgs.coreutils}/bin/sleep 0.1
+          done
+          while :; do
+            img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
+              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
+              | ${pkgs.coreutils}/bin/shuf -n1)
+            [ -n "$img" ] && ${pkgs.swww}/bin/swww img "$img" --transition-type fade
+            ${pkgs.coreutils}/bin/sleep 1800
+          done
+        '';
+        Restart = "on-failure";
+      };
+      Install.WantedBy = ["hyprland-session.target"];
     };
 
     # swayosd OSD server — paints the workspace-switch popups (workspaceOsd) and,
