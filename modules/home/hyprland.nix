@@ -395,6 +395,9 @@ in {
     bluetooth.enable =
       lib.mkEnableOption "the waybar bluetooth module + blueman (manager on-click + the applet agent in exec-once)" // {default = true;};
 
+    effects.enable =
+      lib.mkEnableOption "window effects — animations, rounded corners, blur behind translucent windows, drop shadows. Default on; opt out per host (e.g. a weak iGPU that chugs) with `effects.enable = false`, which also turns blur off for performance" // {default = true;};
+
     onePasswordTray = {
       enable =
         lib.mkEnableOption "the 1Password tray launcher (waits for waybar's StatusNotifier watcher before `1password --silent`, so the tray icon registers)";
@@ -998,9 +1001,25 @@ in {
         # Catppuccin Mocha $crust for the hyprspace overview panel.
         "$crust" = "rgb(11111b)";
 
-        # Animations off: every animated frame is a large full-surface repaint
-        # on these iGPUs (Intel UHD), which strains the GPU / atomic-commit path.
-        animations.enabled = lib.mkDefault false;
+        # Window effects, gated on effects.enable (default on). Animations are
+        # the GPU-heaviest part (every animated frame is a large full-surface
+        # repaint on these Intel iGPUs), so a host on a weak GPU can opt out
+        # with effects.enable = false — which also turns blur off (the other
+        # expensive bit) and drops rounding/shadows for a flat, cheap session.
+        animations.enabled = lib.mkDefault cfg.effects.enable;
+        decoration = {
+          rounding = lib.mkDefault (
+            if cfg.effects.enable
+            then 10
+            else 0
+          );
+          blur = {
+            enabled = lib.mkDefault cfg.effects.enable;
+            size = lib.mkDefault 5;
+            passes = lib.mkDefault 2;
+          };
+          shadow.enabled = lib.mkDefault cfg.effects.enable;
+        };
 
         # Keep Hyprland's session log on disk for diagnosing hot-plug/exit issues.
         debug.disable_logs = false;
