@@ -4,7 +4,7 @@
 # and the binds/gestures/input/overview — lifted out of the host files so the
 # two hosts can't silently drift (they had: birdrock missing swayosd, divergent
 # workspace models, a stale waybar). Host-specific glue (monitor layouts, nixGL,
-# Apple-T2 backlight/clamshell, portals, PAM, mako, etc.) stays in the host
+# Apple-T2 backlight/clamshell, portals, PAM, etc.) stays in the host
 # file; differences that ARE shared-but-parameterised become options below.
 #
 # Consumed via nix-common.homeModules.hyprland; enable + configure with
@@ -402,6 +402,20 @@ in {
         type = lib.types.bool;
         default = false;
         description = "Strip the leaked nixGL GL-discovery env before launching 1Password (needed when the compositor is nixGL-wrapped and 1Password is a system Electron app).";
+      };
+    };
+
+    mako = {
+      enable =
+        lib.mkEnableOption "the mako notification daemon (Hyprland ships none; mako claims org.freedesktop.Notifications so apps don't hang on D-Bus activation). services.mako writes the config + catppuccin themes it; the module adds a hyprland-session.target unit since services.mako emits none on this HM rev";
+      settings = lib.mkOption {
+        type = lib.types.attrs;
+        default = {};
+        example = {
+          anchor = "top-right";
+          default-timeout = 6000;
+        };
+        description = "Passed to services.mako.settings (writes ~/.config/mako/config). Empty = mako defaults.";
       };
     };
 
@@ -888,6 +902,30 @@ in {
       };
       Service = {
         ExecStart = "${pkgs.swayosd}/bin/swayosd-server";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = ["hyprland-session.target"];
+    };
+
+    # mako notification daemon. services.mako writes the config + lets
+    # catppuccin theme it; it emits no systemd unit on this HM rev, so add one
+    # scoped to hyprland-session.target. Type=simple: mako claims
+    # org.freedesktop.Notifications within ms of start, preempting a blocking
+    # backend (e.g. KDE's, which hangs waiting for a Plasma session).
+    services.mako = lib.mkIf cfg.mako.enable {
+      enable = true;
+      settings = cfg.mako.settings;
+    };
+    systemd.user.services.mako = lib.mkIf cfg.mako.enable {
+      Unit = {
+        Description = "mako notification daemon";
+        PartOf = ["hyprland-session.target"];
+        After = ["hyprland-session.target"];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${pkgs.mako}/bin/mako";
+        ExecReload = "${pkgs.mako}/bin/makoctl reload";
         Restart = "on-failure";
       };
       Install.WantedBy = ["hyprland-session.target"];
