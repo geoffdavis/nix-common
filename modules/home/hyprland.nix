@@ -1,6 +1,6 @@
 # Shared Hyprland desktop (home-manager). The ~identical core of the per-host
 # Hyprland configs — helper scripts, kitty/waybar/walker/wlogout, the
-# swayosd/awww/elephant services, the dynamic-workspace model + switch OSD,
+# swayosd/swaybg/elephant services, the dynamic-workspace model + switch OSD,
 # and the binds/gestures/input/overview — lifted out of the host files so the
 # two hosts can't silently drift (they had: birdrock missing swayosd, divergent
 # workspace models, a stale waybar). Host-specific glue (monitor layouts, nixGL,
@@ -22,7 +22,7 @@
   hyprctl = "${pkgs.hyprland}/bin/hyprctl";
 
   # GL wrapper prefix for apps launched from a systemd-user service (waybar
-  # on-click, awww), which start in a clean env without the compositor's
+  # on-click), which start in a clean env without the compositor's
   # leaked nixGL discovery vars. Empty on NixOS (real hardware.graphics); a
   # nixGL command path on non-NixOS. `wrap` prepends it iff set.
   wrap = c:
@@ -354,7 +354,7 @@ in {
       example = "/nix/store/…/bin/nixGLIntel";
       description = ''
         Command prefix wrapping GL apps launched from systemd-user services
-        (waybar on-click TUIs, awww), which start without the compositor's
+        (waybar on-click TUIs), which start without the compositor's
         leaked nixGL discovery vars. Empty on NixOS; a nixGL path on non-NixOS.
       '';
     };
@@ -368,7 +368,7 @@ in {
     wallpaperPath = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      description = "Directory of wallpapers for awww (one random image on every output, rotated every 30m). Null disables the managed awww services.";
+      description = "Directory of wallpapers for swaybg (one random image on every output, rotated every 30m). Null disables the managed swaybg service.";
     };
 
     onePasswordQuickAccessCmd = lib.mkOption {
@@ -875,47 +875,37 @@ in {
     services.elephant.enable = lib.mkDefault true;
     systemd.user.services.elephant.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
 
-    # awww paints + rotates the desktop background. This used to be wpaperd,
-    # but wpaperd does NOT support Hyprland: its per-output renderer segfaults
-    # in the draw path when an output is removed (e.g. unplugging a dock), so it
-    # crash-loops on every undock regardless of version. awww is built for
-    # Hyprland's output add/remove behaviour and re-applies the cached image to
-    # outputs as they come and go. awww-daemon renders; awww-rotate pushes one
-    # random image from the pool to every output and re-rolls every 30 minutes.
-    systemd.user.services.awww-daemon = lib.mkIf (cfg.wallpaperPath != null) {
+    # swaybg paints the desktop background: one random image from the pool on
+    # every output (swaybg's implicit `*` match also covers monitors that appear
+    # later, e.g. on docking). This was wpaperd, then swww/awww — both drive a
+    # per-output GL buffer pool this Hyprland/Intel stack mishandles (wpaperd
+    # segfaulted on undock; awww mapped its surface but never committed a buffer,
+    # so the wallpaper stayed blank). swaybg attaches a single shm/layer-shell
+    # buffer with no GL draw loop and no per-output state, so it rides output
+    # changes. It has no in-place image swap, so rotation launches a fresh swaybg
+    # with the next random pick, lets it map, then kills the old one (overlap, so
+    # no black flash) — a hard cut every 30 minutes rather than a fade.
+    systemd.user.services.swaybg = lib.mkIf (cfg.wallpaperPath != null) {
       Unit = {
-        Description = "awww wallpaper daemon";
+        Description = "swaybg desktop wallpaper (random from the pool, rotated every 30m)";
         PartOf = ["hyprland-session.target"];
         After = ["hyprland-session.target"];
       };
-      # awww renders via EGL, so on nixGL hosts the systemd-clean env can't find
-      # a GL context; wrap injects it (empty on NixOS, so bare awww-daemon there).
       Service = {
-        ExecStart = wrap "${pkgs.awww}/bin/awww-daemon";
-        Restart = "on-failure";
-      };
-      Install.WantedBy = ["hyprland-session.target"];
-    };
-    systemd.user.services.awww-rotate = lib.mkIf (cfg.wallpaperPath != null) {
-      Unit = {
-        Description = "Rotate the awww wallpaper (random image, every 30m)";
-        After = ["awww-daemon.service"];
-        Requires = ["awww-daemon.service"];
-        PartOf = ["hyprland-session.target"];
-      };
-      Service = {
-        ExecStart = pkgs.writeShellScript "awww-rotate" ''
-          # awww-daemon (awww >=0.12.1) may not have created its socket yet when
-          # this starts; wait (up to ~10s) for it to answer before the first img.
-          for _ in $(${pkgs.coreutils}/bin/seq 1 100); do
-            ${pkgs.awww}/bin/awww query >/dev/null 2>&1 && break
-            ${pkgs.coreutils}/bin/sleep 0.1
-          done
+        ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
+          pid=
+          trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' TERM INT EXIT
           while :; do
             img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
               \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
               | ${pkgs.coreutils}/bin/shuf -n1)
-            [ -n "$img" ] && ${pkgs.awww}/bin/awww img "$img" --transition-type fade
+            if [ -n "$img" ]; then
+              ${pkgs.swaybg}/bin/swaybg -i "$img" -m fill &
+              new=$!
+              ${pkgs.coreutils}/bin/sleep 1
+              [ -n "$pid" ] && kill "$pid" 2>/dev/null
+              pid=$new
+            fi
             ${pkgs.coreutils}/bin/sleep 1800
           done
         '';
