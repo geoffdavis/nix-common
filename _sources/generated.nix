@@ -7,10 +7,10 @@
 }: {
   _1password-cli-linux-x64 = {
     pname = "_1password-cli-linux-x64";
-    version = "2.34.0";
+    version = "2.34.1";
     src = fetchurl {
-      url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_amd64_v2.34.0.zip";
-      sha256 = "sha256-GYsF3Pmglyd4zlpOJixFmXmwyDcle12mXi+6YYdzQiY=";
+      url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.1/op_linux_amd64_v2.34.1.zip";
+      sha256 = "sha256-sT7RBjNUGeoPsOvX67s7SM8movIU60sv2NlQVI55gO0=";
     };
   };
   _1password-gui-linux-x64 = {
@@ -23,58 +23,58 @@
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.170";
+    version = "2.1.178";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.170/darwin-arm64/claude";
-      sha256 = "sha256-6QNkbYt6MYgqgOzSdWmifYrFezcIdF80lwljLIQRf98=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.178/darwin-arm64/claude";
+      sha256 = "sha256-RzSV0MFdZhbNCHBIDbXriqBAL+T46tMnehtSHpQRAwk=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.170";
+    version = "2.1.178";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.170/linux-x64/claude";
-      sha256 = "sha256-hJ4AcnegRCqydXDT49bUN4dQeUZZDo3RlH5aObcIH54=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.178/linux-x64/claude";
+      sha256 = "sha256-F+0amDpJQExGc94oZBmo/WYXySRAouD3ibzEE6OxTeE=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.138.0";
+    version = "0.140.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.138.0/codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-MDDto5nMiO2Ow8KAYWPde9xzkCkjR+UNj+BTgaguFd8=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.140.0/codex-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-SOWRlk1Luqt8BDPa7UHGXqjxUvwPHdIzSkLj3TIqSQY=";
     };
   };
   copilot-cli-darwin-arm64 = {
     pname = "copilot-cli-darwin-arm64";
-    version = "1.0.60";
+    version = "1.0.63";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.60/github-copilot-1.0.60-darwin-arm64.tgz";
-      sha256 = "sha256-B7KEwVYBa3uBvy2QUPLUsfUGHP7SDgAgKPd/mmjaWiw=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.63/github-copilot-1.0.63-darwin-arm64.tgz";
+      sha256 = "sha256-EwjSh/DhAZiOxk4A/1ZnSWS55a+ASvsLFxPlKEmw/kw=";
     };
   };
   copilot-cli-linux-x64 = {
     pname = "copilot-cli-linux-x64";
-    version = "1.0.60";
+    version = "1.0.63";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.60/github-copilot-1.0.60-linux-x64.tgz";
-      sha256 = "sha256-Z8MmUY1apFA1OUEiJQrJQP3aHzosCLu3P2BjJFg1d3w=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.63/github-copilot-1.0.63-linux-x64.tgz";
+      sha256 = "sha256-pRUIWYmC+3ZT06ltpJw5fdMihGo35duYmN8GJEfkjEQ=";
     };
   };
   terraform-darwin-arm64 = {
     pname = "terraform-darwin-arm64";
-    version = "1.15.5";
+    version = "1.15.6";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.5/terraform_1.15.5_darwin_arm64.zip";
-      sha256 = "sha256-ARN2YFEABbkYu6ghVIZvvqxDkxY9gnfCq+hh37WELDw=";
+      url = "https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_darwin_arm64.zip";
+      sha256 = "sha256-jUxnkadEMyvHyjlixhqy7Y5dJacpnxdvXt/7nLUl6F8=";
     };
   };
   terraform-linux-x64 = {
     pname = "terraform-linux-x64";
-    version = "1.15.5";
+    version = "1.15.6";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.5/terraform_1.15.5_linux_amd64.zip";
-      sha256 = "sha256-cCshNq9nKMj/A3+EPdLbzit62IeGtzgdHXKu+iUPYBw=";
+      url = "https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_linux_amd64.zip";
+      sha256 = "sha256-pxUNOw4bXEZq1C6MSZlUo8VGRfi1azhfoCXTT36I+qk=";
     };
   };
 }
