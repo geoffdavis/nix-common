@@ -155,6 +155,7 @@
     # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
     nixosModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
+    nixosModules.nas-backup = ./modules/nixos/nas-backup.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
