@@ -142,8 +142,11 @@ in {
             "XDG_RUNTIME_DIR=/run/user/${toString cfg.notify.uid}"
             "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${toString cfg.notify.uid}/bus"
           ];
-          # Best-effort: if the user is logged out this fails harmlessly (it
-          # is already on the failure path). true keeps the unit from erroring.
+          # Best-effort: if the user is logged out there's no session bus, so
+          # notify-send exits 1. SuccessExitStatus keeps that from parking the
+          # unit in `systemctl --failed` (genuine failures — e.g. libnotify
+          # missing — exit with other codes and stay visible).
+          SuccessExitStatus = "0 1";
           ExecStart = "${pkgs.libnotify}/bin/notify-send --urgency=critical 'NAS backup failed' 'restic-backups-${cfg.name} failed — journalctl -u restic-backups-${cfg.name}'";
         };
       };
