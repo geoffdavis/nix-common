@@ -1,6 +1,6 @@
 # Shared Hyprland desktop (home-manager). The ~identical core of the per-host
 # Hyprland configs — helper scripts, kitty/waybar/walker/wlogout, the
-# swayosd/wpaperd/elephant services, the dynamic-workspace model + switch OSD,
+# swayosd/swaybg/elephant services, the dynamic-workspace model + switch OSD,
 # and the binds/gestures/input/overview — lifted out of the host files so the
 # two hosts can't silently drift (they had: birdrock missing swayosd, divergent
 # workspace models, a stale waybar). Host-specific glue (monitor layouts, nixGL,
@@ -22,7 +22,7 @@
   hyprctl = "${pkgs.hyprland}/bin/hyprctl";
 
   # GL wrapper prefix for apps launched from a systemd-user service (waybar
-  # on-click, wpaperd), which start in a clean env without the compositor's
+  # on-click), which start in a clean env without the compositor's
   # leaked nixGL discovery vars. Empty on NixOS (real hardware.graphics); a
   # nixGL command path on non-NixOS. `wrap` prepends it iff set.
   wrap = c:
@@ -195,30 +195,37 @@
   '';
   fol = "${focusOrLaunch}/bin/focus-or-launch";
 
-  # Screenshot helper: grim/slurp -> timestamped PNG in ~/Pictures/Screenshots,
-  # also copied to the clipboard. `region` exits cleanly if slurp is cancelled;
-  # anything else captures the focused monitor (the one with the active
-  # workspace), falling back to all outputs if it can't be resolved.
+  # Screenshot helper: grim captures, then satty opens the shot for crop/
+  # annotate. In satty, Ctrl+S saves a timestamped PNG to ~/Pictures/Screenshots
+  # and Ctrl+C copies to the clipboard; --early-exit closes satty after either
+  # action. `region` exits cleanly if slurp is cancelled; anything else captures
+  # the focused monitor (the one with the active workspace), falling back to all
+  # outputs if it can't be resolved.
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     set -eu
     dir="$HOME/Pictures/Screenshots"
     ${pkgs.coreutils}/bin/mkdir -p "$dir"
-    file="$dir/Screenshot-$(${pkgs.coreutils}/bin/date +%Y-%m-%d_%H-%M-%S).png"
+    out="$dir/Screenshot-$(${pkgs.coreutils}/bin/date +%Y-%m-%d_%H-%M-%S).png"
+    edit() {
+      ${pkgs.satty}/bin/satty --filename - \
+        --output-filename "$out" \
+        --early-exit \
+        --copy-command "${pkgs.wl-clipboard}/bin/wl-copy"
+    }
     case "''${1:-full}" in
       region)
         geom="$(${pkgs.slurp}/bin/slurp)" || exit 0
-        ${pkgs.grim}/bin/grim -g "$geom" "$file"
+        ${pkgs.grim}/bin/grim -g "$geom" - | edit
         ;;
       *)
         mon="$(${hyprctl} -j activeworkspace 2>/dev/null | ${pkgs.jq}/bin/jq -r '.monitor // empty')"
         if [ -n "$mon" ]; then
-          ${pkgs.grim}/bin/grim -o "$mon" "$file"
+          ${pkgs.grim}/bin/grim -o "$mon" - | edit
         else
-          ${pkgs.grim}/bin/grim "$file"
+          ${pkgs.grim}/bin/grim - | edit
         fi
         ;;
     esac
-    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png <"$file"
   '';
 
   # OSD on workspace switch. Hyprland's IPC socket2 emits an event line for
@@ -354,7 +361,7 @@ in {
       example = "/nix/store/…/bin/nixGLIntel";
       description = ''
         Command prefix wrapping GL apps launched from systemd-user services
-        (waybar on-click TUIs, wpaperd), which start without the compositor's
+        (waybar on-click TUIs), which start without the compositor's
         leaked nixGL discovery vars. Empty on NixOS; a nixGL path on non-NixOS.
       '';
     };
@@ -368,7 +375,7 @@ in {
     wallpaperPath = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
-      description = "Directory of wallpapers for wpaperd (rotated every 30m). Null disables the managed wpaperd service.";
+      description = "Directory of wallpapers for swaybg (one random image on every output, rotated every 30m). Null disables the managed swaybg service.";
     };
 
     onePasswordQuickAccessCmd = lib.mkOption {
@@ -394,6 +401,9 @@ in {
 
     bluetooth.enable =
       lib.mkEnableOption "the waybar bluetooth module + blueman (manager on-click + the applet agent in exec-once)" // {default = true;};
+
+    effects.enable =
+      lib.mkEnableOption "window effects — animations, rounded corners, blur behind translucent windows, drop shadows. Default on; opt out per host (e.g. a weak iGPU that chugs) with `effects.enable = false`, which also turns blur off for performance" // {default = true;};
 
     onePasswordTray = {
       enable =
@@ -467,6 +477,7 @@ in {
       [
         grim # screenshots
         slurp # region select
+        satty # crop/annotate editor for screenshots
         wl-clipboard # clipboard
         brightnessctl # backlight keys
         pavucontrol # audio control (waybar pulseaudio on-click)
@@ -872,22 +883,43 @@ in {
     services.elephant.enable = lib.mkDefault true;
     systemd.user.services.elephant.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
 
-    # wpaperd paints + rotates the desktop background. Same pool on every
-    # output, random order, new image every 30 minutes.
-    services.wpaperd = lib.mkIf (cfg.wallpaperPath != null) {
-      enable = true;
-      settings.default = {
-        path = "${cfg.wallpaperPath}";
-        duration = "30m";
-        sorting = "random";
+    # swaybg paints the desktop background: one random image from the pool on
+    # every output (swaybg's implicit `*` match also covers monitors that appear
+    # later, e.g. on docking). This was wpaperd, then swww/awww — both drive a
+    # per-output GL buffer pool this Hyprland/Intel stack mishandles (wpaperd
+    # segfaulted on undock; awww mapped its surface but never committed a buffer,
+    # so the wallpaper stayed blank). swaybg attaches a single shm/layer-shell
+    # buffer with no GL draw loop and no per-output state, so it rides output
+    # changes. It has no in-place image swap, so rotation launches a fresh swaybg
+    # with the next random pick, lets it map, then kills the old one (overlap, so
+    # no black flash) — a hard cut every 30 minutes rather than a fade.
+    systemd.user.services.swaybg = lib.mkIf (cfg.wallpaperPath != null) {
+      Unit = {
+        Description = "swaybg desktop wallpaper (random from the pool, rotated every 30m)";
+        PartOf = ["hyprland-session.target"];
+        After = ["hyprland-session.target"];
       };
-    };
-    systemd.user.services.wpaperd = lib.mkIf (cfg.wallpaperPath != null) {
-      Install.WantedBy = lib.mkForce ["hyprland-session.target"];
-      # wpaperd renders via EGL, so on nixGL hosts the systemd-clean env can't
-      # find a GL context (bare wpaperd dies "Failed to get EGL display"). wrap
-      # injects the GL context; on NixOS glWrap is empty so this is the default.
-      Service.ExecStart = lib.mkForce (wrap "${pkgs.wpaperd}/bin/wpaperd");
+      Service = {
+        ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
+          pid=
+          trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' TERM INT EXIT
+          while :; do
+            img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
+              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
+              | ${pkgs.coreutils}/bin/shuf -n1)
+            if [ -n "$img" ]; then
+              ${pkgs.swaybg}/bin/swaybg -i "$img" -m fill &
+              new=$!
+              ${pkgs.coreutils}/bin/sleep 1
+              [ -n "$pid" ] && kill "$pid" 2>/dev/null
+              pid=$new
+            fi
+            ${pkgs.coreutils}/bin/sleep 1800
+          done
+        '';
+        Restart = "on-failure";
+      };
+      Install.WantedBy = ["hyprland-session.target"];
     };
 
     # swayosd OSD server — paints the workspace-switch popups (workspaceOsd) and,
@@ -967,9 +999,25 @@ in {
         # Catppuccin Mocha $crust for the hyprspace overview panel.
         "$crust" = "rgb(11111b)";
 
-        # Animations off: every animated frame is a large full-surface repaint
-        # on these iGPUs (Intel UHD), which strains the GPU / atomic-commit path.
-        animations.enabled = lib.mkDefault false;
+        # Window effects, gated on effects.enable (default on). Animations are
+        # the GPU-heaviest part (every animated frame is a large full-surface
+        # repaint on these Intel iGPUs), so a host on a weak GPU can opt out
+        # with effects.enable = false — which also turns blur off (the other
+        # expensive bit) and drops rounding/shadows for a flat, cheap session.
+        animations.enabled = lib.mkDefault cfg.effects.enable;
+        decoration = {
+          rounding = lib.mkDefault (
+            if cfg.effects.enable
+            then 10
+            else 0
+          );
+          blur = {
+            enabled = lib.mkDefault cfg.effects.enable;
+            size = lib.mkDefault 5;
+            passes = lib.mkDefault 2;
+          };
+          shadow.enabled = lib.mkDefault cfg.effects.enable;
+        };
 
         # Keep Hyprland's session log on disk for diagnosing hot-plug/exit issues.
         debug.disable_logs = false;
@@ -1004,11 +1052,12 @@ in {
             "$mod, F, fullscreen"
             "$mod, L, exec, loginctl lock-session"
             "$mod SHIFT, E, exit"
-            # Screenshots -> ~/Pictures/Screenshots + clipboard. Print = full
-            # focused monitor; Shift+Print or $mod+Shift+S = region select
-            # ($mod+Shift+S also works on keyboards with no Print key).
-            ", Print, exec, ${screenshot}/bin/screenshot full"
-            "SHIFT, Print, exec, ${screenshot}/bin/screenshot region"
+            # Screenshots open in satty to crop/annotate; Ctrl+S saves to
+            # ~/Pictures/Screenshots, Ctrl+C copies. Print = drag a region first
+            # (GNOME-style); Shift+Print = whole focused monitor (no crop box);
+            # $mod+Shift+S = region select for keyboards with no Print key.
+            ", Print, exec, ${screenshot}/bin/screenshot region"
+            "SHIFT, Print, exec, ${screenshot}/bin/screenshot full"
             "$mod SHIFT, S, exec, ${screenshot}/bin/screenshot region"
             "$mod, left, movefocus, l"
             "$mod, right, movefocus, r"
