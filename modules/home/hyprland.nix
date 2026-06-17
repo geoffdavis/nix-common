@@ -195,30 +195,37 @@
   '';
   fol = "${focusOrLaunch}/bin/focus-or-launch";
 
-  # Screenshot helper: grim/slurp -> timestamped PNG in ~/Pictures/Screenshots,
-  # also copied to the clipboard. `region` exits cleanly if slurp is cancelled;
-  # anything else captures the focused monitor (the one with the active
-  # workspace), falling back to all outputs if it can't be resolved.
+  # Screenshot helper: grim captures, then satty opens the shot for crop/
+  # annotate. In satty, Ctrl+S saves a timestamped PNG to ~/Pictures/Screenshots
+  # and Ctrl+C copies to the clipboard; --early-exit closes satty after either
+  # action. `region` exits cleanly if slurp is cancelled; anything else captures
+  # the focused monitor (the one with the active workspace), falling back to all
+  # outputs if it can't be resolved.
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     set -eu
     dir="$HOME/Pictures/Screenshots"
     ${pkgs.coreutils}/bin/mkdir -p "$dir"
-    file="$dir/Screenshot-$(${pkgs.coreutils}/bin/date +%Y-%m-%d_%H-%M-%S).png"
+    out="$dir/Screenshot-$(${pkgs.coreutils}/bin/date +%Y-%m-%d_%H-%M-%S).png"
+    edit() {
+      ${pkgs.satty}/bin/satty --filename - \
+        --output-filename "$out" \
+        --early-exit \
+        --copy-command "${pkgs.wl-clipboard}/bin/wl-copy"
+    }
     case "''${1:-full}" in
       region)
         geom="$(${pkgs.slurp}/bin/slurp)" || exit 0
-        ${pkgs.grim}/bin/grim -g "$geom" "$file"
+        ${pkgs.grim}/bin/grim -g "$geom" - | edit
         ;;
       *)
         mon="$(${hyprctl} -j activeworkspace 2>/dev/null | ${pkgs.jq}/bin/jq -r '.monitor // empty')"
         if [ -n "$mon" ]; then
-          ${pkgs.grim}/bin/grim -o "$mon" "$file"
+          ${pkgs.grim}/bin/grim -o "$mon" - | edit
         else
-          ${pkgs.grim}/bin/grim "$file"
+          ${pkgs.grim}/bin/grim - | edit
         fi
         ;;
     esac
-    ${pkgs.wl-clipboard}/bin/wl-copy --type image/png <"$file"
   '';
 
   # OSD on workspace switch. Hyprland's IPC socket2 emits an event line for
@@ -470,6 +477,7 @@ in {
       [
         grim # screenshots
         slurp # region select
+        satty # crop/annotate editor for screenshots
         wl-clipboard # clipboard
         brightnessctl # backlight keys
         pavucontrol # audio control (waybar pulseaudio on-click)
@@ -1044,11 +1052,12 @@ in {
             "$mod, F, fullscreen"
             "$mod, L, exec, loginctl lock-session"
             "$mod SHIFT, E, exit"
-            # Screenshots -> ~/Pictures/Screenshots + clipboard. Print = full
-            # focused monitor; Shift+Print or $mod+Shift+S = region select
-            # ($mod+Shift+S also works on keyboards with no Print key).
-            ", Print, exec, ${screenshot}/bin/screenshot full"
-            "SHIFT, Print, exec, ${screenshot}/bin/screenshot region"
+            # Screenshots open in satty to crop/annotate; Ctrl+S saves to
+            # ~/Pictures/Screenshots, Ctrl+C copies. Print = drag a region first
+            # (GNOME-style); Shift+Print = whole focused monitor (no crop box);
+            # $mod+Shift+S = region select for keyboards with no Print key.
+            ", Print, exec, ${screenshot}/bin/screenshot region"
+            "SHIFT, Print, exec, ${screenshot}/bin/screenshot full"
             "$mod SHIFT, S, exec, ${screenshot}/bin/screenshot region"
             "$mod, left, movefocus, l"
             "$mod, right, movefocus, r"
