@@ -123,6 +123,10 @@ in {
     (lib.mkIf snapshotting {
       services.restic.backups.${cfg.name} = {
         backupPrepareCommand = ''
+          # Ensure the stage's parent dir exists — generic hosts may not have
+          # one (birdrock mounts @snapshots at /.snapshots, but don't assume).
+          # Absolute path: the restic unit's PATH is minimal.
+          ${pkgs.coreutils}/bin/mkdir -p ${builtins.dirOf cfg.btrfsSnapshotStage}
           ${btrfs} subvolume delete ${cfg.btrfsSnapshotStage} 2>/dev/null || true
           ${btrfs} subvolume snapshot -r ${cfg.btrfsSnapshotSource} ${cfg.btrfsSnapshotStage}
         '';
