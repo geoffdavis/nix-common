@@ -105,15 +105,16 @@ in {
       services.restic.backups.${cfg.name} = {
         inherit (cfg) repositoryFile passwordFile;
         initialize = lib.mkDefault false;
-        paths =
+        paths = lib.mkDefault (
           if snapshotting
           then [cfg.btrfsSnapshotStage]
-          else cfg.paths;
-        exclude = baselineExcludes ++ cfg.extraExcludes;
+          else cfg.paths
+        );
+        exclude = lib.mkDefault (baselineExcludes ++ cfg.extraExcludes);
         timerConfig = {
-          OnCalendar = cfg.timer.onCalendar;
-          Persistent = true;
-          RandomizedDelaySec = cfg.timer.randomizedDelaySec;
+          OnCalendar = lib.mkDefault cfg.timer.onCalendar;
+          Persistent = lib.mkDefault true;
+          RandomizedDelaySec = lib.mkDefault cfg.timer.randomizedDelaySec;
         };
         # Deliberately no pruneOpts: the server is append-only; Backrest prunes.
       };
