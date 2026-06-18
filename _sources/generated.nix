@@ -15,34 +15,34 @@
   };
   _1password-gui-linux-x64 = {
     pname = "_1password-gui-linux-x64";
-    version = "8.12.22";
+    version = "8.12.24";
     src = fetchurl {
-      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.22.x64.tar.gz";
-      sha256 = "sha256-dec+oqixlPAbHYWqOBEBNB9IU8+Hfz2W4bm1y6/CbuM=";
+      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.24.x64.tar.gz";
+      sha256 = "sha256-XzxS1fLuqA1gxddrMToeqO/MI1RT2s5ntaPQ3trxieI=";
     };
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.178";
+    version = "2.1.181";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.178/darwin-arm64/claude";
-      sha256 = "sha256-RzSV0MFdZhbNCHBIDbXriqBAL+T46tMnehtSHpQRAwk=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.181/darwin-arm64/claude";
+      sha256 = "sha256-xNgzsEYGzvm26rOtJV7S4USPh96ivAD/Ws93tX326U0=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.178";
+    version = "2.1.181";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.178/linux-x64/claude";
-      sha256 = "sha256-F+0amDpJQExGc94oZBmo/WYXySRAouD3ibzEE6OxTeE=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.181/linux-x64/claude";
+      sha256 = "sha256-Nf/U6dmoY5XQuk4F+LI78Ji/6rlel96s1lN5CdEyTpw=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.140.0";
+    version = "0.141.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.140.0/codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-SOWRlk1Luqt8BDPa7UHGXqjxUvwPHdIzSkLj3TIqSQY=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.141.0/codex-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-8eK/n6C6brghGdYhtrcbw47dM8BtwoZ7MaAnBSNYlX0=";
     };
   };
   copilot-cli-darwin-arm64 = {
