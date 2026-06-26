@@ -117,6 +117,7 @@ in {
       ripgrep
       shellcheck # shell linter; used by pre-commit language:system hooks
       tree
+      watch
       yamllint
       yq # kislyuk/yq (python): bare `yq .` emits JSON, which the CCoE
       # terraform aliases (tfcd/tfstackshow/y2j*) pipe into jq. mikefarah
