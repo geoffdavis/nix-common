@@ -912,7 +912,16 @@ in {
       Service = {
         ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
           pid=
-          trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' TERM INT EXIT
+          # Kill the current swaybg when we exit; and on TERM/INT actually
+          # *exit*. Without the explicit exit the trap fired but the `while`
+          # loop just relaunched swaybg and kept running, so the service sat in
+          # stop-sigterm for the full 90s TimeoutStopSec. That stalled every
+          # Hyprland login: the env-import exec-once does a synchronous
+          # `systemctl --user stop hyprland-session.target && ... start ...`,
+          # and the stop blocked 90s on swaybg before waybar (everything
+          # PartOf the target) came back — a ~90s blank login.
+          trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' EXIT
+          trap 'exit 0' TERM INT
           while :; do
             img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
               \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
@@ -928,6 +937,10 @@ in {
           done
         '';
         Restart = "on-failure";
+        # Backstop: if the wrapper ever can't exit in time, never block a
+        # session-target stop for systemd's default 90s (the wallpaper has no
+        # state worth a graceful shutdown).
+        TimeoutStopSec = "5s";
       };
       Install.WantedBy = ["hyprland-session.target"];
     };
