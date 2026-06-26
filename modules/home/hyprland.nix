@@ -396,6 +396,9 @@ in {
     wlogout.enable =
       lib.mkEnableOption "the wlogout power menu (layout + Catppuccin Mocha style)" // {default = true;};
 
+    uwsm.enable =
+      lib.mkEnableOption "logout via `uwsm stop` instead of `hyprctl dispatch exit` — for hosts whose Hyprland session is launched through uwsm (Universal Wayland Session Manager). Stops graphical-session.target and its scoped services with an ordered SIGTERM rather than abruptly tearing down the compositor. Requires the session itself to be uwsm-managed at the system level (programs.hyprland.withUWSM + programs.uwsm.waylandCompositors)";
+
     polkitAgent.enable =
       lib.mkEnableOption "the hyprpolkitagent GUI polkit auth agent (package + exec-once)" // {default = true;};
 
@@ -806,7 +809,14 @@ in {
         }
         {
           label = "logout";
-          action = "${hyprctl} dispatch exit";
+          # uwsm stop tears the session down gracefully (ordered SIGTERM to
+          # graphical-session.target and its scoped units); the bare dispatch
+          # exit just kills the compositor. Gated so non-uwsm hosts keep the
+          # only logout that works for them.
+          action =
+            if cfg.uwsm.enable
+            then "uwsm stop"
+            else "${hyprctl} dispatch exit";
           text = "Logout";
           keybind = "e";
         }
@@ -1064,7 +1074,12 @@ in {
             "$mod, Q, killactive"
             "$mod, F, fullscreen"
             "$mod, L, exec, loginctl lock-session"
-            "$mod SHIFT, E, exit"
+            # Logout: graceful uwsm stop on uwsm hosts, else Hyprland's exit.
+            (
+              if cfg.uwsm.enable
+              then "$mod SHIFT, E, exec, uwsm stop"
+              else "$mod SHIFT, E, exit"
+            )
             # Screenshots open in satty to crop/annotate; Ctrl+S saves to
             # ~/Pictures/Screenshots, Ctrl+C copies. Print = drag a region first
             # (GNOME-style); Shift+Print = whole focused monitor (no crop box);
