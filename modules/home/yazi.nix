@@ -3,11 +3,16 @@
 # program-wrapping base module: importing it *is* the opt-in, so there is no
 # separate enable gate — a host that doesn't want yazi simply doesn't import
 # it. Everything a host might reasonably tweak is `lib.mkDefault`.
-{
-  config,
-  lib,
-  ...
-}: {
+#
+# Catppuccin theming is intentionally NOT wired here. catppuccin/nix is a
+# downstream input (not a nix-common one), and the hosts that use it run with
+# `autoEnable` on, so their catppuccin module themes yazi automatically once
+# `programs.yazi.enable` is set — exactly how kitty/waybar/hyprlock get themed.
+# Setting `catppuccin.yazi.enable` from here would either reference an
+# undeclared option on headless hosts (error) or, if guarded on the option's
+# presence, make this module's shape depend on the option set (infinite
+# recursion in the module fixpoint). Leave it to autoEnable.
+{lib, ...}: {
   programs.yazi = {
     enable = true;
 
@@ -40,20 +45,5 @@
         max_height = lib.mkDefault 900;
       };
     };
-  };
-
-  # Theme yazi with Catppuccin via catppuccin/nix's yazi port, inheriting the
-  # host's global `catppuccin.flavor`/`accent` so yazi matches the rest of the
-  # desktop (kitty/waybar/hyprlock) rather than hardcoding Mocha here.
-  #
-  # Guarded on the option being declared: catppuccin/nix is wired in each
-  # consumer's own flake (it isn't a nix-common input), so a headless host
-  # that imports this module without it must still evaluate — `mkIf` drops the
-  # definition before the module system checks the option exists. With
-  # catppuccin's `autoEnable` (default on) this port already turns on once
-  # `programs.yazi.enable` is set; the explicit `mkDefault` makes the intent
-  # legible and survives a host that disables autoEnable.
-  catppuccin = lib.mkIf (config ? catppuccin) {
-    yazi.enable = lib.mkDefault true;
   };
 }
