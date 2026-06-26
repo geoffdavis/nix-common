@@ -92,6 +92,7 @@ in {
           ../home/neovim.nix
           ../home/desktop-base.nix
           ../home/ai-tools.nix
+          ../home/yazi.nix
         ];
         home.stateVersion = "25.11";
 
