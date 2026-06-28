@@ -35,14 +35,19 @@ tasks:
       - deadnix --edit .
 
   # ── flake input updates ──────────────────────────────────────────────────
-  bump:common:
-    desc: Bump nix-common in flake.lock AND the ci.yml workflow pin (no commit)
+  # Naming: `update:<scope>` throughout; the `:commit` suffix is the same
+  # update plus a scoped commit. `update:branch` is the one-shot wrapper.
+  # Old names (`bump:common`, `flake:update`) are kept as aliases.
+  update:common:
+    aliases: [bump:common]
+    desc: Update nix-common in flake.lock AND the ci.yml workflow pin (no commit)
     cmds:
       - nix --accept-flake-config flake update nix-common
       - nix --accept-flake-config run github:geoffdavis/nix-common#sync-pin
 
-  bump:common:commit:
-    desc: Bump nix-common + sync ci.yml pin + commit on current branch (refuses on main/master/detached HEAD)
+  update:common:commit:
+    aliases: [bump:common:commit]
+    desc: Update nix-common + sync ci.yml pin + commit (refuses on main/master/detached HEAD); commit body rolls up the nix-common changelog
     cmds:
       - task: _guard:committable-branch
       - |
@@ -51,11 +56,11 @@ tasks:
         rm -f "$scratch"
         old=$(nix --accept-flake-config run nixpkgs#jq -- -r '.nodes."nix-common".locked.rev' flake.lock)
         if [ -z "$old" ] || [ "$old" = "null" ]; then
-          echo "bump:common:commit: could not read nix-common rev from flake.lock" >&2
+          echo "update:common:commit: could not read nix-common rev from flake.lock" >&2
           exit 1
         fi
         printf '%s' "$old" > "$scratch"
-      - task: bump:common
+      - task: update:common
       - |
         set -eu
         scratch=$(git rev-parse --git-path bump-common.old)
@@ -63,27 +68,34 @@ tasks:
         rm -f "$scratch"
         new=$(nix --accept-flake-config run nixpkgs#jq -- -r '.nodes."nix-common".locked.rev' flake.lock)
         if [ -z "$new" ] || [ "$new" = "null" ]; then
-          echo "bump:common:commit: could not read nix-common rev from flake.lock post-bump" >&2
+          echo "update:common:commit: could not read nix-common rev from flake.lock post-bump" >&2
           exit 1
         fi
         if git diff --quiet HEAD -- flake.lock .github/workflows/ci.yml; then
-          echo "bump:common:commit: no flake.lock or ci.yml changes to commit"
+          echo "update:common:commit: no flake.lock or ci.yml changes to commit"
           exit 0
         fi
         new_short=$(printf '%s' "$new" | cut -c1-7)
         if [ "$old" = "$new" ]; then
-          msg="chore: resync nix-common ci.yml pin to ${new_short}"
-        else
-          old_short=$(printf '%s' "$old" | cut -c1-7)
-          msg="chore: bump nix-common ${old_short}..${new_short}"
+          git commit -m "chore: resync nix-common ci.yml pin to ${new_short}" \
+            -- flake.lock .github/workflows/ci.yml
+          exit 0
         fi
-        git commit -m "$msg" -- flake.lock .github/workflows/ci.yml
-
-  flake:update:
-    desc: Bump every flake input (also resyncs the ci.yml workflow pin)
-    cmds:
-      - nix --accept-flake-config flake update
-      - nix --accept-flake-config run github:geoffdavis/nix-common#sync-pin
+        old_short=$(printf '%s' "$old" | cut -c1-7)
+        subject="chore: bump nix-common ${old_short}..${new_short}"
+        # Roll the nix-common commit subjects in this range into the commit body
+        # so the bump is self-documenting. Best-effort: needs gh + network.
+        rollup=""
+        if command -v gh >/dev/null 2>&1; then
+          rollup=$(gh api "repos/geoffdavis/nix-common/compare/${old}...${new}" \
+            --jq '.commits[] | "- " + (.commit.message | split("\n")[0])' 2>/dev/null || true)
+        fi
+        if [ -n "$rollup" ]; then
+          printf '%s\n\n%s\n' "$subject" "$rollup" \
+            | git commit -F - -- flake.lock .github/workflows/ci.yml
+        else
+          git commit -m "$subject" -- flake.lock .github/workflows/ci.yml
+        fi
 
   _guard:committable-branch:
     internal: true
@@ -102,3 +114,42 @@ tasks:
             exit 1
             ;;
         esac
+
+  update:flake:
+    aliases: [flake:update]
+    desc: Update every flake input (also resyncs the ci.yml workflow pin)
+    cmds:
+      - nix --accept-flake-config flake update
+      - nix --accept-flake-config run github:geoffdavis/nix-common#sync-pin
+
+  update:flake:commit:
+    desc: Update every flake input + sync ci.yml pin + commit (refuses on main/master/detached HEAD)
+    cmds:
+      - task: _guard:committable-branch
+      - task: update:flake
+      - |
+        set -eu
+        if git diff --quiet HEAD -- flake.lock .github/workflows/ci.yml; then
+          echo "update:flake:commit: no flake.lock or ci.yml changes to commit"
+          exit 0
+        fi
+        git commit -m "chore: update flake inputs" -- flake.lock .github/workflows/ci.yml
+
+  update:branch:
+    desc: "One-shot refresh on a fresh chore/flake-update-<ts> branch: update:common:commit then update:flake:commit. Run from a clean tree."
+    cmds:
+      - |
+        set -eu
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "update:branch: working tree not clean — commit or stash first." >&2
+          exit 1
+        fi
+        branch="chore/flake-update-$(date +%Y%m%d-%H%M%S)"
+        git switch -c "$branch"
+        echo "update:branch: created and switched to $branch"
+      - task: update:common:commit
+      - task: update:flake:commit
+      - |
+        cur=$(git rev-parse --abbrev-ref HEAD)
+        echo "update:branch: done on $cur. Push + open PR with:"
+        echo "  git push -u origin \"$cur\" && gh pr create --fill"
