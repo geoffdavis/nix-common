@@ -4,8 +4,8 @@ CHANGEME: one-paragraph description of what this repo manages (which
 host(s), platform, GUI vs headless, any OS-layer tooling).
 
 Shared modules + pinned inputs come from
-[nix-common](https://github.com/geoffdavis/nix-common). Bump via
-`task bump:common`.
+[nix-common](https://github.com/geoffdavis/nix-common). Update via
+`task update:common` (or `task update:branch` for a full refresh).
 
 ## Build / activate
 
@@ -24,19 +24,25 @@ task fmt     # alejandra .
 task fix     # statix fix . + deadnix --edit . (modifies files)
 ```
 
-## Bumping nix-common
+## Updating inputs
 
 `nix-common` is referenced in two places that must stay in sync: `flake.lock`
 and the `@<sha>` pin on the reusable lint workflow in
-`.github/workflows/ci.yml`. Always use the tasks, never bare `nix flake
-update`:
+`.github/workflows/ci.yml`. Always use the `update:*` tasks, never bare `nix
+flake update`:
 
 ```sh
-task bump:common     # bump nix-common only (lock + workflow pin)
-task flake:update    # bump every input (also resyncs the workflow pin)
+task update:common          # update nix-common only (lock + workflow pin)
+task update:common:commit   #   ^ + commit (body rolls up the nix-common changelog)
+task update:flake           # update every input (also resyncs the workflow pin)
+task update:flake:commit    #   ^ + commit
+task update:branch          # fresh chore/flake-update-<ts> branch: common + flake, each committed
 ```
 
-`verify-pin` in CI fails closed if the two drift apart.
+`update:branch` is the one-shot: it cuts a topic branch, commits the
+nix-common bump (changelog in the body), then commits the remaining input
+updates — ready to push + PR. Old names `bump:common` / `flake:update` remain
+as aliases. `verify-pin` in CI fails closed if the lock and pin drift apart.
 
 ## Conventions
 
