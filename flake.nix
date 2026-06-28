@@ -33,6 +33,14 @@
     # Stream Deck mute-button plugin for teams-for-linux (HM module + package).
     opendeck-teams-for-linux.url = "github:geoffdavis/opendeck-teams-for-linux";
     opendeck-teams-for-linux.inputs.nixpkgs.follows = "nixpkgs-nixos";
+
+    # Prebuilt nix-index database — powers the shell command-not-found handler
+    # (name the nixpkgs package providing a missing command) and comma (`,`,
+    # run a program from nixpkgs without installing). Fetched prebuilt and
+    # refreshed upstream weekly so hosts never run `nix-index` by hand. Wired
+    # via homeModules.nix-index.
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs-nixos";
   };
 
   outputs = inputs: let
@@ -175,6 +183,8 @@
     homeModules.op-file-secrets = ./modules/home/op-file-secrets.nix;
     # Needs flake inputs (the plugin's HM module), hence the import-with-args.
     homeModules.teams-for-linux = import ./modules/home/teams-for-linux.nix inputs;
+    # Needs flake inputs (the prebuilt-database HM module), hence import-with-args.
+    homeModules.nix-index = import ./modules/home/nix-index.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;

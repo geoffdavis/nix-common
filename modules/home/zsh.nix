@@ -299,6 +299,15 @@
         done
         tmux select-pane -t "''${panes[1]}"
       }
+
+      # pay-respects (the thefuck replacement in cli-tools) is inert without
+      # this hook — the binary just sits on PATH. Evaluating its init defines
+      # the `f` alias (correct the previous command) and an inline-correction
+      # keybinding (^X^X). --nocnf suppresses its command_not_found_handler so
+      # it doesn't fight homeModules.nix-index for that hook: pay-respects fixes
+      # typos, nix-index names the nixpkgs package providing a missing command.
+      # Guarded so the module stays usable on hosts that don't ship the binary.
+      command -v pay-respects >/dev/null && eval "$(pay-respects zsh --nocnf)"
     '';
   };
 }
