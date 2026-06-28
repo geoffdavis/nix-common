@@ -23,58 +23,58 @@
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.190";
+    version = "2.1.195";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.190/darwin-arm64/claude";
-      sha256 = "sha256-H6WVKcIzkU/dnUKBanTs8wDu+hTD0RjU7LovDxb8V0E=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.195/darwin-arm64/claude";
+      sha256 = "sha256-i0WtrZPzNquV8z5xRJSxn9M3eklOsFwSLIZ3vIlYdq0=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.190";
+    version = "2.1.195";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.190/linux-x64/claude";
-      sha256 = "sha256-BoTihRfMeFq40Z/rXa0zgeq0q8l79vzge8U03IgECyc=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.195/linux-x64/claude";
+      sha256 = "sha256-gyPnASUGMUekR4uVd0XYNah+XnL/0luDjqmoQcA+ajc=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.142.0";
+    version = "0.142.3";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.142.0/codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-LjrLOaJ3/xHDFNgyz90kb66+6ia/Aa/46eEGQebeqAE=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.142.3/codex-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-+WgT9BaStNiuRNCBIWWi/MQpGW6zSB9rwiGv3slqF/g=";
     };
   };
   copilot-cli-darwin-arm64 = {
     pname = "copilot-cli-darwin-arm64";
-    version = "1.0.64";
+    version = "1.0.65";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.64/github-copilot-1.0.64-darwin-arm64.tgz";
-      sha256 = "sha256-2JkfpBNV4MAJ2U2TgzOvJP4cwaGFDx58MbxmROX/8Sc=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.65/github-copilot-1.0.65-darwin-arm64.tgz";
+      sha256 = "sha256-Ly/Tay3iOMzsipaWLTTh3HKBYwvq7Nu3yQpYrC39UPI=";
     };
   };
   copilot-cli-linux-x64 = {
     pname = "copilot-cli-linux-x64";
-    version = "1.0.64";
+    version = "1.0.65";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.64/github-copilot-1.0.64-linux-x64.tgz";
-      sha256 = "sha256-p2I4BHdW9wRLP8ns7wmuWBwUW2RGOuARgDtItMovxGA=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.65/github-copilot-1.0.65-linux-x64.tgz";
+      sha256 = "sha256-E8vo0HUyvw9U7cXbjeY7H9atxdMHHLMXcGgWEciuqK0=";
     };
   };
   terraform-darwin-arm64 = {
     pname = "terraform-darwin-arm64";
-    version = "1.15.6";
+    version = "1.15.7";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_darwin_arm64.zip";
-      sha256 = "sha256-jUxnkadEMyvHyjlixhqy7Y5dJacpnxdvXt/7nLUl6F8=";
+      url = "https://releases.hashicorp.com/terraform/1.15.7/terraform_1.15.7_darwin_arm64.zip";
+      sha256 = "sha256-cReRv0E2UTeppK2/PkxKGN1zidRcajA548aUa8dQCA4=";
     };
   };
   terraform-linux-x64 = {
     pname = "terraform-linux-x64";
-    version = "1.15.6";
+    version = "1.15.7";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_linux_amd64.zip";
-      sha256 = "sha256-pxUNOw4bXEZq1C6MSZlUo8VGRfi1azhfoCXTT36I+qk=";
+      url = "https://releases.hashicorp.com/terraform/1.15.7/terraform_1.15.7_linux_amd64.zip";
+      sha256 = "sha256-c7u49RiK111PuFP9EArk1+FG73r32xh3YQlkL9t3WdI=";
     };
   };
 }
