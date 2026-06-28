@@ -21,6 +21,38 @@
 
   hyprctl = "${pkgs.hyprland}/bin/hyprctl";
 
+  # The systemd user target this desktop's session services attach to.
+  #
+  # Under uwsm (uwsm.enable) the Hyprland session is launched by uwsm — which
+  # owns the stock graphical-session.target — so services bind there (the uwsm
+  # docs' recommended integration) and home-manager's own session integration
+  # is turned off (wayland.windowManager.hyprland.systemd.enable = false). The
+  # two cannot coexist: HM's integration starts hyprland-session.target
+  # (BindsTo graphical-session.target) and, because this host runs
+  # KillUserProcesses=false, that graphical-session.target leaks across logout
+  # and uwsm then refuses to start ("a compositor or graphical-session* target
+  # is already active"). Letting uwsm be the sole owner removes the conflict.
+  #
+  # Without uwsm, HM manages hyprland-session.target and services bind there.
+  sessionTarget =
+    if cfg.uwsm.enable
+    then "graphical-session.target"
+    else "hyprland-session.target";
+
+  # Logout for a uwsm session. `uwsm stop` stops ONLY the compositor; it does
+  # not stop graphical-session.target. On this host (logind KillUserProcesses=
+  # false) the target then lingers — held active by darkman.service, which
+  # BindsTo it and survives logout — and the NEXT uwsm login aborts with "a
+  # compositor or graphical-session* target is already active" (black screen).
+  # So stop the target first: an ordered SIGTERM to the scoped session services
+  # (the actual graceful-logout win) that also clears the target, then stop the
+  # compositor to return to the greeter. (`uwsm` / `systemctl` are bare PATH —
+  # the system instances that own the running session.)
+  uwsmLogout = pkgs.writeShellScript "uwsm-logout" ''
+    systemctl --user stop graphical-session.target
+    exec uwsm stop -r
+  '';
+
   # GL wrapper prefix for apps launched from a systemd-user service (waybar
   # on-click), which start in a clean env without the compositor's
   # leaked nixGL discovery vars. Empty on NixOS (real hardware.graphics); a
@@ -397,7 +429,14 @@ in {
       lib.mkEnableOption "the wlogout power menu (layout + Catppuccin Mocha style)" // {default = true;};
 
     uwsm.enable =
-      lib.mkEnableOption "logout via `uwsm stop` instead of `hyprctl dispatch exit` — for hosts whose Hyprland session is launched through uwsm (Universal Wayland Session Manager). Stops graphical-session.target and its scoped services with an ordered SIGTERM rather than abruptly tearing down the compositor. Requires the session itself to be uwsm-managed at the system level (programs.hyprland.withUWSM + programs.uwsm.waylandCompositors)";
+      lib.mkEnableOption "uwsm-managed Hyprland session integration (Universal Wayland Session Manager). uwsm owns the session, so this turns OFF home-manager's own session integration (wayland.windowManager.hyprland.systemd.enable) and binds the desktop's systemd user services to the stock graphical-session.target that uwsm brings up (see hyprland-desktop.sessionTarget), and makes logout run the built-in `uwsm stop -r`. uwsm and HM's session integration cannot coexist — both manage graphical-session.target and uwsm refuses to start if it is already active. Pair with programs.hyprland.withUWSM at the system level; the Hyprland package's own \"Hyprland (uwsm-managed)\" session entry is used (no custom waylandCompositors needed)";
+
+    sessionTarget = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      default = sessionTarget;
+      description = "Read-only: the systemd user target host-specific session services should bind to (PartOf/After/WantedBy). graphical-session.target under uwsm (uwsm owns it), else home-manager's hyprland-session.target. Use this from host session services so they attach to whichever target is actually started.";
+    };
 
     polkitAgent.enable =
       lib.mkEnableOption "the hyprpolkitagent GUI polkit auth agent (package + exec-once)" // {default = true;};
@@ -519,7 +558,7 @@ in {
       # renamed the singular `target` to a `targets` list.
       systemd = {
         enable = lib.mkDefault true;
-        targets = ["hyprland-session.target"];
+        targets = [sessionTarget];
       };
       settings.mainBar = {
         layer = "top";
@@ -809,13 +848,11 @@ in {
         }
         {
           label = "logout";
-          # uwsm stop tears the session down gracefully (ordered SIGTERM to
-          # graphical-session.target and its scoped units); the bare dispatch
-          # exit just kills the compositor. Gated so non-uwsm hosts keep the
-          # only logout that works for them.
+          # uwsm: stop graphical-session.target (graceful) then the compositor —
+          # see uwsmLogout. Non-uwsm: plain dispatch-exit.
           action =
             if cfg.uwsm.enable
-            then "uwsm stop"
+            then "${uwsmLogout}"
             else "${hyprctl} dispatch exit";
           text = "Logout";
           keybind = "e";
@@ -889,9 +926,45 @@ in {
     };
     # Scope walker + elephant to the Hyprland session (the module defaults to
     # graphical-session.target, which the GNOME/Plasma sessions also reach).
-    systemd.user.services.walker.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
+    systemd.user.services.walker = {
+      Install.WantedBy = lib.mkForce [sessionTarget];
+      # Order walker AFTER the session target. Under uwsm, WAYLAND_DISPLAY only
+      # lands in the user env once graphical-session.target is reached (uwsm
+      # finalizes the env there). Without this After, walker.service starts too
+      # early, dies with "Failed to open display", and crash-loops into
+      # StartLimitBurst — after which it's dead and can launch nothing. waybar
+      # already orders itself after the target, which is why it was unaffected.
+      # PartOf so walker also stops cleanly on logout.
+      Unit = {
+        After = [sessionTarget];
+        PartOf = [sessionTarget];
+      };
+    };
     services.elephant.enable = lib.mkDefault true;
-    systemd.user.services.elephant.Install.WantedBy = lib.mkForce ["hyprland-session.target"];
+    systemd.user.services.elephant = {
+      Install.WantedBy = lib.mkForce [sessionTarget];
+      # elephant is what actually spawns the apps walker selects, so it must
+      # also start AFTER the session target — otherwise it (and every app it
+      # launches) inherits an env without WAYLAND_DISPLAY and the launch
+      # silently fails to open the display. (Same fix as walker above.)
+      Unit = {
+        After = [sessionTarget];
+        PartOf = [sessionTarget];
+      };
+    };
+
+    # darkman (if enabled) BindsTo graphical-session.target, and it is
+    # D-Bus/XDG-portal activated — so after logout something pokes its portal,
+    # darkman restarts, and BindsTo (which implies Requires) drags
+    # graphical-session.target back up. Under uwsm that makes the NEXT login
+    # abort with "a compositor or graphical-session* target is already active"
+    # (black screen). As long as ANY user session lingers (an open SSH session,
+    # a detached process, or loginctl linger) the user manager stays up and this
+    # keeps recurring. Drop the BindsTo — keep PartOf so darkman still stops with
+    # the session — so its activation can no longer resurrect the target, and
+    # uwsm re-login stays clean regardless of lingering sessions.
+    systemd.user.services.darkman.Unit.BindsTo =
+      lib.mkIf (cfg.uwsm.enable && config.services.darkman.enable) (lib.mkForce []);
 
     # swaybg paints the desktop background: one random image from the pool on
     # every output (swaybg's implicit `*` match also covers monitors that appear
@@ -906,8 +979,8 @@ in {
     systemd.user.services.swaybg = lib.mkIf (cfg.wallpaperPath != null) {
       Unit = {
         Description = "swaybg desktop wallpaper (random from the pool, rotated every 30m)";
-        PartOf = ["hyprland-session.target"];
-        After = ["hyprland-session.target"];
+        PartOf = [sessionTarget];
+        After = [sessionTarget];
       };
       Service = {
         ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
@@ -942,7 +1015,7 @@ in {
         # state worth a graceful shutdown).
         TimeoutStopSec = "5s";
       };
-      Install.WantedBy = ["hyprland-session.target"];
+      Install.WantedBy = [sessionTarget];
     };
 
     # swayosd OSD server — paints the workspace-switch popups (workspaceOsd) and,
@@ -952,14 +1025,14 @@ in {
     systemd.user.services.swayosd = {
       Unit = {
         Description = "swayosd OSD server";
-        PartOf = ["hyprland-session.target"];
-        After = ["hyprland-session.target"];
+        PartOf = [sessionTarget];
+        After = [sessionTarget];
       };
       Service = {
         ExecStart = "${pkgs.swayosd}/bin/swayosd-server";
         Restart = "on-failure";
       };
-      Install.WantedBy = ["hyprland-session.target"];
+      Install.WantedBy = [sessionTarget];
     };
 
     # mako notification daemon. services.mako writes the config + lets
@@ -974,8 +1047,8 @@ in {
     systemd.user.services.mako = lib.mkIf cfg.mako.enable {
       Unit = {
         Description = "mako notification daemon";
-        PartOf = ["hyprland-session.target"];
-        After = ["hyprland-session.target"];
+        PartOf = [sessionTarget];
+        After = [sessionTarget];
       };
       Service = {
         Type = "simple";
@@ -983,12 +1056,17 @@ in {
         ExecReload = "${pkgs.mako}/bin/makoctl reload";
         Restart = "on-failure";
       };
-      Install.WantedBy = ["hyprland-session.target"];
+      Install.WantedBy = [sessionTarget];
     };
 
     wayland.windowManager.hyprland = {
       enable = lib.mkDefault true;
-      systemd.enable = lib.mkDefault true;
+      # Under uwsm, uwsm owns the session (graphical-session.target) and imports
+      # the environment via its finalize step, so home-manager's own session
+      # integration (the hyprland-session.target + dbus-activation exec-once)
+      # must be off — otherwise the two fight over graphical-session.target and
+      # uwsm refuses to start. Without uwsm, HM manages the session as usual.
+      systemd.enable = lib.mkDefault (!cfg.uwsm.enable);
       plugins = [hyprspace];
 
       # Stay on the hyprlang config generator (26.05 flipped the default to
@@ -1074,10 +1152,10 @@ in {
             "$mod, Q, killactive"
             "$mod, F, fullscreen"
             "$mod, L, exec, loginctl lock-session"
-            # Logout: graceful uwsm stop on uwsm hosts, else Hyprland's exit.
+            # Logout: graceful uwsm teardown (uwsmLogout) on uwsm hosts, else exit.
             (
               if cfg.uwsm.enable
-              then "$mod SHIFT, E, exec, uwsm stop"
+              then "$mod SHIFT, E, exec, ${uwsmLogout}"
               else "$mod SHIFT, E, exit"
             )
             # Screenshots open in satty to crop/annotate; Ctrl+S saves to
