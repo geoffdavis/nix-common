@@ -7,7 +7,7 @@
     # Follow nix-common's pins so every host shares the same channel versions.
     # This template is a standalone home-manager (Linux) consumer. For a
     # nix-darwin host, follow nixpkgs-darwin / home-manager-darwin and add
-    # `darwin.follows = "nix-common/darwin";` instead (see nix-viasat).
+    # `darwin.follows = "nix-common/darwin";` instead.
     nixpkgs.follows = "nix-common/nixpkgs-nixos";
     home-manager.follows = "nix-common/home-manager-nixos";
     lazyvim.follows = "nix-common/lazyvim";

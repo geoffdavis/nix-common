@@ -23,7 +23,7 @@ existing `op-file-secrets` mechanism, daily timer, failure notification.
 
 **Out (YAGNI / deliberate):**
 - Client-side prune/retention — the server is append-only; Backrest prunes.
-- Non-NixOS Linux clients (oceaneering) — same server, but ansible-delivered
+- Non-NixOS Linux clients — same server, but ansible-delivered
   restic, a separate effort.
 - Restore tooling — `restic restore` / Backrest UI already cover it.
 

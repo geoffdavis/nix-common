@@ -119,7 +119,7 @@ in {
       tree
       watch
       yamllint
-      yq # kislyuk/yq (python): bare `yq .` emits JSON, which the CCoE
+      yq # kislyuk/yq (python): bare `yq .` emits JSON, which the shared
       # terraform aliases (tfcd/tfstackshow/y2j*) pipe into jq. mikefarah
       # yq-go's `yq .` prints YAML instead, breaking those `yq . | jq`
       # pipelines with "jq: parse error: Invalid numeric literal".

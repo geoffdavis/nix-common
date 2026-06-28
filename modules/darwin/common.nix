@@ -44,7 +44,7 @@ in {
 
     # Scheduled housekeeping: weekly GC (keep ~30d of rollback history) + store
     # optimisation. Gated on nix.enable: on Determinate-managed hosts
-    # (nix.enable = false, e.g. viasat) nix-darwin owns none of this, and as of
+    # (nix.enable = false) nix-darwin owns none of this, and as of
     # nix-darwin 26.05 setting nix.gc/nix.optimise there is a hard assertion
     # failure ("nix.gc.automatic requires nix.enable"), not a silent no-op. Such
     # hosts use darwinModules.determinate-gc instead. mkDefault throughout.

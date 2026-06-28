@@ -1,5 +1,5 @@
 # modules/home/nas-cache.nix — substituter-only NAS cache config for
-# standalone home-manager on Linux (oceaneering-laptop, azure-dev-vm).
+# standalone home-manager on Linux (non-NixOS hosts).
 # nix.buildMachines is not a home-manager option; builder config for these
 # hosts goes via the Ansible system layer (writes /etc/nix/machines and
 # /etc/ssh/ssh_config.d/99-nix-builder.conf).
