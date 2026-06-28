@@ -44,8 +44,8 @@ in {
     })
 
     # Remote builder: offload x86_64-linux derivations to the NAS. The big
-    # win is on aarch64-darwin (windansea, viasat-laptop — native x86_64
-    # builds); on birdrock it adds spillover capacity.
+    # win is on aarch64-darwin (windansea and other Apple-silicon laptops —
+    # native x86_64 builds); on birdrock it adds spillover capacity.
     (lib.mkIf (builderPublicHostKey != null) {
       nix.distributedBuilds = true;
       nix.settings.builders-use-substitutes = true;

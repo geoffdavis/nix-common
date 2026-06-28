@@ -470,7 +470,7 @@ in {
 
   config = lib.mkIf cfg.enable {
     # Read-only handle to the waybar relayout helper, for host monitor-change
-    # handlers (oceaneering lid binds, birdrock clamshell settle).
+    # handlers (laptop lid binds, birdrock clamshell settle).
     hyprland-desktop.waybarRelayout = "${waybarRelayoutScript}";
 
     home.packages = with pkgs;

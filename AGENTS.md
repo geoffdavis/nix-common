@@ -1,10 +1,9 @@
 # Agent guide
 
 Shared nix modules and pinned flake inputs for personal multi-host configs
-(macOS / NixOS / standalone-home-manager Linux). Consumed by
-[nix-personal](https://github.com/geoffdavis/nix-personal),
-[nix-oceaneering](https://github.com/geoffdavis/nix-oceaneering), and
-[nix-viasat](https://github.com/geoffdavis/nix-viasat) as a flake input.
+(macOS / NixOS / standalone-home-manager Linux). Consumed as a flake input by
+[nix-personal](https://github.com/geoffdavis/nix-personal) and by several
+private downstream consumer repos.
 
 ## Build / test
 
@@ -52,6 +51,12 @@ is intentional. CI runs the same chain via the reusable workflow at
 - Never hardcode secrets. Public SSH keys are fine; everything else goes
   through `homeModules.op-json-secrets` or `homeModules.ssh`
   (`onepassword-ssh.keys`).
+- This repo stays context-neutral. `nix-personal` is the **only** consumer
+  repo that may be named here. Every other consumer (and its
+  employer/host/internal-tool identifiers, e.g. work laptop hostnames or
+  company/team acronyms) is a secret — never name it in code, comments, docs,
+  or commit messages. Refer to them generically ("a downstream consumer", "a
+  work host", "the standalone-home-manager Linux hosts").
 - New shared modules go under `modules/home/` (cross-platform unless noted)
   or `modules/{darwin,nixos}/` for OS-specific. Add the export to
   `flake.nix`. Internal helpers that aren't flake outputs go under
@@ -71,6 +76,9 @@ is intentional. CI runs the same chain via the reusable workflow at
 - Adding lambda args (`pkgs,`, `lib,`) that the module body doesn't
   reference — deadnix flags them.
 - Bypassing pre-commit with `--no-verify`.
+- Naming any consumer repo other than `nix-personal`, or leaking a consumer's
+  employer/host/internal identifiers (see the context-neutrality convention
+  above).
 - Anything that requires platform-specific paths (`/Applications/...`,
   `/opt/...`) without a darwin/linux fork or `lib.mkDefault` so consumers
   can override.

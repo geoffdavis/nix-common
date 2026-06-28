@@ -1,7 +1,7 @@
 # Refactoring & guardrails proposal
 
-Survey of the nix-common ecosystem (`nix-common` + consumers `nix-personal`,
-`nix-oceaneering`, `nix-viasat`, and the private `nix-apple-firmware`) with an
+Survey of the nix-common ecosystem (`nix-common` + `nix-personal` and the
+other private downstream consumers) with an
 eye toward **guardrails for automated/agent-authored changes**. Items are
 ordered by value-to-risk. Each says whether it's *shipped in this branch* or
 *proposed*.
@@ -72,9 +72,9 @@ and can't itself drift. Making it reusable would add a meta-pin to keep in
 sync — recursion we don't want. Recommend leaving it inline; the consumer
 template already carries the canonical copy.
 
-### 7. Converge oceaneering's teams-for-linux module — *low priority*
+### 7. Converge a consumer's teams-for-linux module — *low priority*
 
-`nix-oceaneering/modules/teams-for-linux.nix` (+ `teams-mute-plugin.py`)
+A downstream consumer's `modules/teams-for-linux.nix` (+ `teams-mute-plugin.py`)
 overlaps `nix-common`'s `homeModules.teams-for-linux`. If the differences are
 just MQTT/EPM specifics, they could become module options so the shared module
 is the single implementation. Needs a side-by-side diff before committing.
