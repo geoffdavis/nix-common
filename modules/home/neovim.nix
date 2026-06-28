@@ -37,6 +37,8 @@
     ];
 
     treesitterParsers = with pkgs.vimPlugins.nvim-treesitter-parsers; [
+      dockerfile
+      sql
       wgsl # WebGPU Shading Language
       templ # Go templ files
       # LazyVim's default ensure_installed requests these; without nix

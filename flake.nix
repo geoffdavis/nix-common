@@ -178,6 +178,7 @@
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
+    homeModules.yazi = ./modules/home/yazi.nix;
     # NAS binary cache (substituter only) for standalone home-manager on
     # Linux. buildMachines is not a home-manager option; system-level
     # consumers should use nixosModules.nas-cache / darwinModules.nas-cache.

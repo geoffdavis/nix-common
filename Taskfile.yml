@@ -49,9 +49,14 @@ tasks:
         echo "  2. task contract && task fmt && task lint"
 
   update:sources:
-    desc: Bump every pinned upstream source (claude-code, github-copilot-cli, codex, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
+    desc: Update every pinned upstream source (claude-code, copilot-cli, codex, terraform, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
     cmds:
       - nix run nixpkgs#nvfetcher --
       # Format nvfetcher's output so it passes the repo's alejandra check
       # (lint.yml runs `alejandra --check .` over everything).
       - nix run nixpkgs#alejandra -- _sources/generated.nix
+      # nvfetcher writes generated.json without a trailing newline, but the
+      # end-of-file-fixer pre-commit hook adds one — so every run otherwise
+      # leaves a phantom one-line diff. Normalize here to keep the task stable.
+      - |
+        [ -n "$(tail -c1 _sources/generated.json)" ] && printf '\n' >> _sources/generated.json || true
