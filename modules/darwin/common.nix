@@ -28,52 +28,58 @@ in {
     system.stateVersion = 6;
     system.primaryUser = username;
 
-    # Mirror of nixosModules.common's nix.settings. trusted-users so
-    # the daemon honors the primary user's client-side overrides of
-    # restricted settings (--builders, extra substituters, ...)
-    # instead of silently ignoring them; experimental-features
-    # system-wide so root/sudo nix invocations get nix-command +
-    # flakes too, not just users with home-level nix.conf.
-    nix.settings = {
-      experimental-features = ["nix-command" "flakes"];
-      trusted-users = ["root" username];
-      # Disk-pressure safety net (see nixosModules.common for rationale).
-      min-free = lib.mkDefault (1024 * 1024 * 1024); # 1 GiB
-      max-free = lib.mkDefault (5 * 1024 * 1024 * 1024); # 5 GiB
-    };
-
-    # Scheduled housekeeping: weekly GC (keep ~30d of rollback history) + store
-    # optimisation. Gated on nix.enable: on Determinate-managed hosts
-    # (nix.enable = false) nix-darwin owns none of this, and as of
-    # nix-darwin 26.05 setting nix.gc/nix.optimise there is a hard assertion
-    # failure ("nix.gc.automatic requires nix.enable"), not a silent no-op. Such
-    # hosts use darwinModules.determinate-gc instead. mkDefault throughout.
-    nix.gc = lib.mkIf config.nix.enable {
-      automatic = lib.mkDefault true;
-      interval = lib.mkDefault {
-        Weekday = 0;
-        Hour = 3;
-        Minute = 15;
+    nix = {
+      # Mirror of nixosModules.common's nix.settings. trusted-users so
+      # the daemon honors the primary user's client-side overrides of
+      # restricted settings (--builders, extra substituters, ...)
+      # instead of silently ignoring them; experimental-features
+      # system-wide so root/sudo nix invocations get nix-command +
+      # flakes too, not just users with home-level nix.conf.
+      settings = {
+        experimental-features = ["nix-command" "flakes"];
+        trusted-users = ["root" username];
+        # Disk-pressure safety net (see nixosModules.common for rationale).
+        min-free = lib.mkDefault (1024 * 1024 * 1024); # 1 GiB
+        max-free = lib.mkDefault (5 * 1024 * 1024 * 1024); # 5 GiB
       };
-      options = lib.mkDefault "--delete-older-than 30d";
+
+      # Scheduled housekeeping: weekly GC (keep ~30d of rollback history) + store
+      # optimisation. Gated on nix.enable: on Determinate-managed hosts
+      # (nix.enable = false) nix-darwin owns none of this, and as of
+      # nix-darwin 26.05 setting nix.gc/nix.optimise there is a hard assertion
+      # failure ("nix.gc.automatic requires nix.enable"), not a silent no-op. Such
+      # hosts use darwinModules.determinate-gc instead. mkDefault throughout.
+      gc = lib.mkIf config.nix.enable {
+        automatic = lib.mkDefault true;
+        interval = lib.mkDefault {
+          Weekday = 0;
+          Hour = 3;
+          Minute = 15;
+        };
+        options = lib.mkDefault "--delete-older-than 30d";
+      };
+      optimise.automatic = lib.mkIf config.nix.enable (lib.mkDefault true);
     };
-    nix.optimise.automatic = lib.mkIf config.nix.enable (lib.mkDefault true);
 
     # zsh sourcing of nix-darwin's environment changes.
     programs.zsh.enable = true;
 
-    homebrew.enable = true;
-    homebrew.onActivation.autoUpdate = true; # can slow darwin-rebuild down
-    homebrew.onActivation.upgrade = true;
-    homebrew.onActivation.cleanup = "uninstall"; # remove brews/casks not in config
-    homebrew.onActivation.extraFlags = ["--force"]; # required since homebrew added safety check for --cleanup
-    # Ensure terminal/editor glyph support on every interactive macOS host.
-    homebrew.casks = [
-      "1password"
-      "1password-cli"
-      "font-hack-nerd-font"
-      "ghostty"
-    ];
+    homebrew = {
+      enable = true;
+      onActivation = {
+        autoUpdate = true; # can slow darwin-rebuild down
+        upgrade = true;
+        cleanup = "uninstall"; # remove brews/casks not in config
+        extraFlags = ["--force"]; # required since homebrew added safety check for --cleanup
+      };
+      # Ensure terminal/editor glyph support on every interactive macOS host.
+      casks = [
+        "1password"
+        "1password-cli"
+        "font-hack-nerd-font"
+        "ghostty"
+      ];
+    };
 
     users.users.${username} = {
       name = username;
