@@ -15,18 +15,35 @@
     enable = true;
 
     extras = {
-      lang.nix.enable = true;
-      lang.python = {
-        enable = true;
-        installDependencies = true;
-        installRuntimeDependencies = true;
-      };
-      lang.go = {
-        enable = true;
-        installDependencies = true;
-        installRuntimeDependencies = true;
+      lang = {
+        nix.enable = true;
+        python = {
+          enable = true;
+          installDependencies = true;
+          installRuntimeDependencies = true;
+        };
+        go = {
+          enable = true;
+          installDependencies = true;
+          installRuntimeDependencies = true;
+        };
       };
     };
+
+    extraConfigLua = ''
+      -- Stage the current file and save it (Replaces :Gw)
+      -- Write first, then stage, so the staged index always matches the saved
+      -- file (gitsigns stages from buffer hunks computed on a debounce).
+      vim.api.nvim_create_user_command("Gw", function()
+        vim.cmd("write")
+        require("gitsigns").stage_buffer()
+      end, {})
+
+      -- Reset the current file to HEAD (Replaces :Gread)
+      vim.api.nvim_create_user_command("Gr", function()
+      require("gitsigns").reset_buffer()
+        end, {})
+    '';
 
     extraPackages = with pkgs; [
       tree-sitter # required by nvim-treesitter; mason is disabled in nix setups

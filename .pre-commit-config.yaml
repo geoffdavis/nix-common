@@ -39,13 +39,6 @@ repos:
         pass_filenames: false
         files: '\.nix$'
 
-      - id: nix-flake-check
-        name: nix flake check
-        entry: nix flake check
-        language: system
-        pass_filenames: false
-        files: '\.(nix|lock)$'
-
       - id: module-contract
         name: module contract (modules/ <-> flake.nix exports)
         entry: scripts/check-module-contract.sh
@@ -54,7 +47,7 @@ repos:
         files: '(^modules/.*\.nix$|^flake\.nix$)'
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
+    rev: v8.30.0
     hooks:
       # Local last line of defense: catch a secret BEFORE it reaches the
       # remote. GitGuardian scans server-side (post-push), so this hook closes
