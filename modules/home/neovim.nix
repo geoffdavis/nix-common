@@ -32,10 +32,12 @@
 
     extraConfigLua = ''
       -- Stage the current file and save it (Replaces :Gw)
+      -- Write first, then stage, so the staged index always matches the saved
+      -- file (gitsigns stages from buffer hunks computed on a debounce).
       vim.api.nvim_create_user_command("Gw", function()
-      require("gitsigns").stage_buffer()
         vim.cmd("write")
-        end, {})
+        require("gitsigns").stage_buffer()
+      end, {})
 
       -- Reset the current file to HEAD (Replaces :Gread)
       vim.api.nvim_create_user_command("Gr", function()
