@@ -15,18 +15,33 @@
     enable = true;
 
     extras = {
-      lang.nix.enable = true;
-      lang.python = {
-        enable = true;
-        installDependencies = true;
-        installRuntimeDependencies = true;
-      };
-      lang.go = {
-        enable = true;
-        installDependencies = true;
-        installRuntimeDependencies = true;
+      lang = {
+        nix.enable = true;
+        python = {
+          enable = true;
+          installDependencies = true;
+          installRuntimeDependencies = true;
+        };
+        go = {
+          enable = true;
+          installDependencies = true;
+          installRuntimeDependencies = true;
+        };
       };
     };
+
+    extraConfigLua = ''
+      -- Stage the current file and save it (Replaces :Gw)
+      vim.api.nvim_create_user_command("Gw", function()
+      require("gitsigns").stage_buffer()
+        vim.cmd("write")
+        end, {})
+
+      -- Reset the current file to HEAD (Replaces :Gread)
+      vim.api.nvim_create_user_command("Gr", function()
+      require("gitsigns").reset_buffer()
+        end, {})
+    '';
 
     extraPackages = with pkgs; [
       tree-sitter # required by nvim-treesitter; mason is disabled in nix setups
