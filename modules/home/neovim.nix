@@ -30,7 +30,12 @@
       };
     };
 
-    extraConfigLua = ''
+    # lazyvim-nix has no top-level extraConfigLua option; user Lua goes into
+    # one of the config.{autocmds,keymaps,options} strings, which are written
+    # to lua/config/*.lua and auto-loaded by LazyVim at startup. These :Gw/:Gr
+    # user commands live in autocmds.lua (the conventional spot for
+    # nvim_create_user_command in a LazyVim setup).
+    config.autocmds = ''
       -- Stage the current file and save it (Replaces :Gw)
       -- Write first, then stage, so the staged index always matches the saved
       -- file (gitsigns stages from buffer hunks computed on a debounce).
@@ -41,8 +46,8 @@
 
       -- Reset the current file to HEAD (Replaces :Gread)
       vim.api.nvim_create_user_command("Gr", function()
-      require("gitsigns").reset_buffer()
-        end, {})
+        require("gitsigns").reset_buffer()
+      end, {})
     '';
 
     extraPackages = with pkgs; [
