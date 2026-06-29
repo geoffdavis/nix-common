@@ -236,7 +236,62 @@ in {
     }
 
     (lib.mkIf cfg.mqtt.enable {
-      home.packages = [pkgs.mosquitto];
+      home = {
+        packages = [pkgs.mosquitto];
+
+        # Deep-merge the managed (non-secret) keys into config.json, preserving
+        # everything else. Order vs. the op-json-secrets password patch is
+        # irrelevant: jq's `*` merge never drops the other writer's keys.
+        activation.teamsForLinuxConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
+            ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg configDir}
+          [ -f ${lib.escapeShellArg configJson} ] || echo '{}' > ${lib.escapeShellArg configJson}
+          _tmp=$(${pkgs.coreutils}/bin/mktemp)
+            ${pkgs.jq}/bin/jq -s '.[0] * .[1]' ${lib.escapeShellArg configJson} ${managedConfigFile} > "$_tmp" \
+            && ${pkgs.coreutils}/bin/mv "$_tmp" ${lib.escapeShellArg configJson}
+            ${pkgs.coreutils}/bin/chmod 600 ${lib.escapeShellArg configJson}
+        '';
+
+        # The broker passwordfile is HASHED (mosquitto_passwd), so
+        # op-file-secrets can't produce it — dedicated op step, same
+        # degradation contract.
+        activation.teamsForLinuxBrokerPassword = lib.hm.dag.entryAfter ["writeBoundary"] ''
+          _op=$(command -v op 2>/dev/null) || true
+          # Activations run with a minimal PATH that often lacks op — a HM-as-NixOS
+          # module, or standalone HM on a non-NixOS host. Fall back to well-known
+          # setgid-shim locations across OSes: the NixOS wrappers, plus /usr/bin/op
+          # (the Ubuntu/Debian 1Password desktop-CLI integration shim) and a
+          # /usr/local manual-install path.
+          if [ -z "$_op" ]; then
+            for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op; do
+              if [ -x "$_c" ]; then
+                _op="$_c"
+                break
+              fi
+            done
+          fi
+          if [ -z "$_op" ]; then
+            echo "[teams-for-linux] op not in PATH — skipping mosquitto passwordfile" >&2
+          else
+            _pw=$($_op read ${lib.escapeShellArg cfg.mqtt.passwordRef} 2>/dev/null) || _pw=""
+            if [ -n "$_pw" ]; then
+            ${pkgs.coreutils}/bin/mkdir -p \
+                "$(${pkgs.coreutils}/bin/dirname ${lib.escapeShellArg mosquittoPasswordFile})"
+              # mosquitto 2.x (nixos 26.05) makes `mosquitto_passwd -c` refuse to
+              # overwrite an existing file ("Unable to open file ... for writing.
+              # File exists."), which fails activation on every switch after the
+              # first. Remove it first so -c always writes a fresh single-user
+              # hash file (the password is re-read from 1Password each run).
+            ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg mosquittoPasswordFile}
+            ${pkgs.mosquitto}/bin/mosquitto_passwd -b -c \
+            ${lib.escapeShellArg mosquittoPasswordFile} \
+            ${lib.escapeShellArg cfg.mqtt.username} "$_pw"
+            ${pkgs.coreutils}/bin/chmod 600 ${lib.escapeShellArg mosquittoPasswordFile}
+            else
+              echo "[teams-for-linux] cannot read mqtt.passwordRef — skipping mosquitto passwordfile" >&2
+            fi
+          fi
+        '';
+      };
 
       systemd.user.services.mosquitto = {
         Unit = {
@@ -259,18 +314,6 @@ in {
         log_dest stderr
       '';
 
-      # Deep-merge the managed (non-secret) keys into config.json, preserving
-      # everything else. Order vs. the op-json-secrets password patch is
-      # irrelevant: jq's `*` merge never drops the other writer's keys.
-      home.activation.teamsForLinuxConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
-        ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg configDir}
-        [ -f ${lib.escapeShellArg configJson} ] || echo '{}' > ${lib.escapeShellArg configJson}
-        _tmp=$(${pkgs.coreutils}/bin/mktemp)
-        ${pkgs.jq}/bin/jq -s '.[0] * .[1]' ${lib.escapeShellArg configJson} ${managedConfigFile} > "$_tmp" \
-          && ${pkgs.coreutils}/bin/mv "$_tmp" ${lib.escapeShellArg configJson}
-        ${pkgs.coreutils}/bin/chmod 600 ${lib.escapeShellArg configJson}
-      '';
-
       op-json-secrets = [
         {
           dest = configJson;
@@ -282,47 +325,6 @@ in {
           ];
         }
       ];
-
-      # The broker passwordfile is HASHED (mosquitto_passwd), so
-      # op-file-secrets can't produce it — dedicated op step, same
-      # degradation contract.
-      home.activation.teamsForLinuxBrokerPassword = lib.hm.dag.entryAfter ["writeBoundary"] ''
-        _op=$(command -v op 2>/dev/null) || true
-        # Activations run with a minimal PATH that often lacks op — a HM-as-NixOS
-        # module, or standalone HM on a non-NixOS host. Fall back to well-known
-        # setgid-shim locations across OSes: the NixOS wrappers, plus /usr/bin/op
-        # (the Ubuntu/Debian 1Password desktop-CLI integration shim) and a
-        # /usr/local manual-install path.
-        if [ -z "$_op" ]; then
-          for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op; do
-            if [ -x "$_c" ]; then
-              _op="$_c"
-              break
-            fi
-          done
-        fi
-        if [ -z "$_op" ]; then
-          echo "[teams-for-linux] op not in PATH — skipping mosquitto passwordfile" >&2
-        else
-          _pw=$($_op read ${lib.escapeShellArg cfg.mqtt.passwordRef} 2>/dev/null) || _pw=""
-          if [ -n "$_pw" ]; then
-            ${pkgs.coreutils}/bin/mkdir -p \
-              "$(${pkgs.coreutils}/bin/dirname ${lib.escapeShellArg mosquittoPasswordFile})"
-            # mosquitto 2.x (nixos 26.05) makes `mosquitto_passwd -c` refuse to
-            # overwrite an existing file ("Unable to open file ... for writing.
-            # File exists."), which fails activation on every switch after the
-            # first. Remove it first so -c always writes a fresh single-user
-            # hash file (the password is re-read from 1Password each run).
-            ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg mosquittoPasswordFile}
-            ${pkgs.mosquitto}/bin/mosquitto_passwd -b -c \
-              ${lib.escapeShellArg mosquittoPasswordFile} \
-              ${lib.escapeShellArg cfg.mqtt.username} "$_pw"
-            ${pkgs.coreutils}/bin/chmod 600 ${lib.escapeShellArg mosquittoPasswordFile}
-          else
-            echo "[teams-for-linux] cannot read mqtt.passwordRef — skipping mosquitto passwordfile" >&2
-          fi
-        fi
-      '';
     })
 
     (lib.mkIf cfg.opendeckPlugin.enable {

@@ -47,23 +47,26 @@ in {
     # win is on aarch64-darwin (windansea and other Apple-silicon laptops —
     # native x86_64 builds); on birdrock it adds spillover capacity.
     (lib.mkIf (builderPublicHostKey != null) {
-      nix.distributedBuilds = true;
-      nix.settings.builders-use-substitutes = true;
-      nix.buildMachines = [
-        {
-          # Alias resolved by the ssh config below — buildMachines has no
-          # port field, so the alias carries HostName + Port + key.
-          hostName = "nix-builder-nas-sdg";
-          systems = ["x86_64-linux"];
-          protocol = "ssh-ng";
-          sshUser = "root";
-          sshKey = "/etc/nix/builder_ed25519";
-          maxJobs = 4;
-          speedFactor = 1;
-          supportedFeatures = ["big-parallel"];
-          publicHostKey = builderPublicHostKey;
-        }
-      ];
+      nix = {
+        distributedBuilds = true;
+        settings.builders-use-substitutes = true;
+        buildMachines = [
+          {
+            # Alias resolved by the ssh config below — buildMachines has no
+            # port field, so the alias carries HostName + Port + key.
+            hostName = "nix-builder-nas-sdg";
+            systems = ["x86_64-linux"];
+            protocol = "ssh-ng";
+            sshUser = "root";
+            sshKey = "/etc/nix/builder_ed25519";
+            maxJobs = 4;
+            speedFactor = 1;
+            supportedFeatures = ["big-parallel"];
+            publicHostKey = builderPublicHostKey;
+          }
+        ];
+      };
+
       # System-level ssh config — root's nix-daemon never sees user-level
       # ~/.ssh/config or the 1Password agent.
       programs.ssh.extraConfig = ''
