@@ -38,11 +38,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-i0WtrZPzNquV8z5xRJSxn9M3eklOsFwSLIZ3vIlYdq0=",
+            "sha256": "sha256-b8bmGrdYLCvyQSJf+Q2feekdaTgMuVifyd7dOjAHD1o=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.195/darwin-arm64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.196/darwin-arm64/claude"
         },
-        "version": "2.1.195"
+        "version": "2.1.196"
     },
     "claude-code-linux-x64": {
         "cargoLock": null,
@@ -53,11 +53,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-gyPnASUGMUekR4uVd0XYNah+XnL/0luDjqmoQcA+ajc=",
+            "sha256": "sha256-65M8bdVTTbibg7oJAJ1cCTK9E5X347sPNLo37sN7ut4=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.195/linux-x64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.196/linux-x64/claude"
         },
-        "version": "2.1.195"
+        "version": "2.1.196"
     },
     "codex-linux-x64": {
         "cargoLock": null,
@@ -68,11 +68,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-+WgT9BaStNiuRNCBIWWi/MQpGW6zSB9rwiGv3slqF/g=",
+            "sha256": "sha256-8KxDdRxtOympc6hgqN5SitecsgzBKWYRkwo9XJHd75U=",
             "type": "url",
-            "url": "https://github.com/openai/codex/releases/download/rust-v0.142.3/codex-x86_64-unknown-linux-musl.tar.gz"
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.142.4/codex-x86_64-unknown-linux-musl.tar.gz"
         },
-        "version": "0.142.3"
+        "version": "0.142.4"
     },
     "copilot-cli-darwin-arm64": {
         "cargoLock": null,
