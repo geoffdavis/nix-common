@@ -2,7 +2,15 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    # Deliberately NOT on `synchronize`: re-reviewing on every push to an open
+    # PR burned the bulk of the Claude minutes. Review fires on open / ready /
+    # reopen; request a re-review on demand by mentioning @claude.
+    types: [opened, ready_for_review, reopened]
+
+# A newer event for the same PR cancels an in-flight review.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

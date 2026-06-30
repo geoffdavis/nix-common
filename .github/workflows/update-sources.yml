@@ -27,12 +27,12 @@ permissions:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    # Self-hosted nix runner pool; Nix already present (no installer step).
+    runs-on: [self-hosted, nix, x86_64-linux]
     steps:
       # Pinned to immutable commit SHAs; comments name the tag the SHA was
       # resolved from so a human or dependabot can bump intentionally.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: Bump pinned sources
         run: nix run nixpkgs#nvfetcher --

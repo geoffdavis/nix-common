@@ -23,10 +23,10 @@ permissions:
 
 jobs:
   update:
-    runs-on: ubuntu-latest
+    # Self-hosted nix runner pool; Nix already present (no installer step).
+    runs-on: [self-hosted, nix, x86_64-linux]
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
 
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@main
