@@ -11,7 +11,9 @@ on:
 
 jobs:
   claude:
-    runs-on: ubuntu-latest
+    # Self-hosted nix runner pool (no GitHub Actions minutes; the Claude API
+    # is billed to CLAUDE_CODE_OAUTH_TOKEN, not GitHub).
+    runs-on: [self-hosted, nix, x86_64-linux]
     permissions:
       contents: read
       pull-requests: read
@@ -24,10 +26,29 @@ jobs:
         with:
           fetch-depth: 1
 
+      # The nixos/nix runner is non-FHS: a generic bun binary (what
+      # oven-sh/setup-bun downloads) can't run here. Build bun — plus ripgrep
+      # + gh that Claude Code shells out to — from the runner's pinned nixpkgs
+      # (patchelf'd for NixOS) and hand it to the action via
+      # path_to_bun_executable so it skips setup-bun. git is already on PATH.
+      - name: Provision bun + tools via nix
+        id: nixtools
+        shell: bash
+        env:
+          NIXPKGS: github:NixOS/nixpkgs/nixos-25.11
+        run: |
+          set -eu
+          for pkg in bun ripgrep gh; do
+            out=$(nix --accept-flake-config build --no-link --print-out-paths "$NIXPKGS#$pkg")
+            echo "$out/bin" >> "$GITHUB_PATH"
+            [ "$pkg" = bun ] && echo "bun=$out/bin/bun" >> "$GITHUB_OUTPUT"
+          done
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@64de744025ca9e24df2b88204b4f1e968f39f009 # v1.0.139
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          path_to_bun_executable: ${{ steps.nixtools.outputs.bun }}
           additional_permissions: |
             actions: read
