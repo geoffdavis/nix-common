@@ -27,21 +27,20 @@ jobs:
 
       # The nixos/nix runner is non-FHS: a generic bun binary (what
       # oven-sh/setup-bun downloads) can't run here. Build bun — plus ripgrep
-      # + gh that Claude Code shells out to — from the runner's pinned nixpkgs
-      # (patchelf'd for NixOS) and hand it to the action via
+      # + gh that Claude Code shells out to — from the flake registry's current
+      # nixpkgs (the same one the lint jobs use, already warm in the shared
+      # store; patchelf'd for NixOS) and hand bun to the action via
       # path_to_bun_executable so it skips setup-bun. git is already on PATH.
       - name: Provision bun + tools via nix
         id: nixtools
         shell: bash
-        env:
-          NIXPKGS: github:NixOS/nixpkgs/nixos-25.11
         run: |
-          set -eu
-          for pkg in bun ripgrep gh; do
-            out=$(nix --accept-flake-config build --no-link --print-out-paths "$NIXPKGS#$pkg")
-            echo "$out/bin" >> "$GITHUB_PATH"
-            [ "$pkg" = bun ] && echo "bun=$out/bin/bun" >> "$GITHUB_OUTPUT"
-          done
+          set -euo pipefail
+          bun=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#bun)
+          rg=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#ripgrep)
+          gh=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#gh)
+          printf '%s\n' "$bun/bin" "$rg/bin" "$gh/bin" >> "$GITHUB_PATH"
+          echo "bun=$bun/bin/bun" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude Code Review
         id: claude-review
