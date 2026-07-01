@@ -25,13 +25,14 @@ jobs:
         with:
           fetch-depth: 1
 
-      # The nixos/nix runner is non-FHS: a generic bun binary (what
-      # oven-sh/setup-bun downloads) can't run here. Build bun — plus ripgrep
-      # + gh that Claude Code shells out to — from the flake registry's current
-      # nixpkgs (the same one the lint jobs use, already warm in the shared
-      # store; patchelf'd for NixOS) and hand bun to the action via
-      # path_to_bun_executable so it skips setup-bun. git is already on PATH.
-      - name: Provision bun + tools via nix
+      # The nixos/nix runner is non-FHS, so the generic bun + Claude Code the
+      # action would download can't run. Build them (plus ripgrep + gh that
+      # Claude Code shells out to) from the flake registry's current nixpkgs —
+      # the same one the lint jobs use, already warm in the shared store and
+      # patchelf'd for NixOS — and pass path_to_bun_executable /
+      # path_to_claude_code_executable so the action skips its own installers.
+      # git is already on PATH.
+      - name: Provision bun + Claude Code + tools via nix
         id: nixtools
         shell: bash
         run: |
@@ -39,8 +40,10 @@ jobs:
           bun=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#bun)
           rg=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#ripgrep)
           gh=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#gh)
+          claude=$(nix --accept-flake-config build --no-link --print-out-paths nixpkgs#claude-code)
           printf '%s\n' "$bun/bin" "$rg/bin" "$gh/bin" >> "$GITHUB_PATH"
           echo "bun=$bun/bin/bun" >> "$GITHUB_OUTPUT"
+          echo "claude=$claude/bin/claude" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude Code Review
         id: claude-review
@@ -48,6 +51,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           path_to_bun_executable: ${{ steps.nixtools.outputs.bun }}
+          path_to_claude_code_executable: ${{ steps.nixtools.outputs.claude }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
