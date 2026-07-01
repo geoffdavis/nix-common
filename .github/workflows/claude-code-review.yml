@@ -20,5 +20,9 @@ permissions:
 
 jobs:
   claude-review:
+    # Fork guard: only same-repo PRs. This job runs on a self-hosted runner
+    # with CLAUDE_CODE_OAUTH_TOKEN (secrets: inherit), so a fork PR — were a
+    # consumer repo ever made public — must never land on persistent infra.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/claude-code-review-action.yml
     secrets: inherit
