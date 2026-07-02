@@ -42,6 +42,22 @@ in {
       };
     };
 
+    # Syntax-highlighted diff pager. Enabling delta wires it up as
+    # core.pager / interactive.diffFilter and points to the pinned
+    # git-delta package. delta drives less with --quit-if-one-screen
+    # --RAW-CONTROL-CHARS by default, so short output (git log/diff/show,
+    # and non-diff git output it just forwards) stays on the main screen
+    # instead of flashing the alternate buffer and vanishing — which is the
+    # behaviour the old built-in `less -FRX` default no longer delivers on
+    # modern less.
+    delta = {
+      enable = true;
+      options = {
+        navigate = true; # n/N to jump between diff hunks
+        line-numbers = true;
+      };
+    };
+
     # Sign commits only on hosts that have wired up a key. Hosts without one
     # (e.g. NixOS dev boxes) leave signing untriggered, so a missing or
     # mis-pathed op-ssh-sign never blocks `git commit`.
