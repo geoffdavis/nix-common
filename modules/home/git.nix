@@ -28,6 +28,15 @@ in {
     settings = {
       user.name = "Geoff Davis";
 
+      # Fallback pager for the non-diff commands delta doesn't own
+      # (branch/tag -l/config -l/grep/stash list/help): -F quits if the
+      # output fits one screen, -R keeps colours. This replaces git's
+      # built-in `LESS=FRX` default, whose deprecated -X flashes the
+      # alternate buffer and drops short output on modern less. delta still
+      # overrides diff/log/show/blame (it drives less with the same
+      # --quit-if-one-screen behaviour).
+      core.pager = lib.mkDefault "less -FR";
+
       alias = {
         st = "status";
         co = "checkout";
