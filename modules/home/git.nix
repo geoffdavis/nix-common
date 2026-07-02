@@ -28,6 +28,15 @@ in {
     settings = {
       user.name = "Geoff Davis";
 
+      # Fallback pager for the non-diff commands delta doesn't own
+      # (branch/tag -l/config -l/grep/stash list/help): -F quits if the
+      # output fits one screen, -R keeps colours. This replaces git's
+      # built-in `LESS=FRX` default, whose deprecated -X flashes the
+      # alternate buffer and drops short output on modern less. delta still
+      # overrides diff/log/show/blame (it drives less with the same
+      # --quit-if-one-screen behaviour).
+      core.pager = lib.mkDefault "less -FR";
+
       alias = {
         st = "status";
         co = "checkout";
@@ -42,28 +51,28 @@ in {
       };
     };
 
-    # Syntax-highlighted diff pager. Enabling delta wires it up as
-    # core.pager / interactive.diffFilter and points to the pinned
-    # git-delta package. delta drives less with --quit-if-one-screen
-    # --RAW-CONTROL-CHARS by default, so short output (git log/diff/show,
-    # and non-diff git output it just forwards) stays on the main screen
-    # instead of flashing the alternate buffer and vanishing — which is the
-    # behaviour the old built-in `less -FRX` default no longer delivers on
-    # modern less.
-    delta = {
-      enable = true;
-      options = {
-        navigate = true; # n/N to jump between diff hunks
-        line-numbers = true;
-      };
-    };
-
     # Sign commits only on hosts that have wired up a key. Hosts without one
     # (e.g. NixOS dev boxes) leave signing untriggered, so a missing or
     # mis-pathed op-ssh-sign never blocks `git commit`.
     signing = {
       format = "ssh";
       signByDefault = hasSigning;
+    };
+  };
+
+  # Syntax-highlighted diff pager. enableGitIntegration wires delta up as
+  # git's core.pager / interactive.diffFilter and points to the pinned
+  # git-delta package. delta drives less with --quit-if-one-screen
+  # --RAW-CONTROL-CHARS by default, so short output (git log/diff/show, and
+  # non-diff git output it just forwards) stays on the main screen instead of
+  # flashing the alternate buffer and vanishing — the behaviour the old
+  # built-in `less -FRX` default no longer delivers on modern less.
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      navigate = true; # n/N to jump between diff hunks
+      line-numbers = true;
     };
   };
 
