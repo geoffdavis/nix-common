@@ -186,6 +186,8 @@
     # Needs flake inputs (the prebuilt-database HM module), hence import-with-args.
     homeModules.nix-index = import ./modules/home/nix-index.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
+    # docx2pdf via pipx — macOS only, requires Microsoft Word. opt-in per host.
+    homeModules.doc-tools = ./modules/home/doc-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
     homeModules.yazi = ./modules/home/yazi.nix;
