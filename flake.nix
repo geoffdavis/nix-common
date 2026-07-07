@@ -195,5 +195,12 @@
     # Linux. buildMachines is not a home-manager option; system-level
     # consumers should use nixosModules.nas-cache / darwinModules.nas-cache.
     homeModules.nas-cache = ./modules/home/nas-cache.nix;
+
+    # The shared interactive zsh aliases/functions as a builder, so
+    # SYSTEM-level consumers (nix-personal's headless NAS shell, where the
+    # humans are FreeIPA users with no home-manager) can reuse the exact same
+    # source home/zsh.nix does — no copy-paste drift. Call as
+    #   nix-common.lib.zshInteractiveInit { inherit pkgs; profile = "nas"; }
+    lib.zshInteractiveInit = import ./modules/shell/interactive-aliases.nix;
   };
 }
