@@ -1,6 +1,7 @@
 # modules/nas-cache.nix — NAS-hosted Nix binary cache + x86_64-linux remote
-# builder (the `nix-cache` TrueNAS app on nas-sdg; server side lives in the
-# ugreen-nas-compose repo, ansible/roles/truenas_nix_cache_app/).
+# builder (native NixOS services on nas-sdg since the TrueNAS→NixOS cutover;
+# server side lives in nix-personal, modules/nas/nix-cache.nix — Harmonia on
+# :30500 + the dedicated `nix-remote-builder` ssh-ng user, nix-personal#164).
 #
 # Imported as nixosModules.nas-cache or darwinModules.nas-cache. Platform-
 # agnostic: only touches nix.settings / nix.distributedBuilds /
@@ -12,9 +13,8 @@
 # One-time per-client setup (the nix-daemon runs as root):
 #   sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/builder_ed25519 \
 #     -C "nix-builder@$(hostname -s)"
-#   # add the .pub to truenas_nix_cache_app_authorized_keys in
-#   # ugreen-nas-compose host_vars/nas-sdg.yml and re-run
-#   # ansible/playbooks/truenas-nix-cache-app.yml
+#   # add the .pub to my.nixCache.builderKeys in nix-personal
+#   # hosts/nas-sdg/default.nix and deploy nas-sdg
 {lib, ...}: let
   # Harmonia HTTP endpoint. The netbird overlay name resolves both at home
   # (WireGuard takes the LAN path) and away — no separate LAN entry needed.
@@ -26,11 +26,13 @@
   cachePublicKey = "nas-sdg-nix-cache-1:5FXUg5ik7av8CDnsngWpuM2Xe9RJ3WYoewH6t+rt9mo=";
 
   # Builder sshd host key — pinned so root's nix-daemon never hits an
-  # interactive host-key prompt. base64 of the pubkey line (type + key, no
-  # comment):
-  #   ssh truenas_admin@nas-sdg \
-  #     "sudo cat /mnt/tank/nix-cache/ssh/ssh_host_ed25519_key.pub" | base64
-  builderPublicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUV0dHFIbTNRUXgydnBnT3h4d3RKZjE2WTh5cmszSGQxMVlZK2VsSFhwMGk=";
+  # interactive host-key prompt. This is nas-sdg's REAL host key (salvaged
+  # across the NixOS migration, so it is stable); the old value was the
+  # dissolved nix-cache container's own sshd key. base64 of the pubkey line
+  # (type + key, no comment):
+  #   ssh-keyscan -t ed25519 nas-sdg.netbird.cloud 2>/dev/null \
+  #     | awk '{printf "%s %s", $2, $3}' | base64
+  builderPublicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUV2YzgwdFcrNEhMNW9mb0kzRkduVk1XT3ByZHN3cjhyZitNNzFCRys0UDU=";
 in {
   config = lib.mkMerge [
     # Substitution: pull paths the NAS has already built instead of rebuilding.
@@ -57,7 +59,7 @@ in {
             hostName = "nix-builder-nas-sdg";
             systems = ["x86_64-linux"];
             protocol = "ssh-ng";
-            sshUser = "root";
+            sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
             maxJobs = 4;
             speedFactor = 1;
@@ -72,8 +74,8 @@ in {
       programs.ssh.extraConfig = ''
         Host nix-builder-nas-sdg
           HostName nas-sdg.netbird.cloud
-          Port 30222
-          User root
+          Port 22
+          User nix-remote-builder
           IdentityFile /etc/nix/builder_ed25519
           IdentitiesOnly yes
           # nix pins publicHostKey in a temp known_hosts under the MACHINE
