@@ -28,7 +28,11 @@
     # OpenDeck (Stream Deck software) built from source. Deliberately NO
     # nixpkgs follows — upstream README warns of FOD hash mismatches when
     # the pin changes.
-    opendeck-nix.url = "github:Kitt3120/opendeck-nix";
+    # TEMPORARY fork pin (#97): upstream's pluginDenoDepsHash no longer
+    # matches what the deno registry serves and every consumer build fails
+    # on the FOD mismatch. The fork branch carries the one-line hash fix;
+    # revert to github:Kitt3120/opendeck-nix once it lands upstream.
+    opendeck-nix.url = "github:geoffdavis/opendeck-nix/fix/plugin-deno-deps-hash";
 
     # Stream Deck mute-button plugin for teams-for-linux (HM module + package).
     opendeck-teams-for-linux.url = "github:geoffdavis/opendeck-teams-for-linux";
