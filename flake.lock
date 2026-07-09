@@ -205,15 +205,16 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1780184505,
-        "narHash": "sha256-sCN7HPuFbN+C8AS+3Kh1L99JNUQzSQR4DX8mAqtruYo=",
-        "owner": "Kitt3120",
+        "lastModified": 1783620204,
+        "narHash": "sha256-3Hl/h4i0LPttki+kRVyEgmCWJ2hrf8kg4SduY4/sv/E=",
+        "owner": "geoffdavis",
         "repo": "opendeck-nix",
-        "rev": "7fa03f15716aa22d0a0c3bf18124b723bd0bfa23",
+        "rev": "0cb69cb7bb6c908174d39ea341e8370f2903c622",
         "type": "github"
       },
       "original": {
-        "owner": "Kitt3120",
+        "owner": "geoffdavis",
+        "ref": "fix/plugin-deno-deps-hash",
         "repo": "opendeck-nix",
         "type": "github"
       }
