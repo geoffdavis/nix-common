@@ -352,10 +352,24 @@
   # icons (1Password). Exposed via the read-only `waybarRelayout` option for host
   # monitor-change handlers (lid binds, clamshell services). The mid sleep lets
   # the hide settle so the two signals don't coalesce into a no-op.
+  #
+  # Two passes: a single hide+show that fires while the outputs are still
+  # settling (an external whose 4K@60 request is falling back to @30, an MST
+  # stream still coming up, a clamshell re-enable mid-transition) recreates the
+  # surface onto a transient state and leaves waybar mapped-but-BLANK — the
+  # process and layer surface survive, so it reads as "waybar vanished" with no
+  # crash and needs a manual restart. The second pass, after the outputs have
+  # settled, recreates the surface on the stable geometry. The signal count
+  # stays even, so a visible bar ends visible regardless of which pass "takes".
   waybarRelayoutScript = pkgs.writeShellScript "waybar-relayout" ''
-    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
-    ${pkgs.coreutils}/bin/sleep 0.3
-    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+    relayout() {
+      ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+      ${pkgs.coreutils}/bin/sleep 0.3
+      ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+    }
+    relayout
+    ${pkgs.coreutils}/bin/sleep 2
+    relayout
   '';
 
   # 1Password registers its StatusNotifier tray icon exactly once at start and
