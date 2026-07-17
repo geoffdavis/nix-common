@@ -353,23 +353,27 @@
   # monitor-change handlers (lid binds, clamshell services). The mid sleep lets
   # the hide settle so the two signals don't coalesce into a no-op.
   #
-  # Two passes: a single hide+show that fires while the outputs are still
-  # settling (an external whose 4K@60 request is falling back to @30, an MST
-  # stream still coming up, a clamshell re-enable mid-transition) recreates the
-  # surface onto a transient state and leaves waybar mapped-but-BLANK — the
-  # process and layer surface survive, so it reads as "waybar vanished" with no
-  # crash and needs a manual restart. The second pass, after the outputs have
-  # settled, recreates the surface on the stable geometry. The signal count
-  # stays even, so a visible bar ends visible regardless of which pass "takes".
+  # DEBOUNCED. A single monitor change can invoke this several times — the
+  # clamshell settle, a lid bind, and the extra configreloaded the undock
+  # `hyprctl reload` kicks off — and a relayout that fires while the outputs are
+  # still settling recreates waybar's surface onto a transient state, leaving it
+  # mapped-but-BLANK (process + layer surface survive, so it reads as "waybar
+  # vanished" with no crash). Firing per-call makes waybar visibly restart once
+  # per invocation. Instead: each caller stamps a unique token and waits out a
+  # debounce window; only the LAST caller in the burst survives the token check
+  # and does the single hide+show. Net effect — exactly ONE relayout per monitor
+  # change no matter how many callers fire, and because it lands only after the
+  # burst goes quiet, it's past the output settle so the bar isn't left blank.
   waybarRelayoutScript = pkgs.writeShellScript "waybar-relayout" ''
-    relayout() {
-      ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
-      ${pkgs.coreutils}/bin/sleep 0.3
-      ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
-    }
-    relayout
-    ${pkgs.coreutils}/bin/sleep 2
-    relayout
+    stamp="$XDG_RUNTIME_DIR/waybar-relayout.stamp"
+    token="$$.$(${pkgs.coreutils}/bin/date +%s%N)"
+    ${pkgs.coreutils}/bin/printf '%s' "$token" > "$stamp"
+    ${pkgs.coreutils}/bin/sleep 1.5
+    # A newer caller claimed the stamp during the window — let it do the work.
+    [ "$(${pkgs.coreutils}/bin/cat "$stamp" 2>/dev/null)" = "$token" ] || exit 0
+    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
+    ${pkgs.coreutils}/bin/sleep 0.3
+    ${pkgs.procps}/bin/pkill -SIGUSR1 waybar
   '';
 
   # 1Password registers its StatusNotifier tray icon exactly once at start and
