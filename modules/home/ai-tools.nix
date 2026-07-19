@@ -34,16 +34,36 @@
     or null;
 
   # Override base with sources["<pkg>-<platformSuffix>"], skipping silently
-  # if there's no key for this platform.
-  override = base: pkg: let
+  # if there's no key for this platform. extraBuildInputs are appended to the
+  # base derivation's buildInputs — for runtime libs a vendor adds to a
+  # prebuilt release that nixpkgs' pin doesn't yet cover (see copilot below).
+  override = base: pkg: extraBuildInputs: let
     key = "${pkg}-${platformSuffix}";
   in
     if platformSuffix == null || !(sources ? ${key})
     then null
     else
-      base.overrideAttrs (_: {
+      base.overrideAttrs (prev: {
         inherit (sources.${key}) version src;
+        buildInputs = (prev.buildInputs or []) ++ extraBuildInputs;
       });
+
+  # copilot-cli ≥1.0.71 bundles @webviewjs/webview — a prebuilt native module
+  # (webview.linux-x64-gnu.node) that dynamically links GTK3, WebKit2GTK-4.1,
+  # libsoup-3, and xdotool. nixpkgs' github-copilot-cli pin predates it, so
+  # its buildInputs lack these and autoPatchelfHook fails the build. Add them
+  # (Linux-x64 only; the darwin-arm64 tarball uses the system WebKit
+  # framework) so the module patches cleanly and the webview functions.
+  copilotWebviewLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
+    webkitgtk_4_1 # libwebkit2gtk-4.1.so.0, libjavascriptcoregtk-4.1.so.0
+    gtk3 # libgtk-3.so.0, libgdk-3.so.0
+    gdk-pixbuf # libgdk_pixbuf-2.0.so.0
+    cairo # libcairo.so.2
+    libsoup_3 # libsoup-3.0.so.0
+    wayland # libwayland-client.so.0
+    dbus # libdbus-1.so.3
+    xdotool # libxdo.so.3
+  ]);
 
   # codex needs a custom derivation: nixpkgs builds it from Cargo source
   # (would force a cargoHash bump every release), but the vendor publishes
@@ -68,8 +88,8 @@
 in {
   home.packages =
     lib.filter (p: p != null) [
-      (override pkgs.claude-code "claude-code")
-      (override pkgs.github-copilot-cli "copilot-cli")
+      (override pkgs.claude-code "claude-code" [])
+      (override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs)
       codex
     ]
     # codex's Linux sandbox shells out to bubblewrap (bwrap) and degrades
