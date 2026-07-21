@@ -23,18 +23,18 @@
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.214";
+    version = "2.1.216";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.214/darwin-arm64/claude";
-      sha256 = "sha256-WXlt0Y6dd/ElbzZ9ttKM5L2c1ZaOQCrToyeqw2q8bew=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.216/darwin-arm64/claude";
+      sha256 = "sha256-0BtJIQ1y7L4neiZl0QS6zM3fLSIYW+mURtKSng7fxI0=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.214";
+    version = "2.1.216";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.214/linux-x64/claude";
-      sha256 = "sha256-PAKRNvfIH1TtSjjp1S5lWq1TZDPbveUFGcjDG7ZGrRQ=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.216/linux-x64/claude";
+      sha256 = "sha256-dN7KRSILgIDsdasJm9WlmA5BorWHmEagCPsRXUNt4IU=";
     };
   };
   codex-linux-x64 = {
@@ -47,18 +47,18 @@
   };
   copilot-cli-darwin-arm64 = {
     pname = "copilot-cli-darwin-arm64";
-    version = "1.0.71";
+    version = "1.0.73";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.71/github-copilot-1.0.71-darwin-arm64.tgz";
-      sha256 = "sha256-3Pns6dg+P2TukM7ekVcW7QoEYwyaWPlNnOpGCpjC0aY=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.73/github-copilot-1.0.73-darwin-arm64.tgz";
+      sha256 = "sha256-Uua3Zl+Q+Dw64qlU8b9OPlF0dba4Ej1y2fqYRG622gg=";
     };
   };
   copilot-cli-linux-x64 = {
     pname = "copilot-cli-linux-x64";
-    version = "1.0.71";
+    version = "1.0.73";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.71/github-copilot-1.0.71-linux-x64.tgz";
-      sha256 = "sha256-mD6Gs9Ie7YamCfpiqYSx0dy4MNeH3ivoA/IFXICEckM=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.73/github-copilot-1.0.73-linux-x64.tgz";
+      sha256 = "sha256-Bh2PVfVXYCoLmU7p8FNnAXRiFAXwTfuyqilIaaSw8cE=";
     };
   };
   terraform-darwin-arm64 = {
