@@ -10,7 +10,6 @@
   ...
 }: let
   inherit (config.my) username;
-  unfreePackageNames = import ../shared/unfree-package-names.nix;
 in {
   options.my.username = lib.mkOption {
     type = lib.types.str;
@@ -22,11 +21,29 @@ in {
     '';
   };
 
+  options.my.unfreePackageNames = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [];
+    description = ''
+      Package names (as `lib.getName`) permitted despite unfree licences,
+      via allowUnfreePredicate below. The shared baseline
+      (modules/shared/unfree-package-names.nix) is always included; feature
+      modules and hosts append their own through normal list merge — e.g.
+      nixosModules.steam adds "steam"/"steam-unwrapped" only when Steam is
+      enabled, so gaming unfrees never enter the baseline that work/darwin
+      hosts consume.
+    '';
+  };
+
   config = {
+    # Shared baseline of permitted-unfree names; feature modules/hosts extend
+    # this list rather than editing the shared file.
+    my.unfreePackageNames = import ../shared/unfree-package-names.nix;
+
     # home-manager useGlobalPkgs shares this nixpkgs config, so allowUnfree is
     # set at the system level (home-level nixpkgs.config is ignored there).
     nixpkgs.config.allowUnfreePredicate = pkg:
-      builtins.elem (lib.getName pkg) unfreePackageNames;
+      builtins.elem (lib.getName pkg) config.my.unfreePackageNames;
 
     nix = {
       settings = {

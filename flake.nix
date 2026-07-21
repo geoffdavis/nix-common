@@ -167,6 +167,9 @@
     # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
     nixosModules.nas-cache = ./modules/nas-cache.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
+    # Opt-in Steam client + 32-bit GL + controller udev for desktop hosts
+    # (my.steam.enable, off by default). Contributes its own unfree allowances.
+    nixosModules.steam = ./modules/nixos/steam.nix;
     # Reusable local `ansible` automation account (SSH key + NOPASSWD sudo),
     # separate from human/break-glass logins. Enable with my.ansibleUser.enable.
     nixosModules.ansible-user = ./modules/nixos/ansible-user.nix;
