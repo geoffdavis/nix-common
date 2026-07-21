@@ -113,6 +113,7 @@ in {
       jq
       lazydocker # docker/compose TUI
       markdownlint-cli
+      markdownlint-cli2
       mise
       ripgrep
       shellcheck # shell linter; used by pre-commit language:system hooks
