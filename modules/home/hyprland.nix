@@ -227,6 +227,18 @@
   '';
   fol = "${focusOrLaunch}/bin/focus-or-launch";
 
+  # networkmanager_dmenu's launcher (waybar network left-click): walker in dmenu
+  # mode. The candidate SSID list arrives on stdin and the pick returns on stdout
+  # — walker --dmenu is exactly a dmenu. Wrapped rather than set as
+  # `dmenu_command = walker --dmenu` so any launcher-specific flags
+  # networkmanager_dmenu appends for a tool it recognises are dropped: walker
+  # isn't in its table today (so it appends nothing), but walker maps -i to
+  # --index, which would make it return a row number instead of the SSID — the
+  # wrapper keeps us safe if that table ever changes.
+  nmDmenuLauncher = pkgs.writeShellScript "nmdm-walker" ''
+    exec ${pkgs.walker}/bin/walker --dmenu
+  '';
+
   # Screenshot helper: grim captures, then satty opens the shot for crop/
   # annotate. In satty, Ctrl+S saves a timestamped PNG to ~/Pictures/Screenshots
   # and Ctrl+C copies to the clipboard; --early-exit closes satty after either
@@ -544,7 +556,9 @@ in {
         piper # GUI for ratbagd: G502 onboard-profile programming
         nwg-displays # GTK GUI: drag monitor layout, mode/scale dropdowns
         hyprmon # TUI: visual monitor layout, drag-and-drop, saved profiles
-        networkmanagerapplet # nm-connection-editor for the waybar network on-click
+        networkmanagerapplet # nm-connection-editor (waybar network middle-click)
+        networkmanager_dmenu # walker-driven wifi scan/join picker (network left-click)
+        pinentry-qt # masked passphrase dialog for networkmanager_dmenu joins
         inter # UI font waybar + wlogout reference (else they fall back to DejaVu)
         swayosd # OSD server + client (workspace switch, optionally media keys)
       ]
@@ -554,6 +568,21 @@ in {
       ++ lib.optional cfg.udiskie.enable udiskie
       ++ lib.optional cfg.bluetooth.enable blueman # waybar bluetooth on-click + applet
       ++ lib.optional cfg.polkitAgent.enable hyprpolkitagent;
+
+    # networkmanager_dmenu (waybar network left-click): pick/join networks
+    # through walker, and hand passphrase entry to a real masked pinentry rather
+    # than typing the key into the visible picker. It uses one dmenu_command for
+    # both the SSID list and the passphrase, so it can't obscure the latter for a
+    # launcher it doesn't recognise — pinentry-qt gives a proper hidden-input
+    # dialog (Qt is already in the closure via Plasma and needs no secret-service
+    # prompter under Hyprland). Talks to NetworkManager, so it respects the iwd
+    # backend just like nmtui.
+    xdg.configFile."networkmanager-dmenu/config.ini".text = ''
+      [dmenu]
+      dmenu_command = ${nmDmenuLauncher}
+      pinentry = ${pkgs.pinentry-qt}/bin/pinentry-qt
+      wifi_chars = ▂▄▆█
+    '';
 
     programs = {
       # Kitty declaratively, so catppuccin/nix's kitty module auto-enables and
@@ -675,7 +704,14 @@ in {
             tooltip-format = "{ifname} via {gwaddr}";
             tooltip-format-wifi = "{essid} ({signalStrength}%) {ipaddr}";
             tooltip-format-ethernet = "{ifname} {ipaddr}";
-            on-click = "${fol} nm-connection-editor ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
+            # Left: walker wifi scan/join picker (good at joining new networks,
+            # which nm-connection-editor is not). The class arg is a sentinel that
+            # matches no window — the picker shows a transient walker surface and
+            # exits on select, so there's nothing to focus; fol just routes the
+            # launch through the compositor (out of waybar's cgroup). Middle:
+            # nm-connection-editor for editing saved profiles. Right: nmtui.
+            on-click = "${fol} nm-dmenu-picker ${pkgs.networkmanager_dmenu}/bin/networkmanager_dmenu";
+            on-click-middle = "${fol} nm-connection-editor ${pkgs.networkmanagerapplet}/bin/nm-connection-editor";
             on-click-right = "${fol} nmtui ${glKitty} --class nmtui -e nmtui";
           };
 
