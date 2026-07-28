@@ -12,38 +12,88 @@
 # undeclared option on headless hosts (error) or, if guarded on the option's
 # presence, make this module's shape depend on the option set (infinite
 # recursion in the module fixpoint). Leave it to autoEnable.
-{lib, ...}: {
-  programs.yazi = {
-    enable = true;
+{
+  lib,
+  pkgs,
+  ...
+}: let
+  # trash-cli + the restore/recycle-bin plugins are FreeDesktop-trash-spec
+  # tools (~/.local/share/Trash); trash-cli has no macOS-native-Trash backend
+  # (upstream says it never will). So this block is Linux-only. macOS keeps
+  # yazi's built-in delete → native ~/.Trash, with undelete via Finder "Put
+  # Back". On Linux yazi's built-in `d` already trashes to the FreeDesktop
+  # spec — the same store these plugins manage — so no delete-key rebind is
+  # needed.
+  inherit (pkgs.stdenv.hostPlatform) isLinux;
+in {
+  programs.yazi = lib.mkMerge [
+    {
+      enable = true;
 
-    # `y` opens yazi and cd's the shell to the directory you quit in (the
-    # wrapper writes the chosen cwd back out). Renamed off the default
-    # "yazi" so the bare binary still works non-interactively.
-    shellWrapperName = lib.mkDefault "y";
+      # `y` opens yazi and cd's the shell to the directory you quit in (the
+      # wrapper writes the chosen cwd back out). Renamed off the default
+      # "yazi" so the bare binary still works non-interactively.
+      shellWrapperName = lib.mkDefault "y";
 
-    # zsh is the primary shell (modules/home/zsh.nix); bashInteractive is
-    # also installed via cli-tools.nix, so wire both wrappers up.
-    enableZshIntegration = lib.mkDefault true;
-    enableBashIntegration = lib.mkDefault true;
+      # zsh is the primary shell (modules/home/zsh.nix); bashInteractive is
+      # also installed via cli-tools.nix, so wire both wrappers up.
+      enableZshIntegration = lib.mkDefault true;
+      enableBashIntegration = lib.mkDefault true;
 
-    # yazi.toml. yazi 25.x renamed the `[manager]` table to `[mgr]`; this is
-    # a freeform attrset (home-manager does no validation), so keep it in
-    # sync with the pinned yazi if it lags. All mkDefault so a host can
-    # override any single key without a conflict.
-    settings = {
-      mgr = {
-        show_hidden = lib.mkDefault false;
-        sort_by = lib.mkDefault "natural";
-        sort_dir_first = lib.mkDefault true;
-        sort_sensitive = lib.mkDefault false;
-        linemode = lib.mkDefault "size";
+      # yazi.toml. yazi 25.x renamed the `[manager]` table to `[mgr]`; this is
+      # a freeform attrset (home-manager does no validation), so keep it in
+      # sync with the pinned yazi if it lags. All mkDefault so a host can
+      # override any single key without a conflict.
+      settings = {
+        mgr = {
+          show_hidden = lib.mkDefault false;
+          sort_by = lib.mkDefault "natural";
+          sort_dir_first = lib.mkDefault true;
+          sort_sensitive = lib.mkDefault false;
+          linemode = lib.mkDefault "size";
+        };
+
+        preview = {
+          tab_size = lib.mkDefault 2;
+          max_width = lib.mkDefault 600;
+          max_height = lib.mkDefault 900;
+        };
+      };
+    }
+
+    (lib.mkIf isLinux {
+      # trash-cli on the yazi wrapper's PATH so the plugins can shell out to
+      # trash-list / trash-restore / trash-rm / trash-empty.
+      extraPackages = [pkgs.trash-cli];
+
+      plugins = {
+        # `u` → restore last-deleted files (interactive picker). No setup()
+        # call required.
+        restore = pkgs.yaziPlugins.restore;
+
+        # `R b` → browse / restore / empty menu. Requires
+        # require("recycle-bin"):setup(); `setup = true` generates it into
+        # the managed init.lua.
+        recycle-bin = {
+          package = pkgs.yaziPlugins.recycle-bin;
+          setup = true;
+        };
       };
 
-      preview = {
-        tab_size = lib.mkDefault 2;
-        max_width = lib.mkDefault 600;
-        max_height = lib.mkDefault 900;
-      };
-    };
-  };
+      # No delete-key rebind: yazi's built-in `d` already trashes to the
+      # FreeDesktop spec on Linux, which is exactly what these plugins read.
+      keymap.mgr.prepend_keymap = lib.mkDefault [
+        {
+          on = "u";
+          run = "plugin restore --interactive";
+          desc = "Restore deleted file (trash)";
+        }
+        {
+          on = ["R" "b"];
+          run = "plugin recycle-bin";
+          desc = "Open recycle bin";
+        }
+      ];
+    })
+  ];
 }
