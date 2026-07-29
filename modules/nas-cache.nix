@@ -15,7 +15,11 @@
 #     -C "nix-builder@$(hostname -s)"
 #   # add the .pub to my.nixCache.builderKeys in nix-personal
 #   # hosts/nas-sdg/default.nix and deploy nas-sdg
-{lib, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   # Harmonia HTTP endpoint. The netbird overlay name resolves both at home
   # (WireGuard takes the LAN path) and away — no separate LAN entry needed.
   cacheUrl = "http://nas-sdg.netbird.cloud:30500";
@@ -33,6 +37,17 @@
   #   ssh-keyscan -t ed25519 nas-sdg.netbird.cloud 2>/dev/null \
   #     | awk '{printf "%s %s", $2, $3}' | base64
   builderPublicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUV2YzgwdFcrNEhMNW9mb0kzRkduVk1XT3ByZHN3cjhyZitNNzFCRys0UDU=";
+
+  # nas-sdg's host key in known_hosts wire form, decoded from the single-source
+  # base64 above (no second literal to drift out of sync). nix's remote-BUILD
+  # path injects builderPublicHostKey via a temp known_hosts on the fly, but a
+  # plain `nix copy --to ssh-ng://…` — e.g. cache-push's post-build-hook — has
+  # no such injection, and the nix-daemon runs with no HOME (so no user
+  # known_hosts). Pin the key here, keyed on the HostKeyAlias, so that plain-ssh
+  # copy can verify the host instead of dying at "failed to start SSH connection".
+  builderKnownHosts = pkgs.runCommand "nix-builder-nas-sdg.known_hosts" {} ''
+    printf 'nix-builder-nas-sdg %s\n' "$(printf %s '${builderPublicHostKey}' | base64 -d)" > "$out"
+  '';
 in {
   config = lib.mkMerge [
     # Substitution: pull paths the NAS has already built instead of rebuilding.
@@ -83,6 +98,10 @@ in {
           # instead, misses the pin, and dies at the interactive prompt —
           # the daemon has no TTY.
           HostKeyAlias nix-builder-nas-sdg
+          # Pin nas-sdg's host key for plain-ssh `nix copy` (cache-push). nix's
+          # remote-BUILD ssh passes its own -oUserKnownHostsFile on the command
+          # line, which overrides this, so builds are unaffected.
+          UserKnownHostsFile ${builderKnownHosts}
       '';
     })
   ];
