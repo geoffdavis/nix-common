@@ -23,11 +23,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-JpXXLpjAOfBh+oc1YIBxqBZha02IuzclVhQRiF29V6c=",
+            "sha256": "sha256-jZuPdQo5KPvbYqN5YXFq3lAEqJccWhi6ROFOSvjiWuU=",
             "type": "url",
-            "url": "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.28.x64.tar.gz"
+            "url": "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.30.x64.tar.gz"
         },
-        "version": "8.12.28"
+        "version": "8.12.30"
     },
     "claude-code-darwin-arm64": {
         "cargoLock": null,
@@ -68,11 +68,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-v68Tybo08q12TkqRbEnPcXeuujKc8PcZ4iJ1ZvyNZio=",
+            "sha256": "sha256-W6O5QFVDlTCB9mHQhU0mb3biq75R1BNJNVo23nZzd2o=",
             "type": "url",
-            "url": "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-x86_64-unknown-linux-musl.tar.gz"
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.146.0/codex-x86_64-unknown-linux-musl.tar.gz"
         },
-        "version": "0.145.0"
+        "version": "0.146.0"
     },
     "copilot-cli-darwin-arm64": {
         "cargoLock": null,

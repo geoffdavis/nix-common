@@ -15,10 +15,10 @@
   };
   _1password-gui-linux-x64 = {
     pname = "_1password-gui-linux-x64";
-    version = "8.12.28";
+    version = "8.12.30";
     src = fetchurl {
-      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.28.x64.tar.gz";
-      sha256 = "sha256-JpXXLpjAOfBh+oc1YIBxqBZha02IuzclVhQRiF29V6c=";
+      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.30.x64.tar.gz";
+      sha256 = "sha256-jZuPdQo5KPvbYqN5YXFq3lAEqJccWhi6ROFOSvjiWuU=";
     };
   };
   claude-code-darwin-arm64 = {
@@ -39,10 +39,10 @@
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.145.0";
+    version = "0.146.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-v68Tybo08q12TkqRbEnPcXeuujKc8PcZ4iJ1ZvyNZio=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.146.0/codex-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-W6O5QFVDlTCB9mHQhU0mb3biq75R1BNJNVo23nZzd2o=";
     };
   };
   copilot-cli-darwin-arm64 = {
