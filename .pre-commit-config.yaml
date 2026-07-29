@@ -9,7 +9,12 @@ repos:
       # those commits would be unpushable anyway; fail fast at commit time.
       - id: no-commit-to-branch
       - id: trailing-whitespace
+        # nvfetcher regenerates _sources/generated.json without a trailing
+        # newline on each run, so these fixers would fight it forever (and
+        # fail a --all-files run). deadnix already excludes _sources/ below.
+        exclude: ^_sources/
       - id: end-of-file-fixer
+        exclude: ^_sources/
       - id: check-merge-conflict
       - id: check-added-large-files
       - id: mixed-line-ending
