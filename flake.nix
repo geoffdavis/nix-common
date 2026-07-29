@@ -163,9 +163,15 @@
     # (nix-darwin + NixOS). Same file — both platforms share these option
     # namespaces (nix.settings, nix.buildMachines, programs.ssh.extraConfig).
     darwinModules.nas-cache = ./modules/nas-cache.nix;
+    # Opt-in build-output push to the nas-sdg cache (same file as
+    # nixosModules.cache-push). Pairs with nas-cache on the pushing host.
+    darwinModules.cache-push = ./modules/cache-push.nix;
     nixosModules.common = ./modules/nixos/common.nix;
     # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
     nixosModules.nas-cache = ./modules/nas-cache.nix;
+    # Opt-in build-output push to the nas-sdg cache (same file as
+    # darwinModules.cache-push). Pairs with nas-cache on the pushing host.
+    nixosModules.cache-push = ./modules/cache-push.nix;
     nixosModules.onepassword = ./modules/nixos/onepassword.nix;
     # Opt-in Steam client + 32-bit GL + controller udev for desktop hosts
     # (my.steam.enable, off by default). Contributes its own unfree allowances.
