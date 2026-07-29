@@ -1,11 +1,16 @@
 # modules/home/ai-tools.nix — version-pinned AI CLI tools for all hosts.
 #
 # Provides claude-code (Anthropic), github-copilot-cli (GitHub), and
-# codex (OpenAI), pinned past whatever nixpkgs-25.11 ships and tracking
-# each vendor's PRODUCTION/stable release channel via nvfetcher
+# codex (OpenAI), pinned past whatever nixpkgs ships and tracking each
+# vendor's PRODUCTION/stable release channel via nvfetcher
 # (/nvfetcher.toml → /_sources/generated.nix). Auth configuration
 # (apiKeyHelper, ANTHROPIC_BASE_URL, etc.) is intentionally not set
 # here — each consumer host wires its own; see PR #15 for context.
+#
+# Per-tool knobs (all default true — existing consumers are unaffected):
+#   aiTools.claude.enable    = false  # opt out of claude-code
+#   aiTools.codex.enable     = false  # opt out of codex (Linux-x64 only)
+#   aiTools.copilotCli.enable = false  # opt out of github-copilot-cli
 #
 # Versions bumped automatically by .github/workflows/update-sources.yml;
 # also manually via `task update:sources`.
@@ -15,10 +20,12 @@
 #   - codex: x86_64-linux only (darwin gets it via Homebrew cask;
 #     see nix-personal hosts/windansea/default.nix)
 {
+  config,
   lib,
   pkgs,
   ...
 }: let
+  cfg = config.aiTools;
   sources = import ../../_sources/generated.nix {
     inherit (pkgs) fetchgit fetchurl fetchFromGitHub dockerTools;
   };
@@ -86,14 +93,32 @@
         meta.mainProgram = "codex";
       };
 in {
-  home.packages =
-    lib.filter (p: p != null) [
-      (override pkgs.claude-code "claude-code" [])
-      (override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs)
-      codex
-    ]
+  options.aiTools = {
+    claude.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Install claude-code (Anthropic). Set false to opt out on a host.";
+    };
+    codex.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Install codex (OpenAI). Linux-x64 only; darwin uses the Homebrew cask. Set false to opt out on a host.";
+    };
+    copilotCli.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Install github-copilot-cli. Set false to opt out on a host.";
+    };
+  };
+
+  config.home.packages =
+    lib.filter (p: p != null) (
+      lib.optional cfg.claude.enable (override pkgs.claude-code "claude-code" [])
+      ++ lib.optional cfg.copilotCli.enable (override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs)
+      ++ lib.optional cfg.codex.enable codex
+    )
     # codex's Linux sandbox shells out to bubblewrap (bwrap) and degrades
     # noisily without it. Linux-only tool (namespaces); darwin codex uses
     # Seatbelt instead.
-    ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.bubblewrap;
+    ++ lib.optional (cfg.codex.enable && pkgs.stdenv.hostPlatform.isLinux) pkgs.bubblewrap;
 }
