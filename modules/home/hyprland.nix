@@ -1153,10 +1153,10 @@ in {
             match:title = ^(Quick Access.*)$
             stay_focused = true
           }
-          # Float GTK/Qt open and save dialogs (title-based, app-agnostic).
+          # Float GTK/Qt/Electron open and save dialogs (title-based, app-agnostic).
           windowrule {
             name = file-dialog-float
-            match:title = ^(Open|Open File|Save|Save As|Save File)$
+            match:title = ^(Open|Open File|Open Folder|Save|Save As|Save File)$
             float = true
           }
           # Float the xdg-desktop-portal file picker (used by Firefox, Electron, etc.).
