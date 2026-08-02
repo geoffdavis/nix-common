@@ -93,6 +93,11 @@ in {
           User nix-remote-builder
           IdentityFile /etc/nix/builder_ed25519
           IdentitiesOnly yes
+          # Fast-fail when the netbird overlay is down (laptop off-VPN): the
+          # cache-push post-build-hook relies on `nix copy` connecting or
+          # failing quickly so a build never stalls on a dead cache. Also
+          # bounds remote-build offload when nas-sdg is unreachable.
+          ConnectTimeout 4
           # nix pins publicHostKey in a temp known_hosts under the MACHINE
           # name; without HostKeyAlias, ssh looks up [nas-sdg.netbird.cloud]:30222
           # instead, misses the pin, and dies at the interactive prompt —
