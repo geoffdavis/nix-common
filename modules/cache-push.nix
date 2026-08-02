@@ -20,14 +20,16 @@
   # Runs per realised build (as the nix-daemon). Copies $OUT_PATHS to nas-sdg
   # over the ssh-ng builder endpoint. nix-remote-builder is a trusted user on
   # nas-sdg, so unsigned paths are accepted (--no-check-sigs) and this host
-  # needs no signing key. A bounded TCP probe skips the push cleanly when the
-  # netbird overlay is down (laptop off-VPN), so local builds never block on a
-  # dead cache; a hard timeout + `|| true` keep a slow/failed push non-fatal.
+  # needs no signing key. The copy IS its own reachability test: the ssh alias
+  # sets a short ConnectTimeout (see nas-cache), so when the netbird overlay is
+  # down (laptop off-VPN) the connection fails fast instead of blocking the
+  # build; a hard timeout + `|| true` keep a slow/failed push non-fatal either
+  # way. (An earlier `bash /dev/tcp` pre-probe was removed: it is SIGKILL'd on
+  # darwin — bash's /dev/tcp to a non-local host is killed there — so it made
+  # the hook skip every push on macOS. Letting `nix copy` connect is portable.)
   pushHook = pkgs.writeShellScript "cache-push-hook" ''
     set -eu
     [ -n "''${OUT_PATHS:-}" ] || exit 0
-    ${pkgs.coreutils}/bin/timeout 2 ${pkgs.bash}/bin/bash -c \
-      'exec 3<>/dev/tcp/nas-sdg.netbird.cloud/22' 2>/dev/null || exit 0
     ${pkgs.coreutils}/bin/timeout 30 ${config.nix.package}/bin/nix copy \
       --no-check-sigs \
       --to 'ssh-ng://nix-remote-builder@nix-builder-nas-sdg' \
