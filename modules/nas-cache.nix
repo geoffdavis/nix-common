@@ -72,7 +72,20 @@ in {
             # Alias resolved by the ssh config below — buildMachines has no
             # port field, so the alias carries HostName + Port + key.
             hostName = "nix-builder-nas-sdg";
-            systems = ["x86_64-linux"];
+            # aarch64-linux is EMULATED on nas-sdg (boot.binfmt.emulatedSystems),
+            # not native. Listed so aarch64-DARWIN clients — which cannot build
+            # aarch64-linux at all — have somewhere to send a Raspberry Pi
+            # closure; without it there is nowhere in the fleet to build one.
+            #
+            # Cheap in practice: aarch64-linux is a first-class Hydra platform,
+            # so packages substitute prebuilt and only trivial per-host
+            # derivations execute under qemu. A host that pins a NON-cached
+            # kernel (e.g. nixos-hardware's linux-rpi) would instead compile it
+            # emulated, which is hours — pin mainline on aarch64 hosts.
+            #
+            # If this ever gets slow, the fix is a NATIVE aarch64 builder as an
+            # additional buildMachines entry, not a redesign.
+            systems = ["x86_64-linux" "aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
