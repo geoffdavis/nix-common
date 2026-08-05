@@ -6,6 +6,8 @@
 #
 # For system-level consumers (NixOS, nix-darwin) use nixosModules.nas-cache
 # or darwinModules.nas-cache instead — those include the full builder config.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,

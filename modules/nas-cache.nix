@@ -15,6 +15,8 @@
 #     -C "nix-builder@$(hostname -s)"
 #   # add the .pub to my.nixCache.builderKeys in nix-personal
 #   # hosts/nas-sdg/default.nix and deploy nas-sdg
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {pkgs, ...}: let
   # cacheUrl + cachePublicKey live in the shared endpoint file so this module
   # and homeModules.nas-cache can never drift apart.

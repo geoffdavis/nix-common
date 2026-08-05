@@ -27,13 +27,9 @@
 
     # OpenDeck (Stream Deck software) built from source. Deliberately NO
     # nixpkgs follows — upstream README warns of FOD hash mismatches when
-    # the pin changes.
-    # TEMPORARY fork pin (#97; revert tracked in #125): upstream's
-    # pluginDenoDepsHash no longer matches what the deno registry serves and
-    # every consumer build fails on the FOD mismatch. The fork branch carries
-    # the one-line hash fix; revert to github:Kitt3120/opendeck-nix once it
-    # lands upstream.
-    opendeck-nix.url = "github:geoffdavis/opendeck-nix/fix/plugin-deno-deps-hash";
+    # the pin changes. (A 2026-07/08 deno-registry hash drift forced a
+    # temporary fork pin — #97/#125; upstream fixed it and the pin retired.)
+    opendeck-nix.url = "github:Kitt3120/opendeck-nix";
 
     # Stream Deck mute-button plugin for teams-for-linux (HM module + package).
     opendeck-teams-for-linux.url = "github:geoffdavis/opendeck-teams-for-linux";
@@ -180,6 +176,12 @@
     # Reusable local `ansible` automation account (SSH key + NOPASSWD sudo),
     # separate from human/break-glass logins. Enable with my.ansibleUser.enable.
     nixosModules.ansible-user = ./modules/nixos/ansible-user.nix;
+    # netbird overlay spoke (daemon + identity restore + enrollment),
+    # promoted from nix-personal (#124). sops-agnostic by design.
+    nixosModules.netbird = ./modules/nixos/netbird.nix;
+    # IODD virtual-drive USB tooling (iodd-cp / iodd-mkvhd), promoted from
+    # nix-personal (#124).
+    nixosModules.iodd = ./modules/nixos/iodd.nix;
     nixosModules.nas-backup = ./modules/nixos/nas-backup.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;

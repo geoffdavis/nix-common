@@ -1,3 +1,5 @@
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,
@@ -7,21 +9,21 @@
     # zoxide: frecency-ranked directory jumping; the zsh hook is required for
     # it to learn paths. The shared aliases put `cd` onto its zd wrapper.
     zoxide = {
-      enable = true;
-      enableZshIntegration = true;
+      enable = lib.mkDefault true;
+      enableZshIntegration = lib.mkDefault true;
     };
 
     # fzf keybindings (Ctrl-R history, Ctrl-T files, Alt-C dirs). The fzf
     # binary itself also sits in cli-tools for consumers without this module.
     fzf = {
-      enable = true;
-      enableZshIntegration = true;
+      enable = lib.mkDefault true;
+      enableZshIntegration = lib.mkDefault true;
     };
 
     zsh = {
-      enable = true;
+      enable = lib.mkDefault true;
       oh-my-zsh = {
-        enable = true;
+        enable = lib.mkDefault true;
         theme = lib.mkDefault "agnoster";
         plugins = ["git" "python" "terraform"];
       };

@@ -1,3 +1,5 @@
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,
@@ -19,7 +21,7 @@
 
   # Provide Nerd Font glyph coverage for terminal editors (Neovim, etc.)
   # on interactive Linux desktops.
-  fonts.fontconfig.enable = pkgs.stdenv.isLinux;
+  fonts.fontconfig.enable = lib.mkDefault pkgs.stdenv.isLinux;
   # _1password-gui comes from modules/home/onepassword.nix (imported via
   # ./cli-tools.nix above) so it stays in lockstep with the CLI override.
   home.packages = lib.optionals pkgs.stdenv.isLinux (with pkgs; [

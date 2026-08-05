@@ -46,6 +46,10 @@ EOF
 while IFS= read -r f; do
   case "$f" in
     modules/shared/*) continue ;;
+    # modules/home/hyprland/ holds the hyprland module's internal concern
+    # files (imported by the modules/home/hyprland.nix entry point, which IS
+    # the flake output) — exempt from rule 1, same rationale as modules/shared/.
+    modules/home/hyprland/*) continue ;;
   esac
   if ! printf '%s\n' "$refs" | grep -qxF "./$f"; then
     echo "::error::module file is not exported from flake.nix: $f"
@@ -63,4 +67,18 @@ if [ "$fail" -ne 0 ]; then
 fi
 
 count=$(printf '%s\n' "$refs" | grep -c .)
+# 3. Module classes (module-contract.md "Two module classes"): a FEATURE
+#    module declares options (an enable gate); a BASE/PROFILE module, where
+#    importing is the opt-in, must say so with an IMPORT-IS-OPT-IN header.
+#    Grep-level by design (no nix required), same as the checks above.
+for f in modules/home/*.nix modules/nixos/*.nix modules/darwin/*.nix modules/*.nix; do
+  [ -f "$f" ] || continue
+  if ! grep -q -e 'mkEnableOption' -e 'options\.' "$f" \
+    && ! grep -q 'IMPORT-IS-OPT-IN' "$f"; then
+    echo "module class violation: $f declares no options and carries no IMPORT-IS-OPT-IN header" >&2
+    echo "  (feature module -> add an enable option; base module -> add the header)" >&2
+    fail=1
+  fi
+done
+
 echo "module contract OK: $count module reference(s) in flake.nix, all consistent with modules/."

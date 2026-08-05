@@ -14,6 +14,8 @@
 # Platform coverage: x86_64-linux + aarch64-darwin. Imported
 # transitively by cli-tools.nix so every consumer host picks up the
 # pinned version without a per-host change.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,

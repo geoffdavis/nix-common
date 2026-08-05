@@ -1,6 +1,8 @@
 # Shared git config for every host.
 # Per-host modules set programs.git.settings.user.email and
 # programs.git.signing.key (the ed25519 pubkey 1Password signs commits with).
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   config,
   lib,
@@ -26,7 +28,7 @@ in {
     enable = true;
 
     settings = {
-      user.name = "Geoff Davis";
+      user.name = lib.mkDefault "Geoff Davis";
 
       # Fallback pager for the non-diff commands delta doesn't own
       # (branch/tag -l/config -l/grep/stash list/help): -F quits if the
@@ -68,7 +70,7 @@ in {
   # flashing the alternate buffer and vanishing — the behaviour the old
   # built-in `less -FRX` default no longer delivers on modern less.
   programs.delta = {
-    enable = true;
+    enable = lib.mkDefault true;
     enableGitIntegration = true;
     options = {
       navigate = true; # n/N to jump between diff hunks
