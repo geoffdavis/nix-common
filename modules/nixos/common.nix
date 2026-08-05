@@ -82,7 +82,12 @@ in {
       isNormalUser = true;
       description = lib.mkDefault "Geoff Davis";
       extraGroups = lib.mkDefault ["wheel" "networkmanager" "video"];
-      shell = lib.mkDefault pkgs.zsh;
+      # mkOverride 900, not mkDefault: the upstream users-groups module
+      # DEFINES shell at mkDefault priority (bash via defaultUserShell), so
+      # a second mkDefault here is a duplicate-definition conflict on every
+      # NixOS consumer — live-caught by the consumer-eval gate. 900 beats
+      # upstream's default, yields to plain host assignments.
+      shell = lib.mkOverride 900 pkgs.zsh;
     };
 
     home-manager = {
