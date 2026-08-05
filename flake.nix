@@ -180,6 +180,12 @@
     # Reusable local `ansible` automation account (SSH key + NOPASSWD sudo),
     # separate from human/break-glass logins. Enable with my.ansibleUser.enable.
     nixosModules.ansible-user = ./modules/nixos/ansible-user.nix;
+    # netbird overlay spoke (daemon + identity restore + enrollment),
+    # promoted from nix-personal (#124). sops-agnostic by design.
+    nixosModules.netbird = ./modules/nixos/netbird.nix;
+    # IODD virtual-drive USB tooling (iodd-cp / iodd-mkvhd), promoted from
+    # nix-personal (#124).
+    nixosModules.iodd = ./modules/nixos/iodd.nix;
     nixosModules.nas-backup = ./modules/nixos/nas-backup.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
