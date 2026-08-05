@@ -14,7 +14,16 @@ and the `module-contract` CI job); the stylistic half is enforced by alejandra
 | Cross-platform home-manager | `modules/home/<name>.nix` | `homeModules.<name>` |
 | NixOS-only | `modules/nixos/<name>.nix` | `nixosModules.<name>` |
 | nix-darwin-only | `modules/darwin/<name>.nix` | `darwinModules.<name>` |
+| Platform-agnostic **system** module (NixOS + nix-darwin) | `modules/<name>.nix` | `nixosModules.<name>` **and** `darwinModules.<name>` (double-exported; e.g. `nas-cache`, `cache-push`) |
+| Library / builder export (not a module) | `modules/shell/<name>.nix` etc. | `lib.<name>` |
 | Internal helper (imported by other modules, **not** a flake output) | `modules/shared/<name>.nix` | none |
+
+Some modules additionally require values the consumer must pass via
+`specialArgs` / `extraSpecialArgs` — currently `lazyvim`
+(`homeModules.neovim`, both `*Modules.common`) and `darwin`
+(`darwinModules.common`). A module that adds such an argument must document
+it in its header and in the README export list; the flake cannot supply it
+for you.
 
 Anything outside `modules/shared/` **must** be exported from `flake.nix`. The
 contract check fails closed on an orphaned module file or a dangling export
@@ -66,9 +75,15 @@ task contract && task fmt && task lint
 
 ## Why this is agent-friendly
 
-- The failure modes are **mechanical and named** (orphan module, dangling
-  ref, unused arg, missing mkIf) — an agent can self-correct from the error
-  text without human review.
+- The failure modes are **mechanical and named** — an agent can self-correct
+  from the error text without human review. To be precise about who enforces
+  what: `check-module-contract.sh` catches orphan modules and dangling
+  exports; deadnix (pre-commit + CI) catches unused lambda args. **Nothing
+  currently enforces the enable/mkIf rule** — it is checklist-only, and a
+  number of shipped modules deliberately use an "importing is the opt-in"
+  shape instead (e.g. `modules/home/yazi.nix`, the `*-base` aggregators, both
+  `common` modules). Formalizing that second module class — or adding a check
+  — is tracked in nix-common#124.
 - The check needs **no nix toolchain** (pure bash), so it runs in any
   sandbox an agent operates in, and in CI even when a Nix eval error would
   otherwise mask it.

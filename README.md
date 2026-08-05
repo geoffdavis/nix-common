@@ -7,25 +7,80 @@ names no specific hosts.
 
 ## Exports
 
-System modules — per platform; system config + home-manager wiring:
+This list is the public API: every name below is consumed by downstream
+repos, so renames/removals are breaking changes that require a coordinated
+bump in each consumer.
 
-- `darwinModules.common` — nix-darwin hosts (macOS)
-- `nixosModules.common` — NixOS hosts
+NixOS modules:
 
-Home modules — imported into a host's home-manager user (cross-platform unless noted):
+- `nixosModules.common` — base system config + home-manager wiring (requires
+  `lazyvim` in `specialArgs`)
+- `nixosModules.ansible-user` — dedicated automation user for ansible-managed
+  hosts
+- `nixosModules.nas-backup` — parameterized restic backup (repository, paths,
+  btrfs snapshot staging, notify hooks)
+- `nixosModules.nas-cache` — substituter + remote-builder client for the
+  maintainer's NAS binary cache
+- `nixosModules.cache-push` — post-build-hook push to that same cache
+- `nixosModules.onepassword` — 1Password system pieces (polkit, groups)
+- `nixosModules.steam` — Steam + gamescope
+- `nixosModules.opendeck` — re-export of the opendeck-nix module
 
-- `homeModules.cli-tools` — shared CLI packages (Mac + Linux)
-- `homeModules.neovim` — LazyVim editor + global `EDITOR=nvim`
+Darwin modules:
+
+- `darwinModules.common` — base system config + home-manager wiring (requires
+  `lazyvim` and `darwin` in `specialArgs`)
+- `darwinModules.determinate-gc` — GC schedule for Determinate installs
+- `darwinModules.nas-cache` / `darwinModules.cache-push` — same files as the
+  nixos exports (platform-agnostic)
+
+Home modules — imported into a host's home-manager user (cross-platform
+unless noted):
+
+- `homeModules.cli-tools` — shared CLI packages. NOTE: transitively imports
+  `onepassword` (pinned 1Password CLI + GUI) and `terraform` — importing this
+  module pulls both.
+- `homeModules.neovim` — LazyVim editor + global `EDITOR=nvim` (requires
+  `lazyvim` in `extraSpecialArgs`)
 - `homeModules.profile` — shared Linux `.profile` snippet management
 - `homeModules.git` — git config + 1Password SSH commit signing
+- `homeModules.zsh` — zsh + oh-my-zsh + fzf/zoxide baseline
 - `homeModules.ssh` — 1Password SSH agent / `IdentityAgent` config
+- `homeModules.onepassword` — pinned 1Password CLI (+ GUI on Linux x86_64)
+- `homeModules.terraform` — pinned terraform
 - `homeModules.graphics` — GUI / diagramming tools
-- `homeModules.desktop-base` — cli-tools + git + graphics + ssh, plus GUI/fonts on an interactive desktop
+- `homeModules.desktop-base` — cli-tools + git + graphics + ssh, plus
+  GUI/fonts on an interactive desktop
 - `homeModules.gnome-dconf` — GNOME dconf settings (extensions, scaling)
-- `homeModules.gnome-desktop-base` — desktop-base + gnome-dconf + unfree-desktop (a GNOME Linux desktop)
+- `homeModules.gnome-desktop-base` — desktop-base + gnome-dconf +
+  unfree-desktop (a GNOME Linux desktop)
 - `homeModules.linux-headless-base` — cli-tools + git (headless Linux)
 - `homeModules.unfree-desktop` — home-level `allowUnfree` predicate
-- `homeModules.op-json-secrets` — patch JSON config files with 1Password secrets at activation time
+- `homeModules.hyprland` — full Hyprland desktop session (waybar, walker,
+  mako, wlogout, keybinds; options under `hyprland-desktop.*`)
+- `homeModules.teams-for-linux` — Teams PWA wrapper + mqtt/OpenDeck wiring
+- `homeModules.ai-tools` — pinned AI CLIs (claude-code, copilot-cli, codex;
+  per-tool enable options)
+- `homeModules.doc-tools` — document tooling (docx2pdf etc.)
+- `homeModules.yazi` — yazi file manager (imports opt in; see file header)
+- `homeModules.nix-index` — nix-index + comma with prebuilt database
+- `homeModules.op-json-secrets` — patch JSON config files with 1Password
+  secrets at activation time
+- `homeModules.op-file-secrets` — write whole files from 1Password at
+  activation time
+- `homeModules.nas-cache` — substituter-only cache client for standalone
+  home-manager hosts
+
+Lib:
+
+- `lib.zshInteractiveInit` — shared interactive-zsh init snippet builder
+- `apps.<system>.sync-pin` — resync a consumer's CI workflow pin to its
+  `flake.lock` (used by the consumer template's Taskfile)
+
+Some inputs exist only to be `follows`-ed by consumers and are referenced
+nowhere in this repo's own code: `nixpkgs-unstable`, `home-manager-nixos`,
+`home-manager-darwin`. Don't "clean them up" — pin-providing is this flake's
+job.
 
 ## Shared profile management
 
