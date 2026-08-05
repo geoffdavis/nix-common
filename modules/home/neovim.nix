@@ -3,16 +3,17 @@
 # home-manager `extraSpecialArgs = { inherit lazyvim; }`.
 {
   lazyvim,
+  lib,
   pkgs,
   ...
 }: {
   imports = [lazyvim.homeManagerModules.default];
 
   # Global editor for every host that imports this module.
-  home.sessionVariables.EDITOR = "nvim";
+  home.sessionVariables.EDITOR = lib.mkDefault "nvim";
 
   programs.lazyvim = {
-    enable = true;
+    enable = lib.mkDefault true;
 
     extras = {
       lang = {

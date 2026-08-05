@@ -329,7 +329,7 @@ in {
 
     (lib.mkIf cfg.opendeckPlugin.enable {
       programs.opendeck-teams-for-linux = {
-        enable = true;
+        enable = lib.mkDefault true;
         settings = {
           inherit (cfg.mqtt) username;
           password_file = pluginPasswordFile;

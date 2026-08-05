@@ -26,7 +26,7 @@ in {
     enable = true;
 
     settings = {
-      user.name = "Geoff Davis";
+      user.name = lib.mkDefault "Geoff Davis";
 
       # Fallback pager for the non-diff commands delta doesn't own
       # (branch/tag -l/config -l/grep/stash list/help): -F quits if the
@@ -68,7 +68,7 @@ in {
   # flashing the alternate buffer and vanishing — the behaviour the old
   # built-in `less -FRX` default no longer delivers on modern less.
   programs.delta = {
-    enable = true;
+    enable = lib.mkDefault true;
     enableGitIntegration = true;
     options = {
       navigate = true; # n/N to jump between diff hunks

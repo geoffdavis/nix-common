@@ -47,8 +47,8 @@ in {
 
     nix = {
       settings = {
-        experimental-features = ["nix-command" "flakes"];
-        trusted-users = ["root" username];
+        experimental-features = lib.mkDefault ["nix-command" "flakes"];
+        trusted-users = lib.mkDefault ["root" username];
         # Disk-pressure safety net: when free space drops below min-free mid-build
         # the daemon collects garbage until max-free is available again. Bounds the
         # worst case (a big closure landing on an almost-full disk) that scheduled
@@ -76,13 +76,13 @@ in {
       pkgs.pciutils # lspci
     ];
 
-    programs.zsh.enable = true;
+    programs.zsh.enable = lib.mkDefault true;
 
     users.users.${username} = {
       isNormalUser = true;
-      description = "Geoff Davis";
-      extraGroups = ["wheel" "networkmanager" "video"];
-      shell = pkgs.zsh;
+      description = lib.mkDefault "Geoff Davis";
+      extraGroups = lib.mkDefault ["wheel" "networkmanager" "video"];
+      shell = lib.mkDefault pkgs.zsh;
     };
 
     home-manager = {
