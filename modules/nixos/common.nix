@@ -47,8 +47,14 @@ in {
 
     nix = {
       settings = {
-        experimental-features = lib.mkDefault ["nix-command" "flakes"];
-        trusted-users = lib.mkDefault ["root" username];
+        # NOT mkDefault, deliberately: these are LIST options whose consumers
+        # extend by definition-merge (e.g. a cache module adding its builder
+        # user to trusted-users). mkDefault here would make any plain
+        # consumer definition REPLACE the base list instead of extending it
+        # — live-caught by the consumer-eval gate as root vanishing from
+        # trusted-users on the cache hosts.
+        experimental-features = ["nix-command" "flakes"];
+        trusted-users = ["root" username];
         # Disk-pressure safety net: when free space drops below min-free mid-build
         # the daemon collects garbage until max-free is available again. Bounds the
         # worst case (a big closure landing on an almost-full disk) that scheduled
@@ -81,7 +87,8 @@ in {
     users.users.${username} = {
       isNormalUser = true;
       description = lib.mkDefault "Geoff Davis";
-      extraGroups = lib.mkDefault ["wheel" "networkmanager" "video"];
+      # NOT mkDefault (list-merge semantics — see the nix.settings note).
+      extraGroups = ["wheel" "networkmanager" "video"];
       # mkOverride 900, not mkDefault: the upstream users-groups module
       # DEFINES shell at mkDefault priority (bash via defaultUserShell), so
       # a second mkDefault here is a duplicate-definition conflict on every
