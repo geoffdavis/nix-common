@@ -49,10 +49,29 @@ in {
 }
 ```
 
+## Two module classes
+
+Not every shared module wants an enable gate — about half the tree is
+deliberately "importing is the opt-in" (`desktop-base`, `cli-tools`, `git`,
+both `common` modules, ...). The contract recognizes both classes
+explicitly:
+
+- **Feature module** (the default; the skeleton's shape): declares options,
+  gates everything behind `lib.mkIf cfg.enable`. A consumer that doesn't
+  import-and-enable pays nothing.
+- **Base/profile module**: importing IS the enable — config applies
+  unconditionally. Must carry an `IMPORT-IS-OPT-IN` header comment so the
+  choice is visible and machine-checkable; `check-module-contract.sh`
+  fails closed on a module with neither options nor the header.
+
+New modules default to the feature class; use the base class only when the
+module is a bundle whose entire point is "give me the standard set".
+
 Rules:
 
-1. **One `enable` option** gates everything via `lib.mkIf cfg.enable`. A
-   consumer that doesn't import-and-enable pays nothing.
+1. **One `enable` option** gates everything via `lib.mkIf cfg.enable`
+   (feature class), or an `IMPORT-IS-OPT-IN` header (base class — see
+   above).
 2. **`lib.mkDefault`** on anything a host might reasonably override. Without
    it, a consumer setting the same option gets a conflict instead of an
    override.
@@ -76,14 +95,12 @@ task contract && task fmt && task lint
 ## Why this is agent-friendly
 
 - The failure modes are **mechanical and named** — an agent can self-correct
-  from the error text without human review. To be precise about who enforces
-  what: `check-module-contract.sh` catches orphan modules and dangling
-  exports; deadnix (pre-commit + CI) catches unused lambda args. **Nothing
-  currently enforces the enable/mkIf rule** — it is checklist-only, and a
-  number of shipped modules deliberately use an "importing is the opt-in"
-  shape instead (e.g. `modules/home/yazi.nix`, the `*-base` aggregators, both
-  `common` modules). Formalizing that second module class — or adding a check
-  — is tracked in nix-common#124.
+  from the error text without human review. Who enforces what:
+  `check-module-contract.sh` catches orphan modules, dangling exports, and
+  (since #124) the module-class rule — a module with neither options nor an
+  `IMPORT-IS-OPT-IN` header fails closed; deadnix (pre-commit + CI) catches
+  unused lambda args. The interior of the `mkIf` gate remains
+  checklist-only.
 - The check needs **no nix toolchain** (pure bash), so it runs in any
   sandbox an agent operates in, and in CI even when a Nix eval error would
   otherwise mask it.

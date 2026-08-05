@@ -1,6 +1,8 @@
 # Shared git config for every host.
 # Per-host modules set programs.git.settings.user.email and
 # programs.git.signing.key (the ed25519 pubkey 1Password signs commits with).
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   config,
   lib,

@@ -1,5 +1,7 @@
 # Shared CLI tooling, cross-platform (macOS + Linux).
 # Imported from each host's home-manager user config.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   pkgs,
   lib,

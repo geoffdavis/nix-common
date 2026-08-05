@@ -1,6 +1,8 @@
 # Shared neovim / LazyVim editor config + the global EDITOR default.
 # Cross-platform (macOS + Linux). Consumers wire `lazyvim` in via
 # home-manager `extraSpecialArgs = { inherit lazyvim; }`.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lazyvim,
   lib,
