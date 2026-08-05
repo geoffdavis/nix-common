@@ -17,6 +17,7 @@ and the `module-contract` CI job); the stylistic half is enforced by alejandra
 | Platform-agnostic **system** module (NixOS + nix-darwin) | `modules/<name>.nix` | `nixosModules.<name>` **and** `darwinModules.<name>` (double-exported; e.g. `nas-cache`, `cache-push`) |
 | Library / builder export (not a module) | `modules/shell/<name>.nix` etc. | `lib.<name>` |
 | Internal helper (imported by other modules, **not** a flake output) | `modules/shared/<name>.nix` | none |
+| Concern file of a split module (imported only by its entry module, **not** a flake output) | `modules/home/hyprland/<name>.nix` | none (the entry `modules/home/hyprland.nix` is the export; the contract check exempts this directory explicitly) |
 
 Some modules additionally require values the consumer must pass via
 `specialArgs` / `extraSpecialArgs` — currently `lazyvim`

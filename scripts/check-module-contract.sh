@@ -46,6 +46,10 @@ EOF
 while IFS= read -r f; do
   case "$f" in
     modules/shared/*) continue ;;
+    # modules/home/hyprland/ holds the hyprland module's internal concern
+    # files (imported by the modules/home/hyprland.nix entry point, which IS
+    # the flake output) — exempt from rule 1, same rationale as modules/shared/.
+    modules/home/hyprland/*) continue ;;
   esac
   if ! printf '%s\n' "$refs" | grep -qxF "./$f"; then
     echo "::error::module file is not exported from flake.nix: $f"
