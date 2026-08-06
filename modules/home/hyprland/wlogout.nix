@@ -8,7 +8,7 @@
 }: let
   cfg = config.hyprland-desktop;
   h = import ./lib.nix {inherit config lib pkgs;};
-  inherit (h) hyprctl uwsmLogout;
+  inherit (h) plainLogout uwsmLogout;
 in {
   config = lib.mkIf cfg.enable {
     programs = {
@@ -27,12 +27,14 @@ in {
           }
           {
             label = "logout";
-            # uwsm: stop graphical-session.target (graceful) then the compositor —
-            # see uwsmLogout. Non-uwsm: plain dispatch-exit.
+            # Both paths stop graphical-session.target first, so the session
+            # services get an ordered SIGTERM while the display is still up;
+            # only the way the compositor itself is stopped differs (uwsm stop
+            # vs. dispatch exit). See uwsmLogout / plainLogout.
             action =
               if cfg.uwsm.enable
               then "${uwsmLogout}"
-              else "${hyprctl} dispatch exit";
+              else "${plainLogout}";
             text = "Logout";
             keybind = "e";
           }
