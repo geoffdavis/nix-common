@@ -10,7 +10,7 @@
 }: let
   cfg = config.hyprland-desktop;
   h = import ./lib.nix {inherit config lib pkgs;};
-  inherit (h) nmDmenuLauncher sessionTarget walkerLayout walkerMochaStyle;
+  inherit (h) nmDmenuLauncher sessionGuard sessionTarget walkerLayout walkerMochaStyle;
 in {
   config = lib.mkIf cfg.enable {
     # networkmanager_dmenu (waybar network left-click): pick/join networks
@@ -76,6 +76,7 @@ in {
       # graphical-session.target, which the GNOME/Plasma sessions also reach).
       walker = {
         Install.WantedBy = lib.mkForce [sessionTarget];
+        Service = sessionGuard;
         # Order walker AFTER the session target. Under uwsm, WAYLAND_DISPLAY only
         # lands in the user env once graphical-session.target is reached (uwsm
         # finalizes the env there). Without this After, walker.service starts too
@@ -90,6 +91,7 @@ in {
       };
       elephant = {
         Install.WantedBy = lib.mkForce [sessionTarget];
+        Service = sessionGuard;
         # elephant is what actually spawns the apps walker selects, so it must
         # also start AFTER the session target — otherwise it (and every app it
         # launches) inherits an env without WAYLAND_DISPLAY and the launch
@@ -129,39 +131,41 @@ in {
           PartOf = [sessionTarget];
           After = [sessionTarget];
         };
-        Service = {
-          ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
-            pid=
-            # Kill the current swaybg when we exit; and on TERM/INT actually
-            # *exit*. Without the explicit exit the trap fired but the `while`
-            # loop just relaunched swaybg and kept running, so the service sat in
-            # stop-sigterm for the full 90s TimeoutStopSec. That stalled every
-            # Hyprland login: the env-import exec-once does a synchronous
-            # `systemctl --user stop hyprland-session.target && ... start ...`,
-            # and the stop blocked 90s on swaybg before waybar (everything
-            # PartOf the target) came back — a ~90s blank login.
-            trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' EXIT
-            trap 'exit 0' TERM INT
-            while :; do
-              img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
-                \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
-                | ${pkgs.coreutils}/bin/shuf -n1)
-              if [ -n "$img" ]; then
-                ${pkgs.swaybg}/bin/swaybg -i "$img" -m fill &
-                new=$!
-                ${pkgs.coreutils}/bin/sleep 1
-                [ -n "$pid" ] && kill "$pid" 2>/dev/null
-                pid=$new
-              fi
-              ${pkgs.coreutils}/bin/sleep 1800
-            done
-          '';
-          Restart = "on-failure";
-          # Backstop: if the wrapper ever can't exit in time, never block a
-          # session-target stop for systemd's default 90s (the wallpaper has no
-          # state worth a graceful shutdown).
-          TimeoutStopSec = "5s";
-        };
+        Service =
+          {
+            ExecStart = pkgs.writeShellScript "swaybg-rotate" ''
+              pid=
+              # Kill the current swaybg when we exit; and on TERM/INT actually
+              # *exit*. Without the explicit exit the trap fired but the `while`
+              # loop just relaunched swaybg and kept running, so the service sat in
+              # stop-sigterm for the full 90s TimeoutStopSec. That stalled every
+              # Hyprland login: the env-import exec-once does a synchronous
+              # `systemctl --user stop hyprland-session.target && ... start ...`,
+              # and the stop blocked 90s on swaybg before waybar (everything
+              # PartOf the target) came back — a ~90s blank login.
+              trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null' EXIT
+              trap 'exit 0' TERM INT
+              while :; do
+                img=$(${pkgs.findutils}/bin/find ${cfg.wallpaperPath}/ -type f \
+                  \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
+                  | ${pkgs.coreutils}/bin/shuf -n1)
+                if [ -n "$img" ]; then
+                  ${pkgs.swaybg}/bin/swaybg -i "$img" -m fill &
+                  new=$!
+                  ${pkgs.coreutils}/bin/sleep 1
+                  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+                  pid=$new
+                fi
+                ${pkgs.coreutils}/bin/sleep 1800
+              done
+            '';
+            Restart = "on-failure";
+            # Backstop: if the wrapper ever can't exit in time, never block a
+            # session-target stop for systemd's default 90s (the wallpaper has no
+            # state worth a graceful shutdown).
+            TimeoutStopSec = "5s";
+          }
+          // sessionGuard;
         Install.WantedBy = [sessionTarget];
       };
 
@@ -175,10 +179,12 @@ in {
           PartOf = [sessionTarget];
           After = [sessionTarget];
         };
-        Service = {
-          ExecStart = "${pkgs.swayosd}/bin/swayosd-server";
-          Restart = "on-failure";
-        };
+        Service =
+          {
+            ExecStart = "${pkgs.swayosd}/bin/swayosd-server";
+            Restart = "on-failure";
+          }
+          // sessionGuard;
         Install.WantedBy = [sessionTarget];
       };
 
@@ -188,12 +194,14 @@ in {
           PartOf = [sessionTarget];
           After = [sessionTarget];
         };
-        Service = {
-          Type = "simple";
-          ExecStart = "${pkgs.mako}/bin/mako";
-          ExecReload = "${pkgs.mako}/bin/makoctl reload";
-          Restart = "on-failure";
-        };
+        Service =
+          {
+            Type = "simple";
+            ExecStart = "${pkgs.mako}/bin/mako";
+            ExecReload = "${pkgs.mako}/bin/makoctl reload";
+            Restart = "on-failure";
+          }
+          // sessionGuard;
         Install.WantedBy = [sessionTarget];
       };
     };

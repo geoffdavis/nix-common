@@ -30,6 +30,27 @@
     then "graphical-session.target"
     else "hyprland-session.target";
 
+  # Desktop guard for the session services, needed ONLY under uwsm.
+  #
+  # Without uwsm the services hang off hyprland-session.target, which nothing
+  # but a Hyprland session ever starts — the scoping is implicit. Under uwsm
+  # they hang off the STOCK graphical-session.target, which every other desktop
+  # session on the host also reaches (GNOME, Plasma, …), so a login to one of
+  # those would start waybar/mako/walker/swaybg/swayosd in it. Guard each unit
+  # with systemd's XDG-autostart condition helper (the pattern uwsm's own
+  # example units use): it splits $XDG_CURRENT_DESKTOP on ':' and applies
+  # OnlyShowIn semantics, so it is correct for compound values like
+  # "ubuntu:GNOME". A non-zero ExecCondition marks the unit *skipped*, not
+  # failed. Ordering makes this safe: the services are After the target, and
+  # uwsm has exported XDG_CURRENT_DESKTOP=Hyprland into the user manager by
+  # then.
+  #
+  # Merged into a unit's `Service` attrset; an empty attrset off uwsm keeps the
+  # non-uwsm units byte-identical.
+  sessionGuard = lib.optionalAttrs cfg.uwsm.enable {
+    ExecCondition = ''${pkgs.systemd}/lib/systemd/systemd-xdg-autostart-condition "Hyprland" ""'';
+  };
+
   # Logout for a uwsm session. `uwsm stop` stops ONLY the compositor; it does
   # not stop graphical-session.target. On this host (logind KillUserProcesses=
   # false) the target then lingers — held active by darkman.service, which
@@ -413,6 +434,7 @@ in {
     onepasswordTrayScript
     osd
     screenshot
+    sessionGuard
     sessionTarget
     themeIcon
     uwsmLogout
