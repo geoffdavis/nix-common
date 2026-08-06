@@ -16,6 +16,7 @@
     keyboundWorkspaces
     onepasswordTrayScript
     osd
+    plainLogout
     screenshot
     uwsmLogout
     vol
@@ -128,11 +129,14 @@ in {
             "$mod, Q, killactive"
             "$mod, F, fullscreen"
             "$mod, L, exec, loginctl lock-session"
-            # Logout: graceful uwsm teardown (uwsmLogout) on uwsm hosts, else exit.
+            # Logout: graceful teardown either way — the session services are
+            # stopped in order before the compositor goes (uwsmLogout /
+            # plainLogout). Never the bare `exit` dispatcher, which leaves them
+            # orphaned on a dead display.
             (
               if cfg.uwsm.enable
               then "$mod SHIFT, E, exec, ${uwsmLogout}"
-              else "$mod SHIFT, E, exit"
+              else "$mod SHIFT, E, exec, ${plainLogout}"
             )
             # Screenshots open in satty to crop/annotate; Ctrl+S saves to
             # ~/Pictures/Screenshots, Ctrl+C copies. Print = drag a region first

@@ -44,6 +44,32 @@
     exec uwsm stop -r
   '';
 
+  # Logout WITHOUT uwsm — the same graceful teardown, one line different.
+  #
+  # A bare `hyprctl dispatch exit` (what this used to be) kills the compositor
+  # and nothing else: hyprland-session.target is never stopped, so waybar, mako,
+  # swaybg, swayosd, walker and elephant survive logout as orphans holding a
+  # dead WAYLAND_DISPLAY. Where logind runs KillUserProcesses=false they stay
+  # that way until home-manager's login exec-once cycles the target at the NEXT
+  # login — the leak that also strands session-scoped daemons (e.g. hypridle) on
+  # the previous, dead logind session.
+  #
+  # Stopping graphical-session.target first gives the session services an
+  # ORDERED SIGTERM while the compositor is still alive (so they can close
+  # cleanly against a live display), and takes hyprland-session.target down with
+  # it (HM binds it to graphical-session.target). Then exit the compositor to
+  # return to the greeter. Self-healing at the next login: HM's exec-once starts
+  # hyprland-session.target, whose BindsTo pulls graphical-session.target back
+  # up.
+  #
+  # `systemctl` is bare PATH on purpose — it must be the host's own client
+  # talking to the systemd user manager that owns this session, not a
+  # store-pinned build that may be a different major version than the manager.
+  plainLogout = pkgs.writeShellScript "hyprland-logout" ''
+    systemctl --user stop graphical-session.target
+    exec ${hyprctl} dispatch exit
+  '';
+
   # GL wrapper prefix for apps launched from a systemd-user service (waybar
   # on-click), which start in a clean env without the compositor's
   # leaked nixGL discovery vars. Empty on NixOS (real hardware.graphics); a
@@ -412,6 +438,7 @@ in {
     onepasswordEnvStrip
     onepasswordTrayScript
     osd
+    plainLogout
     screenshot
     sessionTarget
     themeIcon
