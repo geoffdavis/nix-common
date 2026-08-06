@@ -9,15 +9,17 @@
 }: let
   cfg = config.hyprland-desktop;
   h = import ./lib.nix {inherit config lib pkgs;};
-  inherit (h) fol g502Status glKitty sessionTarget themeIcon vol;
+  inherit (h) fol g502Status glKitty sessionGuard sessionTarget themeIcon vol;
 in {
   config = lib.mkIf cfg.enable {
     programs = {
       waybar = {
         enable = lib.mkDefault true;
-        # Scope to hyprland-session.target so the bar doesn't also start under the
-        # GNOME/Plasma sessions that still exist in GDM's session list. 26.05
-        # renamed the singular `target` to a `targets` list.
+        # Scope to the session target so the bar doesn't also start under the
+        # other desktop sessions in the greeter's session list. 26.05 renamed
+        # the singular `target` to a `targets` list. Under uwsm that target is
+        # the shared graphical-session.target, which those sessions DO reach —
+        # hence the sessionGuard ExecCondition below.
         systemd = {
           enable = lib.mkDefault true;
           targets = [sessionTarget];
@@ -307,5 +309,10 @@ in {
         '';
       };
     };
+
+    # Keep the bar out of the other desktop sessions once uwsm moves it onto
+    # the shared graphical-session.target (no-op without uwsm — see
+    # lib.nix sessionGuard).
+    systemd.user.services.waybar.Service = sessionGuard;
   };
 }
