@@ -75,13 +75,41 @@ in {
           #
           # If this ever gets slow, the fix is a NATIVE aarch64 builder as an
           # additional buildMachines entry, not a redesign.
-          systems = ["x86_64-linux" "aarch64-linux"];
+          #
+          # armv7l-linux is a DIFFERENT proposition and the paragraph above
+          # does NOT extend to it. It exists for windowpi, a Raspberry Pi 2
+          # (32-bit only, no aarch64 path) that serves the house's stratum-1
+          # GPS time — see nix-personal#340. There is no armv7l binary cache
+          # AT ALL: cache.nixos.org 404s on armv7l `hello`, not merely on
+          # exotic packages. So every derivation in that closure, including
+          # stdenv, GCC and the RPi vendor kernel, compiles under qemu. Expect
+          # the first build to run for hours. It is a one-time cost only
+          # because nas-sdg's Harmonia serves its own store, so the fleet
+          # substitutes the results afterwards.
+          systems = ["x86_64-linux" "aarch64-linux" "armv7l-linux"];
           protocol = "ssh-ng";
           sshUser = "nix-remote-builder";
           sshKey = "/etc/nix/builder_ed25519";
           maxJobs = 4;
           speedFactor = 1;
-          supportedFeatures = ["big-parallel"];
+          # gccarch-armv7-a is REQUIRED and listing armv7l-linux above is not
+          # sufficient on its own — this bit is easy to miss twice.
+          #
+          # nixpkgs tags the armv7l stdenv with
+          # `requiredSystemFeatures = ["gccarch-armv7-a"]`, derived from the
+          # armv7l-hf-multiplatform platform's gcc.arch. Nix only dispatches a
+          # derivation to a builder whose supportedFeatures COVER its
+          # requiredSystemFeatures, so without this entry a client would match
+          # on `systems`, then refuse to offload, and fall over with
+          # "a 'armv7l-linux' is required, but I am a 'x86_64-linux'".
+          #
+          # The same trap exists one layer down on the builder itself:
+          # boot.binfmt.emulatedSystems grants the PLATFORM but not the
+          # microarchitecture feature, so nas-sdg also sets
+          # nix.settings.system-features = ["gccarch-armv7-a"]. Both halves are
+          # needed; either alone produces a host that advertises armv7l and
+          # then refuses to build it.
+          supportedFeatures = ["big-parallel" "gccarch-armv7-a"];
           publicHostKey = builderPublicHostKey;
         }
       ];
