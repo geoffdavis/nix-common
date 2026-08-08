@@ -41,6 +41,21 @@
   builderKnownHosts = pkgs.runCommand "nix-builder-nas-sdg.known_hosts" {} ''
     printf 'nix-builder-nas-sdg %s\n' "$(printf %s '${builderPublicHostKey}' | base64 -d)" > "$out"
   '';
+
+  # torrey's sshd host key. Same derivation as above:
+  #   ssh-keyscan -t ed25519 torrey.netbird.cloud 2>/dev/null \
+  #     | awk '{printf "%s %s", $2, $3}' | base64
+  #
+  # NOT salvaged and NOT escrow-planted: torrey generated this itself at first
+  # boot, because it was provisioned by switching a booted installer in place
+  # rather than from a pre-baked image. It lives on torrey's SD card, which is
+  # also its boot medium — reflash that card and this literal must be updated
+  # (nix-personal escrows the private half as ssh-host-key-torrey).
+  torreyPublicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUZMbW5BTmJCMHBjbG4vZmRQUHV6dytTZTJFZDNVODBiZElpRU5KZXp2UzE=";
+
+  torreyKnownHosts = pkgs.runCommand "nix-builder-torrey.known_hosts" {} ''
+    printf 'nix-builder-torrey %s\n' "$(printf %s '${torreyPublicHostKey}' | base64 -d)" > "$out"
+  '';
 in {
   config = {
     # Substitution: pull paths the NAS has already built instead of rebuilding.
@@ -112,6 +127,47 @@ in {
           supportedFeatures = ["big-parallel" "gccarch-armv7-a"];
           publicHostKey = builderPublicHostKey;
         }
+        {
+          # torrey — the NATIVE ARM builder (nix-personal#351). A Raspberry
+          # Pi 5 whose Cortex-A76 implements AArch32 at EL0, verified on the
+          # hardware:
+          #
+          #   [    0.154620] CPU features: detected: 32-bit EL0 Support
+          #
+          # so armv7l runs on the CPU rather than through qemu. This is the
+          # entry the nas-sdg comment above anticipates when it says "the fix
+          # is a NATIVE aarch64 builder as an additional buildMachines entry,
+          # not a redesign".
+          hostName = "nix-builder-torrey";
+
+          # No x86_64-linux: torrey cannot build it, natively or otherwise.
+          # nas-sdg remains the only x86 builder and keeps that traffic.
+          systems = ["aarch64-linux" "armv7l-linux"];
+          protocol = "ssh-ng";
+          sshUser = "nix-remote-builder";
+          sshKey = "/etc/nix/builder_ed25519";
+
+          # 4 cores, 8 GB. Modest against nas-sdg's 12 threads, but these are
+          # real ARM cores rather than emulated ones.
+          maxJobs = 2;
+
+          # HIGHER THAN NAS-SDG (1), and that is the whole point of this
+          # entry. Both machines advertise aarch64-linux and armv7l-linux, so
+          # without a speed preference nix could hand native ARM work to the
+          # emulator — silently, and hours slower. speedFactor is what makes
+          # the native path win.
+          speedFactor = 3;
+
+          # gccarch-armv7-a for the reason spelled out at length above: the
+          # platform alone is not enough, nix matches requiredSystemFeatures.
+          # torrey supplies the other half itself via
+          # nix.settings.system-features (nix-personal hosts/torrey/builder.nix).
+          #
+          # gccarch-armv8-a because this really is armv8 hardware — nas-sdg
+          # cannot honestly claim that, since its aarch64 is qemu.
+          supportedFeatures = ["big-parallel" "gccarch-armv7-a" "gccarch-armv8-a"];
+          publicHostKey = torreyPublicHostKey;
+        }
       ];
     };
 
@@ -138,6 +194,20 @@ in {
         # remote-BUILD ssh passes its own -oUserKnownHostsFile on the command
         # line, which overrides this, so builds are unaffected.
         UserKnownHostsFile ${builderKnownHosts}
+
+      Host nix-builder-torrey
+        HostName torrey.netbird.cloud
+        Port 22
+        User nix-remote-builder
+        IdentityFile /etc/nix/builder_ed25519
+        IdentitiesOnly yes
+        # Same fast-fail rationale as nas-sdg above, and it matters more
+        # here: torrey is an appliance on a home VLAN reached over the
+        # overlay, so an off-VPN laptop must give up quickly rather than
+        # stall every build waiting on a builder it cannot see.
+        ConnectTimeout 4
+        HostKeyAlias nix-builder-torrey
+        UserKnownHostsFile ${torreyKnownHosts}
     '';
   };
 }
