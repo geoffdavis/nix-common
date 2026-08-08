@@ -208,6 +208,26 @@ in {
         ConnectTimeout 4
         HostKeyAlias nix-builder-torrey
         UserKnownHostsFile ${torreyKnownHosts}
+
+      Host nix-cache-push-nas-sdg
+        HostName nas-sdg.netbird.cloud
+        Port 22
+        # A DIFFERENT user than nix-builder-nas-sdg above, deliberately:
+        # nix-remote-builder is trusted for remote builds, but cache-push
+        # (modules/cache-push.nix) only ever needs to drop NARs into the
+        # file cache. nix-cache-push is scoped to exactly that via a
+        # forced command in its authorized_keys on nas-sdg (server side,
+        # nix-personal#353) — this alias carries no destination path, the
+        # server pins it.
+        User nix-cache-push
+        IdentityFile /etc/nix/builder_ed25519
+        IdentitiesOnly yes
+        ConnectTimeout 4
+        # Same physical host as nix-builder-nas-sdg above, so its pinned
+        # HostKeyAlias/known_hosts verify here too — reusing them means one
+        # less literal that could drift out of sync.
+        HostKeyAlias nix-builder-nas-sdg
+        UserKnownHostsFile ${builderKnownHosts}
     '';
   };
 }
