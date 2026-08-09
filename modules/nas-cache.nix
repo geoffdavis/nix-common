@@ -253,9 +253,9 @@ in {
       # keepalive is not a substitute -- its default idle timer is two
       # hours, which is the same as "never" for this purpose.
       #
-      # This matters MORE as builders multiply. The RPi5 fleet suffers a
-      # silent macb/RP1 stall (pi-talos-home-ops mitigates it with a
-      # link-toggling netwatch DaemonSet that recovers in 30-40s), so a
+      # This matters MORE as builders multiply. The RPi5 hardware this fleet
+      # builds on suffers a silent macb/RP1 stall, mitigated elsewhere by a
+      # watchdog that toggles the link and recovers in 30-40s, so a
       # builder briefly vanishing is an expected event, not a rare one. A
       # builder that recovers in 40 seconds is worth nothing if the client
       # never notices it left.
