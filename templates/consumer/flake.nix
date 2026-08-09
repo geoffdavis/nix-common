@@ -9,6 +9,7 @@
     # nix-darwin host, follow nixpkgs-darwin / home-manager-darwin and add
     # `darwin.follows = "nix-common/darwin";` instead.
     nixpkgs.follows = "nix-common/nixpkgs-nixos";
+    nixpkgs-unstable.follows = "nix-common/nixpkgs-unstable";
     home-manager.follows = "nix-common/home-manager-nixos";
     lazyvim.follows = "nix-common/lazyvim";
   };
@@ -27,7 +28,10 @@
       modules = [
         nix-common.homeModules.linux-headless-base
         nix-common.homeModules.neovim
-        nix-common.homeModules.nas-cache
+        # Opt-in: substituter config for the maintainer's private NAS binary
+        # cache. Only useful on hosts with access to that overlay network —
+        # uncomment deliberately, don't inherit it by accident.
+        # nix-common.homeModules.nas-cache
         ./hosts/hostname/home.nix
       ];
     };

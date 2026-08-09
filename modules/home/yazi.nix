@@ -12,6 +12,8 @@
 # undeclared option on headless hosts (error) or, if guarded on the option's
 # presence, make this module's shape depend on the option set (infinite
 # recursion in the module fixpoint). Leave it to autoEnable.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,

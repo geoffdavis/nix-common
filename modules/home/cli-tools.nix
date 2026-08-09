@@ -1,5 +1,7 @@
 # Shared CLI tooling, cross-platform (macOS + Linux).
 # Imported from each host's home-manager user config.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   pkgs,
   lib,
@@ -54,6 +56,10 @@ in {
       crane
       fluxcd
       fluxcd-operator-mcp # MCP server for the Flux Operator (was the controlplaneio-fluxcd brew tap)
+      # kubectl was missing while fluxcd, k9s, helm, talhelper and talosctl
+      # were all here -- every one of which assumes a working kubectl next
+      # to it. Adding it rather than reaching for `nix shell` each time.
+      kubectl
       kubernetes-helm
       jfrog-cli
       k9s
@@ -63,6 +69,15 @@ in {
       # terraform itself is pinned via modules/home/terraform.nix (imported
       # above) so it tracks HashiCorp's stable channel rather than lagging
       # nixpkgs.
+      # secrets. Every host in the fleet keys its sops-nix secrets on its own
+      # SSH ed25519 key (hosts/<name>/secrets/secrets.yaml), and NONE of the
+      # three tools needed to work with that were installed anywhere:
+      # `sops` to edit, `ssh-to-age` to derive the age recipient from a host
+      # key, `age` underneath both.
+      sops
+      ssh-to-age
+      age
+
       talhelper
       talosctl
       terragrunt
@@ -109,7 +124,12 @@ in {
       gnumake
       gnupatch
       gum # confirm prompts in shell functions (gwd in zsh.nix)
+      dnsutils # dig. The estate runs FreeIPA DNS with delegation, netbird
+      # nameserver groups, external-dns and UDM static records -- diagnosing
+      # any of it without dig means guessing.
       ipcalc
+      nmap # subnet sweeps when a fleet host stops answering; the fallback is
+      # a hand-rolled 254-iteration ping loop, which is how this gap was found
       jq
       lazydocker # docker/compose TUI
       markdownlint-cli
@@ -129,6 +149,12 @@ in {
       alejandra
       deadnix
       statix
+      # closure analysis. This fleet reasons about closure size constantly
+      # (armv7l has no binary cache, so every derivation is paid for), and
+      # doing it by hand with `nix path-info` invites double-counting shared
+      # paths. nix-tree answers "what pulls this in", nvd diffs generations.
+      nix-tree
+      nvd
 
       # python linting (the runtime is python312 above)
       ruff

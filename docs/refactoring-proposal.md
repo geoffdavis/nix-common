@@ -34,33 +34,22 @@ forgetting to export it (or leaving a dangling export). Documented in
 Every repo gets a `CLAUDE.md` that `@`-imports `AGENTS.md` so any coding agent
 picks up conventions regardless of which tool runs it.
 
+### 4. De-duplicated consumer Taskfile pin-sync logic (shipped as Option A)
+
+The sync-pin shell lives in `nix-common` exposed as `apps.<system>.sync-pin`
+(`flake.nix`); consumers call
+`nix run github:geoffdavis/nix-common#sync-pin -- .github/workflows/ci.yml`
+via their Taskfile (`templates/consumer/Taskfile.yml` carries the canonical
+wiring). Single source of truth — a pin-sync fix is a one-repo change instead
+of an every-consumer edit.
+
 ## Proposed (not yet implemented — needs your call)
-
-### 4. De-duplicate the consumer Taskfile pin-sync logic — *medium value, medium risk*
-
-`ci:sync-pin`, `bump:common`, `bump:common:commit`, and
-`_guard:committable-branch` are ~60 near-identical lines copied across all
-three consumer Taskfiles. When the logic needs a fix, it's a four-repo change.
-
-Options:
-- **A. Flake app.** Move the sync-pin shell into `nix-common` exposed as
-  `apps.<system>.sync-pin`; consumers call
-  `nix run github:geoffdavis/nix-common#sync-pin -- .github/workflows/ci.yml`.
-  Single source of truth; tradeoff is a (cached) fetch and "latest unless
-  pinned" semantics.
-- **B. Template-only convergence (low risk).** Keep the duplication but treat
-  `templates/consumer/Taskfile.yml` as the canonical copy; a `task contract`-
-  style check could diff each consumer's pin-sync block against the template
-  and warn on drift.
-
-Recommendation: B now (zero behavioural risk, makes drift visible), A later if
-the duplication actually causes a missed fix.
 
 ### 5. Reusable Claude workflows — *medium value, low risk*
 
 `claude.yml` and `claude-code-review.yml` are byte-identical across repos,
-including the pinned `claude-code-action` SHA. Bumping that SHA today is a
-five-repo edit. Extract the body into reusable workflows in nix-common
+including the pinned `claude-code-action` SHA. Bumping that SHA today is an
+every-repo edit. Extract the body into reusable workflows in nix-common
 (`claude-review.yml`, `claude.yml`) and leave a thin `uses:` wrapper in each
 repo. (The trigger event handlers must stay per-repo, but the steps don't.)
 
