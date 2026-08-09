@@ -14,6 +14,8 @@
 # Hosts must set programs._1password-gui.polkitPolicyOwners (the usernames
 # allowed to drive 1Password's polkit-backed auth prompts) themselves —
 # this module can't know the host's user.
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   lib,
   pkgs,

@@ -186,11 +186,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1779560665,
-        "narHash": "sha256-tpyBcxPpcQb8ukyNF7DoCwfSY3VPsxHoYwj00Cayv5o=",
+        "lastModified": 1785692966,
+        "narHash": "sha256-vUfIeBEfpbAfZ5zjgIkYk7eHBeVfCYVjLbWnMkseYnk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "64c08a7ca051951c8eae34e3e3cb1e202fe36786",
+        "rev": "643809054d65fdd466a63e3155b8c498cb483c04",
         "type": "github"
       },
       "original": {
@@ -205,16 +205,15 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1783620204,
-        "narHash": "sha256-3Hl/h4i0LPttki+kRVyEgmCWJ2hrf8kg4SduY4/sv/E=",
-        "owner": "geoffdavis",
+        "lastModified": 1785764453,
+        "narHash": "sha256-q2Sjdts8zY+WvpjtnUbnakrgDHzi0DmlDjQMfyu3hWg=",
+        "owner": "Kitt3120",
         "repo": "opendeck-nix",
-        "rev": "0cb69cb7bb6c908174d39ea341e8370f2903c622",
+        "rev": "32160fa0ae01bf227a691c54a162809b14b8641b",
         "type": "github"
       },
       "original": {
-        "owner": "geoffdavis",
-        "ref": "fix/plugin-deno-deps-hash",
+        "owner": "Kitt3120",
         "repo": "opendeck-nix",
         "type": "github"
       }

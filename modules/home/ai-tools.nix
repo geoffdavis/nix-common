@@ -19,6 +19,8 @@
 #   - claude-code, copilot-cli: x86_64-linux + aarch64-darwin
 #   - codex: x86_64-linux only (darwin gets it via Homebrew cask;
 #     see nix-personal hosts/windansea/default.nix)
+# IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
+# config applies unconditionally (module-contract.md, "Two module classes").
 {
   config,
   lib,

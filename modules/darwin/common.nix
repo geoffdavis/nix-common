@@ -25,7 +25,7 @@ in {
     nixpkgs.config.allowUnfreePredicate = pkg:
       builtins.elem (lib.getName pkg) unfreePackageNames;
 
-    system.stateVersion = 6;
+    system.stateVersion = lib.mkDefault 6;
     system.primaryUser = username;
 
     nix = {
@@ -36,6 +36,12 @@ in {
       # system-wide so root/sudo nix invocations get nix-command +
       # flakes too, not just users with home-level nix.conf.
       settings = {
+        # NOT mkDefault, deliberately: these are LIST options whose consumers
+        # extend by definition-merge (e.g. a cache module adding its builder
+        # user to trusted-users). mkDefault here would make any plain
+        # consumer definition REPLACE the base list instead of extending it
+        # — live-caught by the consumer-eval gate as root vanishing from
+        # trusted-users on the cache hosts.
         experimental-features = ["nix-command" "flakes"];
         trusted-users = ["root" username];
         # Disk-pressure safety net (see nixosModules.common for rationale).
@@ -62,14 +68,14 @@ in {
     };
 
     # zsh sourcing of nix-darwin's environment changes.
-    programs.zsh.enable = true;
+    programs.zsh.enable = lib.mkDefault true;
 
     homebrew = {
-      enable = true;
+      enable = lib.mkDefault true;
       onActivation = {
-        autoUpdate = true; # can slow darwin-rebuild down
-        upgrade = true;
-        cleanup = "uninstall"; # remove brews/casks not in config
+        autoUpdate = lib.mkDefault true; # can slow darwin-rebuild down
+        upgrade = lib.mkDefault true;
+        cleanup = lib.mkDefault "uninstall"; # remove brews/casks not in config
         extraFlags = ["--force"]; # required since homebrew added safety check for --cleanup
       };
       # Ensure terminal/editor glyph support on every interactive macOS host.

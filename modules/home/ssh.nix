@@ -106,8 +106,10 @@ in {
     # start with "Host "/"Match " are prefixed with "Host ", so "*" and the
     # space-joined host lists become the same blocks as before.
     programs.ssh = {
-      enable = true;
-      enableDefaultConfig = false;
+      enable = lib.mkDefault true;
+      # A strong, silently-inherited policy — mkDefault so a consumer can
+      # opt back into home-manager's default config blocks.
+      enableDefaultConfig = lib.mkDefault false;
       settings =
         {
           "*" =

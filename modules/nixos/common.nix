@@ -47,6 +47,12 @@ in {
 
     nix = {
       settings = {
+        # NOT mkDefault, deliberately: these are LIST options whose consumers
+        # extend by definition-merge (e.g. a cache module adding its builder
+        # user to trusted-users). mkDefault here would make any plain
+        # consumer definition REPLACE the base list instead of extending it
+        # — live-caught by the consumer-eval gate as root vanishing from
+        # trusted-users on the cache hosts.
         experimental-features = ["nix-command" "flakes"];
         trusted-users = ["root" username];
         # Disk-pressure safety net: when free space drops below min-free mid-build
@@ -76,13 +82,19 @@ in {
       pkgs.pciutils # lspci
     ];
 
-    programs.zsh.enable = true;
+    programs.zsh.enable = lib.mkDefault true;
 
     users.users.${username} = {
       isNormalUser = true;
-      description = "Geoff Davis";
+      description = lib.mkDefault "Geoff Davis";
+      # NOT mkDefault (list-merge semantics — see the nix.settings note).
       extraGroups = ["wheel" "networkmanager" "video"];
-      shell = pkgs.zsh;
+      # mkOverride 900, not mkDefault: the upstream users-groups module
+      # DEFINES shell at mkDefault priority (bash via defaultUserShell), so
+      # a second mkDefault here is a duplicate-definition conflict on every
+      # NixOS consumer — live-caught by the consumer-eval gate. 900 beats
+      # upstream's default, yields to plain host assignments.
+      shell = lib.mkOverride 900 pkgs.zsh;
     };
 
     home-manager = {
