@@ -228,6 +228,46 @@ in {
         # less literal that could drift out of sync.
         HostKeyAlias nix-builder-nas-sdg
         UserKnownHostsFile ${builderKnownHosts}
+
+      # ── liveness for connections that are ALREADY UP ──────────────────
+      #
+      # ConnectTimeout above only bounds the HANDSHAKE. It does nothing once
+      # a session is established, and that is the case that actually bit us.
+      #
+      # 2026-08-08, nix-personal#351: torrey went silent ~2h45m into an
+      # armv7l image build. The box was gone -- no network, silent serial
+      # console, recovered only by cycling its PoE port. The BUILD, however,
+      # sat there for 48 minutes with its log frozen at the exact second of
+      # the stall, `nix` still alive and blocked on a TCP socket whose peer
+      # no longer existed. It never errored, never retried, never gave up;
+      # it simply looked healthy while doing nothing. It had to be killed by
+      # hand, and until it was, monitoring reported the build as running.
+      #
+      # A hung build is worse than a failed one: a failure is visible and
+      # retryable, and nix would have rescheduled the derivation.
+      #
+      # ServerAliveInterval sends an encrypted channel request on an idle
+      # connection and requires a reply. Three unanswered probes at 15s
+      # tears the session down in ~45s, so a dead builder surfaces as an
+      # error while the build can still do something about it. TCP's own
+      # keepalive is not a substitute -- its default idle timer is two
+      # hours, which is the same as "never" for this purpose.
+      #
+      # This matters MORE as builders multiply. The RPi5 fleet suffers a
+      # silent macb/RP1 stall (pi-talos-home-ops mitigates it with a
+      # link-toggling netwatch DaemonSet that recovers in 30-40s), so a
+      # builder briefly vanishing is an expected event, not a rare one. A
+      # builder that recovers in 40 seconds is worth nothing if the client
+      # never notices it left.
+      #
+      # Applied by wildcard so it covers every builder and cache-push alias
+      # above, and any added later -- the failure mode is a property of
+      # "long-lived ssh to a fleet host", not of any one machine. Placed
+      # last: ssh_config takes the FIRST value seen for a keyword, so the
+      # specific stanzas above keep precedence for anything they set.
+      Host nix-builder-* nix-cache-push-*
+        ServerAliveInterval 15
+        ServerAliveCountMax 3
     '';
   };
 }
