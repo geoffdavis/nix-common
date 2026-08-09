@@ -56,6 +56,10 @@ in {
       crane
       fluxcd
       fluxcd-operator-mcp # MCP server for the Flux Operator (was the controlplaneio-fluxcd brew tap)
+      # kubectl was missing while fluxcd, k9s, helm, talhelper and talosctl
+      # were all here -- every one of which assumes a working kubectl next
+      # to it. Adding it rather than reaching for `nix shell` each time.
+      kubectl
       kubernetes-helm
       jfrog-cli
       k9s
