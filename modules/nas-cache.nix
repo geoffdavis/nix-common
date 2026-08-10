@@ -236,7 +236,19 @@ in {
             # without a speed preference nix could hand native ARM work to the
             # emulator — silently, and hours slower. speedFactor is what makes
             # the native path win.
-            speedFactor = 3;
+            # RAISED 3 -> 4 when nas-sct joined and nas-sdg went 1 -> 2.
+            #
+            # The tiers are now, top to bottom:
+            #   4  torrey           native ARM, dedicated builder
+            #   3  talos k8s nodes  native ARM, but with a day job (nix-personal)
+            #   2  nas-sdg          EMULATED ARM / native x86_64
+            #   1  nas-sct          native x86_64, overflow, possibly over a WAN
+            #
+            # Raising nas-sdg to 2 without also lifting this and the talos entries
+            # would have collapsed native ARM and emulated ARM into ONE tier,
+            # letting qemu win aarch64 work on a tie-break. That costs hours,
+            # silently — the exact inversion these comments exist to prevent.
+            speedFactor = 4;
 
             # gccarch-armv7-a for the reason spelled out at length above: the
             # platform alone is not enough, nix matches requiredSystemFeatures.
