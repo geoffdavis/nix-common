@@ -86,6 +86,23 @@
   sctKnownHosts = pkgs.runCommand "nix-builder-nas-sct.known_hosts" {} ''
     printf 'nix-builder-nas-sct %s\n' "$(printf %s '${sctPublicHostKey}' | base64 -d)" > "$out"
   '';
+
+  # This host's own builder alias, or null if it cannot be determined.
+  #
+  # MUST tolerate null: this module is imported on nix-darwin too, where
+  # `networking.hostName` is `nullOr str` and defaults to NULL — the darwin
+  # consumers do not set it. Interpolating that straight into a string throws
+  # at EVALUATION time ("cannot coerce null to a string"), so an unguarded
+  # `"nix-builder-${config.networking.hostName}"` breaks every darwin host
+  # that imports this module, which is exactly the set of clients the nas-sct
+  # entry below is most meant to help.
+  #
+  # Null is harmless for the filter's purpose: no darwin host is a builder,
+  # so there is nothing to exclude.
+  selfBuilderAlias =
+    if (config.networking.hostName or null) == null || config.networking.hostName == ""
+    then null
+    else "nix-builder-${config.networking.hostName}";
 in {
   config = {
     # Substitution: pull paths the NAS has already built instead of rebuilding.
@@ -119,7 +136,7 @@ in {
       # gets it for free.
       buildMachines =
         builtins.filter
-        (m: m.hostName != "nix-builder-${config.networking.hostName}")
+        (m: selfBuilderAlias == null || m.hostName != selfBuilderAlias)
         [
           {
             # Alias resolved by the ssh config below — buildMachines has no
