@@ -50,13 +50,26 @@
   # the hook skip every push on macOS. Letting `nix copy` connect is portable.)
   #
   # THE WALL-CLOCK TIMEOUT IS A BACKSTOP, NOT THE STALL DETECTOR. It used to
-  # be 30s, which silently made every large path permanently uncacheable:
-  # a 354 MiB path needs ~12 MiB/s sustained to finish inside 30s, didn't,
-  # got SIGTERMed, and `|| true` swallowed it — so it was retried on every
-  # build, and repeatedly WITHIN a build (the hook runs per realised
-  # derivation, and `nix copy` pushes each path plus its closure). The fleet
-  # cache was therefore missing precisely the expensive paths most worth
-  # caching, with no error anywhere. Found 2026-08-09.
+  # be 30s, which is a THROUGHPUT GATE in disguise: whether a path lands
+  # depends on its size against the current link speed, so the cut-off moves
+  # with load. Measured 2026-08-09 at 17 MiB/s over the overlay, 30s buys
+  # roughly 500 MiB nominal — less once closure paths and protocol overhead
+  # are included, and less again while the link is busy.
+  #
+  # That makes it MARGINAL rather than cleanly wrong, which is worse. A
+  # 354 MiB path sits at ~21s: it squeaks through often enough that nobody
+  # investigates, and fails often enough never to persist. Observed exactly
+  # that — onlyoffice (354 MiB) re-pushed on every build and absent from all
+  # 27,359 cache entries, while 1password (199 MiB), obsidian (112 MiB) and
+  # plasma-workspace-wallpapers (216 MiB) all landed fine at 6-13s.
+  # `|| true` then swallowed every failure, and the hook runs per realised
+  # derivation with `nix copy` pushing each path plus its closure, so the
+  # same doomed transfer was retried repeatedly within a single build.
+  #
+  # (nas-sdg pushes to this cache through its own local hook, disk-to-disk,
+  # so its builds are unaffected by any of this. Entries above ~500 MiB in
+  # the cache came from there, not from a remote pusher — do not read them
+  # as evidence that large remote pushes succeed.)
   #
   # Three layers already bound a push, in increasing order of severity, and
   # the wall-clock one must sit ABOVE the others or it preempts them:
