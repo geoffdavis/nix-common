@@ -87,6 +87,19 @@
     printf 'nix-builder-nas-sct %s\n' "$(printf %s '${sctPublicHostKey}' | base64 -d)" > "$out"
   '';
 
+  # tourmaline's sshd host key. Same derivation as the others, including the
+  # `grep -v '^#'` that modern ssh-keyscan needs (its banner otherwise lands in
+  # the base64 and decodes to something plausible that fails at verification):
+  #
+  #   ssh-keyscan -t ed25519 tourmaline.netbird.cloud 2>/dev/null \
+  #     | grep -v '^#' | grep ssh-ed25519 | head -1 \
+  #     | awk '{printf "%s %s", $2, $3}' | base64 -w0
+  tourmalinePublicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSU1wQmFqcndFYzRSL1hFNUNsamsxWGxqYTQvQVJwSklxUGRJdytySWZ0aWM=";
+
+  tourmalineKnownHosts = pkgs.runCommand "nix-builder-tourmaline.known_hosts" {} ''
+    printf 'nix-builder-tourmaline %s\n' "$(printf %s '${tourmalinePublicHostKey}' | base64 -d)" > "$out"
+  '';
+
   # This host's own builder alias, or null if it cannot be determined.
   #
   # MUST tolerate null: this module is imported on nix-darwin too, where
@@ -316,6 +329,70 @@ in {
             supportedFeatures = ["big-parallel"];
             publicHostKey = sctPublicHostKey;
           }
+          {
+            # tourmaline — a SECOND native armv7l builder, deliberately ranked as
+            # OVERFLOW behind torrey rather than as a peer.
+            #
+            # Its Cortex-A72 implements AArch32 at EL0, same as torrey's A76, and
+            # it advertises gccarch-armv7-a — so armv7l runs on the CPU, not
+            # through qemu. Verified on the host, not assumed.
+            hostName = "nix-builder-tourmaline";
+
+            # armv7l-linux ONLY, and NOT aarch64-linux. It is capable of aarch64
+            # natively, but aarch64 has better homes — torrey and the cluster
+            # nodes — and advertising it here would let this box take work those
+            # should do first. armv7l is the scarce capability: only two machines
+            # in the fleet execute it natively; everything else is qemu.
+            systems = ["armv7l-linux"];
+            protocol = "ssh-ng";
+            sshUser = "nix-remote-builder";
+            sshKey = "/etc/nix/builder_ed25519";
+
+            # 3, from cores and memory — not from thermals or the appliance
+            # role, both of which appear in older comments and neither of which
+            # is currently binding.
+            #
+            # The host sets `cores = 3`, so maxJobs 3 means up to 9 compiler
+            # processes across 4 cores. Oversubscribed, but that is ordinary for
+            # make-style parallelism and keeps cores busy through I/O waits.
+            #
+            # Memory is the real ceiling: 3.7 GiB RAM with 3.7 GiB of zstd zram
+            # and NO disk swap — correct on a Pi, where spilling to SD or the
+            # intermittent USB-SATA path costs more than compression does.
+            #
+            # zram is RAM-backed, so it buys COMPRESSION (2-3x on build
+            # artefacts), not headroom. It cannot rescue one job with a 3 GiB
+            # resident set; what it does is make several MODEST parallel jobs
+            # viable where they would otherwise thrash. So the failure mode to
+            # design against is not OOM, it is unresponsiveness under swap
+            # pressure — and a wedged box is worse for the print queue and UPS
+            # monitoring than a slow one.
+            #
+            # 3 rather than 4 reserves headroom for exactly that: one heavy
+            # translation unit (an armv7l LLVM build has several) can spike
+            # without the box becoming unresponsive. The marginal throughput of
+            # a 4th job on 4 already-oversubscribed cores is small; the
+            # additional swap pressure is not.
+            maxJobs = 3;
+
+            # BELOW torrey's 4, which is the entire point: torrey is the box built
+            # for armv7l and fills first, this absorbs the spill. ABOVE nas-sdg's
+            # 2 because that machine's armv7l is EMULATED, and native must outrank
+            # qemu — the same invariant torrey's entry protects.
+            #
+            #   4 torrey       native armv7l + aarch64, dedicated builder
+            #   3 tourmaline   native armv7l, also a print/UPS appliance
+            #   2 nas-sdg      EMULATED armv7l/aarch64, native x86_64
+            #   1 nas-sct      native x86_64 overflow
+            speedFactor = 3;
+
+            # gccarch-armv7-a is required, not decorative: nixpkgs tags the armv7l
+            # stdenv with it as a requiredSystemFeature, so a builder advertising
+            # the platform without the feature is matched and then refuses every
+            # build. gccarch-armv8-a because this really is armv8 hardware.
+            supportedFeatures = ["big-parallel" "gccarch-armv7-a" "gccarch-armv8-a"];
+            publicHostKey = tourmalinePublicHostKey;
+          }
         ];
     };
 
@@ -372,6 +449,16 @@ in {
         ConnectTimeout 4
         HostKeyAlias nix-builder-nas-sct
         UserKnownHostsFile ${sctKnownHosts}
+
+      Host nix-builder-tourmaline
+        HostName tourmaline.netbird.cloud
+        Port 22
+        User nix-remote-builder
+        IdentityFile /etc/nix/builder_ed25519
+        IdentitiesOnly yes
+        ConnectTimeout 4
+        HostKeyAlias nix-builder-tourmaline
+        UserKnownHostsFile ${tourmalineKnownHosts}
 
       Host nix-cache-push-nas-sdg
         HostName nas-sdg.netbird.cloud
