@@ -4,6 +4,7 @@
 {
   config,
   lib,
+  pkgs,
   lazyvim,
   darwin,
   ...
@@ -95,7 +96,13 @@ in {
     home-manager = {
       useGlobalPkgs = true;
       useUserPackages = true;
-      backupFileExtension = "pre-hm";
+      # NOT backupFileExtension: a fixed extension aborts activation the second
+      # time the same path collides, because the backup name is already taken.
+      # See modules/shared/hm-backup-command.nix for the full reasoning. Kept
+      # identical to nixosModules.common — the two must not drift.
+      # mkDefault: backup strategy is host policy — a consumer may want its own
+      # command, or to go back to an extension.
+      backupCommand = lib.mkDefault (import ../shared/hm-backup-command.nix pkgs);
       extraSpecialArgs = {inherit lazyvim;};
       users.${username} = {pkgs, ...}: {
         imports = [
