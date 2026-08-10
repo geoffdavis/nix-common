@@ -157,7 +157,9 @@
     # (nix.enable = false), where darwinModules.common's nix.gc is inert.
     darwinModules.determinate-gc = ./modules/darwin/determinate-gc.nix;
 
-    # Stop the NetBird app writing /etc/ssh/ssh_config.d/99-netbird.conf.
+    # Stop the NetBird app writing /etc/ssh/ssh_config.d/99-netbird.conf, and
+    # delete the copy it already wrote — suppressing generation alone leaves an
+    # existing block loaded forever, which is the whole exposure.
     # DARWIN ONLY, and that asymmetry is the point: Apple's /etc/ssh/ssh_config
     # does `Include /etc/ssh/ssh_config.d/*`, so root's ssh loads that block on
     # every remote build, while NixOS's generated ssh_config does not include
