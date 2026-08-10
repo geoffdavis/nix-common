@@ -100,7 +100,10 @@ in {
     home-manager = {
       useGlobalPkgs = true;
       useUserPackages = true;
-      backupFileExtension = "pre-hm";
+      # NOT backupFileExtension: a fixed extension aborts activation the second
+      # time the same path collides, because the backup name is already taken.
+      # See modules/shared/hm-backup-command.nix for the full reasoning.
+      backupCommand = import ../shared/hm-backup-command.nix pkgs;
       extraSpecialArgs = {inherit lazyvim;};
       users.${username} = {
         imports = [../home/neovim.nix];
