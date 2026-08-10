@@ -44,18 +44,73 @@
   #
   # The copy IS its own reachability test: the ssh alias sets a short
   # ConnectTimeout (see nas-cache), so when the netbird overlay is down
-  # (laptop off-VPN) the connection fails fast instead of blocking the build;
-  # a hard timeout + `|| true` keep a slow/failed push non-fatal either way.
+  # (laptop off-VPN) the connection fails fast instead of blocking the build.
   # (An earlier `bash /dev/tcp` pre-probe was removed: it is SIGKILL'd on
   # darwin — bash's /dev/tcp to a non-local host is killed there — so it made
   # the hook skip every push on macOS. Letting `nix copy` connect is portable.)
+  #
+  # THE WALL-CLOCK TIMEOUT IS A BACKSTOP, NOT THE STALL DETECTOR. It used to
+  # be 30s, which is a THROUGHPUT GATE in disguise: whether a path lands
+  # depends on its size against the current link speed, so the cut-off moves
+  # with load. Measured 2026-08-09 at 17 MiB/s over the overlay, 30s buys
+  # roughly 500 MiB nominal — less once closure paths and protocol overhead
+  # are included, and less again while the link is busy.
+  #
+  # That makes it MARGINAL rather than cleanly wrong, which is worse. A
+  # 354 MiB path sits at ~21s: it squeaks through often enough that nobody
+  # investigates, and fails often enough never to persist. Observed exactly
+  # that — onlyoffice (354 MiB) re-pushed on every build and absent from all
+  # 27,359 cache entries, while 1password (199 MiB), obsidian (112 MiB) and
+  # plasma-workspace-wallpapers (216 MiB) all landed fine at 6-13s.
+  # `|| true` then swallowed every failure, and the hook runs per realised
+  # derivation with `nix copy` pushing each path plus its closure, so the
+  # same doomed transfer was retried repeatedly within a single build.
+  #
+  # (nas-sdg pushes to this cache through its own local hook, disk-to-disk,
+  # so its builds are unaffected by any of this. Entries above ~500 MiB in
+  # the cache came from there, not from a remote pusher — do not read them
+  # as evidence that large remote pushes succeed.)
+  #
+  # Three layers already bound a push, in increasing order of severity, and
+  # the wall-clock one must sit ABOVE the others or it preempts them:
+  #   - ConnectTimeout 4 (nas-cache)          — unreachable host, ~4s
+  #   - ServerAliveInterval 15 x CountMax 3   — stalled connection, ~45s
+  #   - this timeout                          — pathological hang only
+  # At 30s it fired BEFORE the 45s keepalive teardown built for exactly this
+  # job, so it could only ever kill transfers that were working. 600s is
+  # chosen to clear that by an order of magnitude while still bounding a
+  # hook that BLOCKS the build: even a slow overlay link moves a multi-GB
+  # path well inside it. A fixed wall-clock value is a poor instrument for
+  # "too slow" — it cannot tell stalled from merely large — which is why the
+  # keepalives, not this, are what detect a dead peer.
+  #
+  # WHY NOT `--substitute-on-destination` (-s), which would have the
+  # destination fetch from its own substituters instead of receiving bytes
+  # over the wire: the destination is a `file://` binary cache, pinned in the
+  # forced command with no substituters configured, so it has nothing to
+  # substitute FROM. Assessed 2026-08-09 and rejected on that basis — not
+  # empirically confirmed, since the daemon key is root-only.
+  #
+  # Failures are non-fatal (a broken cache must never fail a build) but are
+  # no longer silent: this exact bug survived months because `|| true`
+  # produced no output. Grep build logs for `cache-push:`. Path size is
+  # deliberately NOT computed — it would mean walking the closure on every
+  # hook invocation, and the path list already names what to look up.
   pushHook = pkgs.writeShellScript "cache-push-hook" ''
     set -eu
     [ -n "''${OUT_PATHS:-}" ] || exit 0
-    ${pkgs.coreutils}/bin/timeout 30 ${config.nix.package}/bin/nix copy \
+    rc=0
+    ${pkgs.coreutils}/bin/timeout 600 ${config.nix.package}/bin/nix copy \
       --no-check-sigs \
       --to 'ssh-ng://nix-cache-push-nas-sdg' \
-      $OUT_PATHS || true
+      $OUT_PATHS || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      if [ "$rc" -eq 124 ]; then
+        echo "cache-push: TIMEOUT after 600s; NOT cached: $OUT_PATHS" >&2
+      else
+        echo "cache-push: FAILED (exit $rc); NOT cached: $OUT_PATHS" >&2
+      fi
+    fi
   '';
 in {
   options.my.cachePush.enable =
