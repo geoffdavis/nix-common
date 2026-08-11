@@ -102,13 +102,10 @@ in {
         # overlay on every switch.
         #
         # Read the setting back from the launchd plist that `service
-        # reconfigure` writes, NOT from the netbird CLI. There is no
-        # `netbird service config` subcommand — the earlier probe invoked
-        # here printed `netbird service`'s HELP TEXT and exited 0, so the
-        # grep never matched, the guard always fell through, and every
-        # activation reconfigured and restarted the service. Verified on a
-        # live host 2026-08-10: the probe matched 0 lines while the setting
-        # was correctly applied.
+        # reconfigure` writes, NOT from the netbird CLI. `netbird service`
+        # has no `config` subcommand: asking for one prints its HELP TEXT and
+        # exits 0, so any CLI probe here silently succeeds while matching
+        # nothing, and the guard falls through on every activation.
         #
         # PlistBuddy rather than grep: launchd plists may be binary, and an
         # exact-value read distinguishes true from false instead of merely
