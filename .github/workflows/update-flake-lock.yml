@@ -26,10 +26,10 @@ jobs:
     # Self-hosted nix runner pool; Nix already present (no installer step).
     runs-on: [self-hosted, nix, x86_64-linux]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@main
+        uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
           token: ${{ secrets.BOT_PAT || github.token }}
           pr-labels: |
