@@ -195,6 +195,7 @@
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
+    homeModules.pre-commit-hooks = ./modules/home/pre-commit-hooks.nix;
     homeModules.neovim = ./modules/home/neovim.nix;
     homeModules.profile = ./modules/home/profile.nix;
     homeModules.desktop-base = ./modules/home/desktop-base.nix;

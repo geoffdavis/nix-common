@@ -40,6 +40,9 @@ unless noted):
 - `homeModules.cli-tools` — shared CLI packages. NOTE: transitively imports
   `onepassword` (pinned 1Password CLI + GUI) and `terraform` — importing this
   module pulls both.
+- `homeModules.pre-commit-hooks` — installs pre-commit's git hooks for a
+  configured list of repos on every activation, and rewrites the `/nix/store`
+  paths it bakes in so a GC sweep can't break `git commit`
 - `homeModules.neovim` — LazyVim editor + global `EDITOR=nvim` (requires
   `lazyvim` in `extraSpecialArgs`)
 - `homeModules.profile` — shared Linux `.profile` snippet management

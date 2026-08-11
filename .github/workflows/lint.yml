@@ -28,7 +28,7 @@ jobs:
     steps:
       # Pinned to immutable commit SHAs; comments name the tag the SHA
       # was resolved from so dependabot / a human can bump intentionally.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: alejandra --check
         run: nix --accept-flake-config run nixpkgs#alejandra -- --check .

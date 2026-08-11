@@ -26,7 +26,7 @@ jobs:
     steps:
       # Pinned to immutable commit SHAs; comments name the tag the SHA
       # was resolved from so dependabot / a human can bump intentionally.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: nix --accept-flake-config flake check
 
   # Structural guardrail: every modules/ file is exported from flake.nix (and
@@ -35,5 +35,5 @@ jobs:
   module-contract:
     runs-on: [self-hosted, nix, x86_64-linux]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-module-contract.sh
