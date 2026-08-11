@@ -133,6 +133,7 @@ in {
       jq
       lazydocker # docker/compose TUI
       markdownlint-cli
+      actionlint # GitHub Actions workflow linter; used by pre-commit language:system hooks
       markdownlint-cli2
       mise
       ripgrep
