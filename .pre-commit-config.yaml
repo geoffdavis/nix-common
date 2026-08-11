@@ -50,6 +50,12 @@ repos:
         language: system
         pass_filenames: false
         files: '(^modules/.*\.nix$|^flake\.nix$)'
+      - id: actionlint
+        name: actionlint (GitHub Actions workflow linter)
+        entry: actionlint
+        language: system
+        files: '^\.github/workflows/.*\.ya?ml$'
+
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.0
