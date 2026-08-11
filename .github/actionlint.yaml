@@ -1,0 +1,7 @@
+# actionlint config — declares the self-hosted runner labels this repo
+# targets, so actionlint doesn't flag every `runs-on` as an unknown label.
+# Keep in sync with the labels registered on the runner pool.
+self-hosted-runner:
+  labels:
+    - nix
+    - x86_64-linux
