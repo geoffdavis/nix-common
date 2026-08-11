@@ -249,7 +249,9 @@ in {
             # without a speed preference nix could hand native ARM work to the
             # emulator — silently, and hours slower. speedFactor is what makes
             # the native path win.
-            # RAISED 3 -> 4 when nas-sct joined and nas-sdg went 1 -> 2.
+            # 8. RENUMBERED from 4 when tourmaline gained aarch64: the ladder is
+            # now spaced so a host can be ranked correctly on EVERY platform it
+            # advertises, which a dense 1-2-3-4 could not express.
             #
             # The tiers are now, top to bottom:
             #   4  torrey           native ARM, dedicated builder
@@ -261,7 +263,7 @@ in {
             # would have collapsed native ARM and emulated ARM into ONE tier,
             # letting qemu win aarch64 work on a tie-break. That costs hours,
             # silently — the exact inversion these comments exist to prevent.
-            speedFactor = 4;
+            speedFactor = 8;
 
             # gccarch-armv7-a for the reason spelled out at length above: the
             # platform alone is not enough, nix matches requiredSystemFeatures.
@@ -338,53 +340,66 @@ in {
             # through qemu. Verified on the host, not assumed.
             hostName = "nix-builder-tourmaline";
 
-            # armv7l-linux ONLY, and NOT aarch64-linux. It is capable of aarch64
-            # natively, but aarch64 has better homes — torrey and the cluster
-            # nodes — and advertising it here would let this box take work those
-            # should do first. armv7l is the scarce capability: only two machines
-            # in the fleet execute it natively; everything else is qemu.
-            systems = ["armv7l-linux"];
+            # BOTH platforms. It is natively aarch64 (`system = aarch64-linux`)
+            # with armv7l via AArch32 at EL0 — advertising only armv7l, as an
+            # earlier revision did, hid its NATIVE platform and left a Pi 4 idle
+            # while the cluster nodes carried every aarch64 build.
+            #
+            # That scoping existed to avoid a tie: at the old dense factors this
+            # host and the cluster nodes both sat at 3. The fix is the ranking
+            # below, not hiding a capability.
+            systems = ["aarch64-linux" "armv7l-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
 
-            # 3, from cores and memory — not from thermals or the appliance
-            # role, both of which appear in older comments and neither of which
-            # is currently binding.
+            # 3 still, now that this host takes aarch64 as well as armv7l.
             #
-            # The host sets `cores = 3`, so maxJobs 3 means up to 9 compiler
-            # processes across 4 cores. Oversubscribed, but that is ordinary for
-            # make-style parallelism and keeps cores busy through I/O waits.
+            # `cores = 3` on the host, so 3 jobs is up to 9 compiler processes
+            # across 4 cores — oversubscribed, which is ordinary for make-style
+            # parallelism. Memory is the ceiling: 3.7 GiB RAM plus 3.7 GiB zstd
+            # zram and NO disk swap (correct on a Pi — spilling to SD or the
+            # intermittent USB-SATA path costs more than compression). zram is
+            # RAM-backed, so it buys COMPRESSION, not headroom: it cannot rescue
+            # one 3 GiB job but makes several modest ones viable.
             #
-            # Memory is the real ceiling: 3.7 GiB RAM with 3.7 GiB of zstd zram
-            # and NO disk swap — correct on a Pi, where spilling to SD or the
-            # intermittent USB-SATA path costs more than compression does.
+            # aarch64 does not change the number. It is a first-class Hydra
+            # platform, so most of that work SUBSTITUTES rather than building,
+            # and this host is ranked below torrey and the cluster nodes for it —
+            # so it only ever sees aarch64 overflow. When it does build, the
+            # memory profile is similar enough that the binding constraint is
+            # unchanged.
             #
-            # zram is RAM-backed, so it buys COMPRESSION (2-3x on build
-            # artefacts), not headroom. It cannot rescue one job with a 3 GiB
-            # resident set; what it does is make several MODEST parallel jobs
-            # viable where they would otherwise thrash. So the failure mode to
-            # design against is not OOM, it is unresponsiveness under swap
-            # pressure — and a wedged box is worse for the print queue and UPS
-            # monitoring than a slow one.
-            #
-            # 3 rather than 4 reserves headroom for exactly that: one heavy
-            # translation unit (an armv7l LLVM build has several) can spike
-            # without the box becoming unresponsive. The marginal throughput of
-            # a 4th job on 4 already-oversubscribed cores is small; the
-            # additional swap pressure is not.
+            # The failure mode to design against is unresponsiveness under swap
+            # pressure, not OOM: a wedged print queue is user-visible in a way a
+            # slow build is not. 3 rather than 4 keeps headroom for one heavy
+            # translation unit to spike.
             maxJobs = 3;
 
-            # BELOW torrey's 4, which is the entire point: torrey is the box built
-            # for armv7l and fills first, this absorbs the spill. ABOVE nas-sdg's
-            # 2 because that machine's armv7l is EMULATED, and native must outrank
-            # qemu — the same invariant torrey's entry protects.
+            # 4, on a SPACED ladder. One speedFactor applies to a whole entry,
+            # so a host advertising two platforms must be ranked once for both —
+            # which a dense 1-2-3-4 could not express. Spacing creates the room:
             #
-            #   4 torrey       native armv7l + aarch64, dedicated builder
-            #   3 tourmaline   native armv7l, also a print/UPS appliance
-            #   2 nas-sdg      EMULATED armv7l/aarch64, native x86_64
-            #   1 nas-sct      native x86_64 overflow
-            speedFactor = 3;
+            #   8  torrey       native armv7l + aarch64, dedicated builder
+            #   6  k8s nodes    native aarch64, RPi5/NVMe/8 GB, with a day job
+            #   4  HERE         native armv7l + aarch64, Pi 4 / 4 GB, appliance
+            #   2  nas-sdg      EMULATED armv7l/aarch64, native x86_64
+            #   1  nas-sct      native x86_64 overflow
+            #
+            # armv7l:  torrey > HERE > nas-sdg      (overflow posture preserved)
+            # aarch64: torrey > k8s > HERE > nas-sdg
+            #
+            # Both orderings verified rendered, separately — an armv7l ladder
+            # that looks right can hide an aarch64 tie, which is exactly how the
+            # previous tie slipped through.
+            #
+            # Below the cluster nodes because those are RPi5 with NVMe and 8 GB
+            # against a Pi 4 with 4 GB that also runs the print queue. Still far
+            # above nas-sdg, whose ARM is qemu: native must outrank emulated.
+            #
+            # Gaps of 2 are deliberate — inserting a host should not mean
+            # renumbering every entry across two repos.
+            speedFactor = 4;
 
             # gccarch-armv7-a is required, not decorative: nixpkgs tags the armv7l
             # stdenv with it as a requiredSystemFeature, so a builder advertising
