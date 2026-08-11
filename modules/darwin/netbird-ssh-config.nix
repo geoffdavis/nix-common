@@ -95,11 +95,25 @@ in {
       # NetBird ssh_config suppression. Guarded on the binary existing so a
       # Mac without the app activates cleanly.
       nbBin=/Applications/NetBird.app/Contents/MacOS/netbird
+      nbPlist=/Library/LaunchDaemons/netbird.plist
       if [ -x "$nbBin" ]; then
         # Only reconfigure when the setting is not already applied: the call
         # restarts the service, so doing it unconditionally would bounce the
         # overlay on every switch.
-        if "$nbBin" service config 2>/dev/null | grep -q 'NB_DISABLE_SSH_CONFIG=true'; then
+        #
+        # Read the setting back from the launchd plist that `service
+        # reconfigure` writes, NOT from the netbird CLI. There is no
+        # `netbird service config` subcommand — the earlier probe invoked
+        # here printed `netbird service`'s HELP TEXT and exited 0, so the
+        # grep never matched, the guard always fell through, and every
+        # activation reconfigured and restarted the service. Verified on a
+        # live host 2026-08-10: the probe matched 0 lines while the setting
+        # was correctly applied.
+        #
+        # PlistBuddy rather than grep: launchd plists may be binary, and an
+        # exact-value read distinguishes true from false instead of merely
+        # detecting that the key is mentioned.
+        if [ "$(/usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables:NB_DISABLE_SSH_CONFIG' "$nbPlist" 2>/dev/null)" = "true" ]; then
           nbSuppressed=1
         else
           echo "netbird: disabling ssh_config generation (NB_DISABLE_SSH_CONFIG=true)"
