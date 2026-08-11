@@ -43,6 +43,26 @@ is intentional. CI runs the same chain via the reusable workflow at
 `.github/workflows/lint.yml`; downstream repos call it via
 `uses: geoffdavis/nix-common/.github/workflows/lint.yml@main`.
 
+## Updating pinned inputs
+
+Two things go stale here: the nvfetcher-pinned upstream sources in
+`_sources/generated.{nix,json}` (declared in `nvfetcher.toml`) and the flake
+inputs in `flake.lock`. Each has a weekly auto-PR (`update-sources` Tue,
+`update-flake-lock` Mon); the tasks below are the manual escape hatch, and the
+`:commit` variants refuse to run on `main` or a detached HEAD.
+
+```sh
+task update:sources         # nvfetcher: refresh every pinned upstream source
+task update:sources:commit  #   ^ + commit (body lists each package's old → new)
+task update:flake           # nix flake update
+task update:flake:commit    #   ^ + commit
+task update:branch          # fresh chore/update-<ts> branch: sources + flake, each committed
+```
+
+`update:branch` is the one-shot: from a clean tree it cuts a topic branch,
+commits the source bumps (with a per-package version rollup in the commit
+body), then commits the flake-input update — ready to push + open a PR.
+
 ## Conventions
 
 - alejandra format, deadnix-clean, statix-clean
