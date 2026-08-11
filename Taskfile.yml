@@ -60,3 +60,108 @@ tasks:
       # leaves a phantom one-line diff. Normalize here to keep the task stable.
       - |
         [ -n "$(tail -c1 _sources/generated.json)" ] && printf '\n' >> _sources/generated.json || true
+
+  _guard:committable-branch:
+    internal: true
+    desc: Refuse on main/master (branch protection) or detached HEAD (commits would orphan).
+    cmds:
+      - |
+        set -eu
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        case "$branch" in
+          main|master)
+            echo "Refusing to commit on $branch (branch protection requires PR). Switch to a feature branch first." >&2
+            exit 1
+            ;;
+          HEAD)
+            echo "Refusing to commit in detached HEAD state — commits would be orphaned. Check out a branch first." >&2
+            exit 1
+            ;;
+        esac
+
+  update:sources:commit:
+    desc: Update pinned sources via nvfetcher + commit (refuses on main/master/detached HEAD); commit body lists each package's version change
+    cmds:
+      - task: _guard:committable-branch
+      - |
+        set -eu
+        # Snapshot the committed versions before nvfetcher rewrites the file,
+        # so the post-update step can diff them into the commit body. Use
+        # git-path so this works under `git worktree`, where .git is a file
+        # rather than a directory.
+        scratch=$(git rev-parse --git-path update-sources.old.json)
+        rm -f "$scratch"
+        git show HEAD:_sources/generated.json > "$scratch"
+      - task: update:sources
+      - |
+        set -eu
+        scratch=$(git rev-parse --git-path update-sources.old.json)
+        # Use pathspec on diff/commit so any pre-staged files in the index are
+        # left untouched. This task's scope is the generated lockfiles only.
+        if git diff --quiet HEAD -- _sources/generated.nix _sources/generated.json; then
+          echo "update:sources:commit: every pinned source already current, nothing to commit"
+          rm -f "$scratch"
+          exit 0
+        fi
+        subject="chore: bump pinned sources via nvfetcher"
+        # Per-package "old → new" rollup so the bump is self-documenting
+        # (nvfetcher itself prints nothing durable). Compared against HEAD, so
+        # the body describes exactly what this commit changes.
+        rollup=$(nix run nixpkgs#jq -- -rn \
+          --slurpfile o "$scratch" --slurpfile n _sources/generated.json '
+            ($o[0]) as $old | ($n[0]) as $new
+            | $new
+            | to_entries[]
+            | .key as $k
+            | .value.version as $nv
+            | ($old[$k].version // null) as $ov
+            | select($ov != $nv)
+            | if $ov == null
+              then "- \($k): pinned at \($nv)"
+              else "- \($k): \($ov) → \($nv)"
+              end' 2>/dev/null || true)
+        rm -f "$scratch"
+        if [ -n "$rollup" ]; then
+          printf '%s\n\n%s\n' "$subject" "$rollup" \
+            | git commit -F - -- _sources/generated.nix _sources/generated.json
+        else
+          # Hash-only churn (same versions, re-fetched artifact) — no rollup.
+          git commit -m "$subject" -- _sources/generated.nix _sources/generated.json
+        fi
+
+  update:flake:
+    desc: Update every flake input (manual escape hatch — weekly auto-PR runs in CI)
+    cmds:
+      - nix flake update
+
+  update:flake:commit:
+    desc: Update every flake input + commit (refuses on main/master/detached HEAD)
+    cmds:
+      - task: _guard:committable-branch
+      - task: update:flake
+      - |
+        set -eu
+        if git diff --quiet HEAD -- flake.lock; then
+          echo "update:flake:commit: no flake.lock changes to commit"
+          exit 0
+        fi
+        git commit -m "chore: update flake inputs" -- flake.lock
+
+  update:branch:
+    desc: "One-shot refresh on a fresh chore/update-<ts> branch: update:sources:commit then update:flake:commit. Run from a clean tree."
+    cmds:
+      - |
+        set -eu
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "update:branch: working tree not clean — commit or stash first." >&2
+          exit 1
+        fi
+        branch="chore/update-$(date +%Y%m%d-%H%M%S)"
+        git switch -c "$branch"
+        echo "update:branch: created and switched to $branch"
+      - task: update:sources:commit
+      - task: update:flake:commit
+      - |
+        cur=$(git rev-parse --abbrev-ref HEAD)
+        echo "update:branch: done on $cur. Push + open PR with:"
+        echo "  git push -u origin \"$cur\" && gh pr create --fill"
