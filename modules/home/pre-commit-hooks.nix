@@ -19,7 +19,10 @@
 #   imports = [ nix-common.homeModules.pre-commit-hooks ];
 #   preCommitHooks = {
 #     enable = true;
+#     # name repos explicitly...
 #     repos = [ "${config.home.homeDirectory}/src/example" ];
+#     # ...and/or cover a whole checkout area without naming what's in it
+#     discoverUnder = [ "${config.home.homeDirectory}/src" ];
 #   };
 {
   pkgs,
@@ -46,6 +49,22 @@ in {
       '';
     };
 
+    discoverUnder = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = lib.literalExpression ''["''${config.home.homeDirectory}/src/nix"]'';
+      description = ''
+        Directories to scan for repositories, in addition to `repos`. Every
+        immediate child directory holding a `.pre-commit-config.yaml` is
+        treated as if it had been listed in `repos` — so a host can cover a
+        whole checkout area without naming the individual repositories, and
+        newly cloned ones are picked up on the next activation.
+
+        The scan is one level deep and does not recurse. Directories that
+        don't exist are skipped.
+      '';
+    };
+
     hookTypes = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = ["pre-commit"];
@@ -64,10 +83,11 @@ in {
       _git=${pkgs.git}/bin/git
       _sed=${pkgs.gnused}/bin/sed
 
-      for _repo in ${lib.escapeShellArgs cfg.repos}; do
+      _install_hooks_for() {
+        _repo="$1"
         if [ ! -e "$_repo/.pre-commit-config.yaml" ]; then
           $VERBOSE_ECHO "pre-commit-hooks: no .pre-commit-config.yaml in $_repo, skipping"
-          continue
+          return 0
         fi
 
         for _type in ${lib.escapeShellArgs cfg.hookTypes}; do
@@ -97,6 +117,24 @@ in {
               -e 's|^exec /nix/store/[^[:space:]]*/bin/pre-commit |exec pre-commit |' \
               "$_hook"
           fi
+        done
+      }
+
+      for _repo in ${lib.escapeShellArgs cfg.repos}; do
+        _install_hooks_for "$_repo"
+      done
+
+      # Directory scan: one level deep, so a host can cover a checkout area
+      # without naming the repositories in it.
+      for _dir in ${lib.escapeShellArgs cfg.discoverUnder}; do
+        if [ ! -d "$_dir" ]; then
+          $VERBOSE_ECHO "pre-commit-hooks: $_dir does not exist, skipping"
+          continue
+        fi
+        for _child in "$_dir"/*/; do
+          # No match leaves the glob unexpanded; -d filters that out too.
+          [ -d "$_child" ] || continue
+          _install_hooks_for "''${_child%/}"
         done
       done
     '';
