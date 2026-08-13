@@ -323,20 +323,31 @@ in {
             publicHostKey = sctPublicHostKey;
           }
           {
-            # tourmaline — a SECOND native armv7l builder, deliberately ranked as
-            # OVERFLOW behind torrey rather than as a peer.
+            # tourmaline — a SECOND native armv7l builder AND a native
+            # aarch64-linux builder, both deliberately ranked as OVERFLOW
+            # behind torrey rather than as a peer.
             #
             # Its Cortex-A72 implements AArch32 at EL0, same as torrey's A76, and
             # it advertises gccarch-armv7-a — so armv7l runs on the CPU, not
             # through qemu. Verified on the host, not assumed.
             hostName = "nix-builder-tourmaline";
 
-            # armv7l-linux ONLY, and NOT aarch64-linux. It is capable of aarch64
-            # natively, but aarch64 has better homes — torrey and the cluster
-            # nodes — and advertising it here would let this box take work those
-            # should do first. armv7l is the scarce capability: only two machines
-            # in the fleet execute it natively; everything else is qemu.
-            systems = ["armv7l-linux"];
+            # armv7l-linux AND aarch64-linux (nix-personal#351,
+            # hosts/tourmaline/builder.nix). aarch64 was withheld here at
+            # first on the theory that aarch64-linux is a first-class Hydra
+            # platform and therefore always substitutes, so native aarch64
+            # capacity buys nothing — that reasoning was WRONG and is worth
+            # not repeating. It is true of CACHED aarch64. `linux-rpi`, the
+            # Raspberry Pi VENDOR kernel, is not in cache.nixos.org and never
+            # will be, so it is the one class of aarch64 derivation the fleet
+            # must always build itself. nas-sdg can only do that under qemu
+            # (hours); tourmaline does it natively, same as torrey.
+            #
+            # Ranked identically to armv7l below torrey (see the speedFactor
+            # comment below for why that ranking is what makes this safe):
+            # there is no separate per-platform ranking to get wrong, because
+            # speedFactor applies to the whole entry.
+            systems = ["armv7l-linux" "aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
@@ -369,14 +380,42 @@ in {
             maxJobs = 3;
 
             # BELOW torrey's 4, which is the entire point: torrey is the box built
-            # for armv7l and fills first, this absorbs the spill. ABOVE nas-sdg's
-            # 2 because that machine's armv7l is EMULATED, and native must outrank
-            # qemu — the same invariant torrey's entry protects.
+            # for armv7l AND aarch64 and fills first for both, this absorbs the
+            # spill. ABOVE nas-sdg's 2 because that machine's armv7l/aarch64 are
+            # EMULATED, and native must outrank qemu — the same invariant
+            # torrey's entry protects. speedFactor is per-ENTRY, not
+            # per-platform, so this single value ranks tourmaline below torrey
+            # for both systems it now advertises — adding aarch64-linux to
+            # `systems` above did not require, and could not silently skip, a
+            # ranking decision of its own.
             #
             #   4 torrey       native armv7l + aarch64, dedicated builder
-            #   3 tourmaline   native armv7l, also a print/UPS appliance
+            #   3 tourmaline   native armv7l + aarch64, also a print/UPS appliance
             #   2 nas-sdg      EMULATED armv7l/aarch64, native x86_64
             #   1 nas-sct      native x86_64 overflow
+            #
+            # WHY BROADENING armv7l-ONLY TO +aarch64 IS SAFE (2026-08-11): this
+            # box is also the household print server and UPS monitor
+            # (hardware.nix: "No swap. This host never builds." — already a
+            # bounded, ranked exception to that default, not a reversal of
+            # it). `systems` only adds ELIGIBILITY; speedFactor is the
+            # separate axis that controls how much work actually lands here,
+            # and it is unchanged at 3. Torrey already advertises both
+            # platforms at 4, so for every aarch64 derivation tourmaline is
+            # now eligible for, torrey was already an equal-or-better
+            # candidate before this change and still is after it — nix
+            # prefers the highest speedFactor with a free slot, so torrey
+            # fills first exactly as it already does for armv7l, and
+            # tourmaline only sees aarch64 spillover, the same role it
+            # already plays for armv7l today. maxJobs (3) and cores (3) below
+            # are unchanged, so the concurrency ceiling — the thing that
+            # actually bounds how badly a build can crowd out CUPS/NUT — is
+            # identical to before; only the TYPE of work that can fill it
+            # grew. And most aarch64 derivations substitute from
+            # cache.nixos.org and never reach a builder at all — the case
+            # that actually triggers a build is uncached vendor-kernel-class
+            # work (linux-rpi), which is rare and already the exact scenario
+            # this box exists to absorb for armv7l.
             speedFactor = 3;
 
             # gccarch-armv7-a is required, not decorative: nixpkgs tags the armv7l
