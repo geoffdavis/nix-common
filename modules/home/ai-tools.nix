@@ -76,7 +76,18 @@
 
   # codex needs a custom derivation: nixpkgs builds it from Cargo source
   # (would force a cargoHash bump every release), but the vendor publishes
-  # a self-contained static-musl binary. Linux-x64 only.
+  # prebuilt static-musl binaries. Linux-x64 only.
+  #
+  # The pinned asset is the `codex-package-` tarball, which carries the whole
+  # upstream layout — `codex-package.json` plus `bin/`, `codex-path/` (rg) and
+  # `codex-resources/` (bwrap, zsh) — and it is installed verbatim so codex
+  # finds each part where it expects it, relative to its own executable.
+  # Installing only `bin/codex` (what the single-binary asset gives you) is
+  # NOT a smaller-but-working subset: `codex exec` and `codex review` spawn
+  # `bin/codex-code-mode-host`, and when that is missing they degrade to a
+  # warning plus "no actionable findings" AND STILL EXIT 0 — a review that
+  # inspected nothing is indistinguishable from a clean one. Hence the
+  # installCheck below: an incomplete codex must fail the build, never ship.
   codex =
     if pkgs.stdenv.hostPlatform.system != "x86_64-linux"
     then null
@@ -87,10 +98,30 @@
         sourceRoot = ".";
         dontConfigure = true;
         dontBuild = true;
+        # Vendor binaries are static-musl (no interpreter, no shared libs) and
+        # ship pre-stripped; leave them exactly as upstream signed/shipped them.
+        dontPatchELF = true;
+        dontStrip = true;
         installPhase = ''
           runHook preInstall
-          install -Dm755 codex-x86_64-unknown-linux-musl $out/bin/codex
+          mkdir -p $out
+          cp -r codex-package.json bin codex-path codex-resources $out/
+          chmod -R u+w $out
           runHook postInstall
+        '';
+        doInstallCheck = true;
+        installCheckPhase = ''
+          runHook preInstallCheck
+          for f in bin/codex bin/codex-code-mode-host codex-path/rg codex-resources/bwrap; do
+            if [ ! -x "$out/$f" ]; then
+              echo "codex: upstream package tarball is missing $f — refusing to" >&2
+              echo "       ship an incomplete codex (see the comment above)." >&2
+              exit 1
+            fi
+          done
+          $out/bin/codex --version
+          $out/bin/codex-code-mode-host --help > /dev/null
+          runHook postInstallCheck
         '';
         meta.mainProgram = "codex";
       };
