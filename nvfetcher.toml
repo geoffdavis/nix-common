@@ -41,15 +41,23 @@ fetch.url = "https://github.com/github/copilot-cli/releases/download/v$ver/githu
 
 # ── codex (openai/codex). Linux-only; darwin uses Homebrew cask
 # (see nix-personal hosts/windansea/default.nix casks).
-# We ship the vendor's prebuilt static-musl binary directly (NOT the source
+# We ship the vendor's prebuilt static-musl binaries directly (NOT the source
 # archive) — overriding nixpkgs' buildRustPackage would need a cargoHash
-# bump every release, which defeats the auto-update story. The binary
-# tarball contains a single file `codex-x86_64-unknown-linux-musl`; ai-tools.nix
-# installs it as `bin/codex`. Tag prefix is `rust-v<ver>`.
+# bump every release, which defeats the auto-update story.
+#
+# Use the `codex-package-` asset, NOT the single-binary `codex-` one. The
+# single-binary tarball holds only the `codex` executable; `codex exec` and
+# `codex review` spawn a sibling `codex-code-mode-host` binary that it does
+# not contain, and when that spawn fails codex "fails closed" — it prints a
+# warning, reports "no actionable findings" and still exits 0, i.e. a review
+# that read nothing looks like a review that passed. The package tarball is
+# the full upstream layout (`codex-package.json`, `bin/{codex,
+# codex-code-mode-host}`, `codex-path/rg`, `codex-resources/`), which
+# ai-tools.nix installs verbatim. Tag prefix is `rust-v<ver>`.
 [codex-linux-x64]
 src.github = "openai/codex"
 src.prefix = "rust-v"
-fetch.url = "https://github.com/openai/codex/releases/download/rust-v$ver/codex-x86_64-unknown-linux-musl.tar.gz"
+fetch.url = "https://github.com/openai/codex/releases/download/rust-v$ver/codex-package-x86_64-unknown-linux-musl.tar.gz"
 
 # ── 1Password CLI (linux-x64 zip from cache.agilebits.com). 1Password does
 # not publish CLI releases on GitHub — scrape the same-shaped RSS feed that
