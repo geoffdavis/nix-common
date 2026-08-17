@@ -76,6 +76,16 @@
   #   - ConnectTimeout 4 (nas-cache)          — unreachable host, ~4s
   #   - ServerAliveInterval 15 x CountMax 3   — stalled connection, ~45s
   #   - this timeout                          — pathological hang only
+  #
+  # --kill-after=60 is not decoration: plain `timeout N` sends SIGTERM and
+  # then waits FOREVER, so against a child that ignores it the "hard bound"
+  # bounds nothing. nas-sdg's sibling hook (nix-personal
+  # modules/nas/nix-cache.nix) lacked it, and on 2026-08-16 four of its
+  # pushes wedged in futex_do_wait, shrugged off SIGTERM, and were still
+  # alive 4.4 hours later — each holding a shared /nix/var/nix/gc.lock, which
+  # starved the GC until the host hit 100% disk and every deploy to it hung.
+  # This hook has the same shape and the same blast radius (it BLOCKS the
+  # build), so it gets the same escalation.
   # At 30s it fired BEFORE the 45s keepalive teardown built for exactly this
   # job, so it could only ever kill transfers that were working. 600s is
   # chosen to clear that by an order of magnitude while still bounding a
@@ -100,13 +110,18 @@
     set -eu
     [ -n "''${OUT_PATHS:-}" ] || exit 0
     rc=0
-    ${pkgs.coreutils}/bin/timeout 600 ${config.nix.package}/bin/nix copy \
+    ${pkgs.coreutils}/bin/timeout --kill-after=60 600 ${config.nix.package}/bin/nix copy \
       --no-check-sigs \
       --to 'ssh-ng://nix-cache-push-nas-sdg' \
       $OUT_PATHS || rc=$?
     if [ "$rc" -ne 0 ]; then
       if [ "$rc" -eq 124 ]; then
         echo "cache-push: TIMEOUT after 600s; NOT cached: $OUT_PATHS" >&2
+      elif [ "$rc" -eq 137 ]; then
+        # SIGKILL from --kill-after: the copy ignored SIGTERM at the deadline.
+        # This is the shape that wedged nas-sdg's GC — worth naming separately
+        # so it is greppable rather than filed under a generic exit code.
+        echo "cache-push: HUNG, SIGKILLed after 660s (ignored SIGTERM); NOT cached: $OUT_PATHS" >&2
       else
         echo "cache-push: FAILED (exit $rc); NOT cached: $OUT_PATHS" >&2
       fi
