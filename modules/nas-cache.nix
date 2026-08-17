@@ -181,7 +181,17 @@ in {
             #
             # A fallback that fails is worse than no fallback: it silently
             # CAPTURES work that a native builder would have completed. armv7l
-            # belongs on torrey and tourmaline, which run it on the CPU.
+            # belongs on tourmaline, which runs it on the CPU.
+            #
+            # That used to read "torrey and tourmaline". torrey dropped armv7l
+            # when its Pi 5 vendor kernel moved to 16 KiB pages (see its entry
+            # below), so tourmaline is now the fleet's ONLY armv7l builder of any
+            # kind — this host is not a safety net behind it. The consequence is
+            # deliberate and worth stating plainly: with tourmaline down, armv7l
+            # does not fall back to emulation here, it fails outright with
+            # "Failed to find a machine for remote build". That is the correct
+            # trade — the paragraph above is the evidence — but it means armv7l
+            # capacity is now single-homed.
             systems = ["x86_64-linux" "aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
@@ -214,21 +224,62 @@ in {
             publicHostKey = builderPublicHostKey;
           }
           {
-            # torrey — the NATIVE ARM builder (nix-personal#351). A Raspberry
-            # Pi 5 whose Cortex-A76 implements AArch32 at EL0, verified on the
-            # hardware:
+            # torrey — the NATIVE aarch64 builder (nix-personal#351). A
+            # Raspberry Pi 5. This is the entry the nas-sdg comment above
+            # anticipates when it says "the fix is a NATIVE aarch64 builder as
+            # an additional buildMachines entry, not a redesign".
+            #
+            # aarch64 ONLY. It used to carry armv7l too, on the strength of a
+            # measured boot line:
             #
             #   [    0.154620] CPU features: detected: 32-bit EL0 Support
             #
-            # so armv7l runs on the CPU rather than through qemu. This is the
-            # entry the nas-sdg comment above anticipates when it says "the fix
-            # is a NATIVE aarch64 builder as an additional buildMachines entry,
-            # not a redesign".
+            # That line is still true and is NOT sufficient. The CPU implements
+            # AArch32 at EL0; the KERNEL is what stops it being usable. torrey
+            # runs the Raspberry Pi vendor kernel (linux-rpi), whose Pi 5
+            # defconfig sets the page size explicitly:
+            #
+            #   arch/arm64/configs/bcm2712_defconfig: CONFIG_ARM64_16K_PAGES=y
+            #
+            # and nixpkgs' armv7l binaries carry 4 KiB-granular PT_LOAD
+            # segments (p_align 0x1000, first LOAD at vaddr 0xf000 — not a
+            # multiple of 16384). A 16 KiB-page kernel cannot map them, so every
+            # armv7l binary takes SIGSEGV the instant it is exec'd. The arm64
+            # Kconfig says so in as many words:
+            #
+            #   config COMPAT ... depends on ARM64_4K_PAGES || EXPERT
+            #     "If you use a page size other than 4KB (i.e, 16KB or 64KB),
+            #      please be aware that you will only be able to execute
+            #      AArch32 binaries that were compiled with page size aligned
+            #      segments."
+            #
+            # torrey has CONFIG_EXPERT=y, which is the ONLY reason CONFIG_COMPAT
+            # is set at all here — so the box advertises a 32-bit capability it
+            # cannot deliver. This is a Pi 5 fact, not an ARM one: the Pi 4
+            # defconfig (bcm2711_defconfig) never sets 16K and inherits the
+            # arm64 `default ARM64_4K_PAGES`, so tourmaline keeps working armv7l
+            # even after it moves to the vendor kernel (nix-personal#358).
+            # Verified by building both configs at the same vendor kernel
+            # version, 6.18.39-stable_20260724.
+            #
+            # HOW IT SURFACED, because the symptom did not name the cause:
+            # `task check:windowpi` on the darwin host failed within ~2 minutes,
+            # every time, on whichever armv7l derivation landed here first —
+            # "builder failed due to signal 11 (Segmentation fault)" with an
+            # EMPTY build log, because nothing ever got far enough to write one.
+            #
+            # This regressed silently when torrey moved from mainline (4 KiB) to
+            # the vendor kernel in nix-personal#360. Do not restore armv7l here
+            # on the strength of the CPU feature line — the only thing that
+            # would make it true again is a linux-rpi built with
+            # CONFIG_ARM64_4K_PAGES, which is a multi-hour compile that
+            # substitutes nowhere and diverges from what Raspberry Pi ships and
+            # tests on a Pi 5.
             hostName = "nix-builder-torrey";
 
             # No x86_64-linux: torrey cannot build it, natively or otherwise.
             # nas-sdg remains the only x86 builder and keeps that traffic.
-            systems = ["aarch64-linux" "armv7l-linux"];
+            systems = ["aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
@@ -238,15 +289,15 @@ in {
             maxJobs = 2;
 
             # HIGHER THAN NAS-SDG (1), and that is the whole point of this
-            # entry. Both machines advertise aarch64-linux and armv7l-linux, so
-            # without a speed preference nix could hand native ARM work to the
-            # emulator — silently, and hours slower. speedFactor is what makes
-            # the native path win.
+            # entry. Both machines advertise aarch64-linux, so without a speed
+            # preference nix could hand native ARM work to the emulator —
+            # silently, and hours slower. speedFactor is what makes the native
+            # path win.
             # RAISED 3 -> 4 when nas-sct joined and nas-sdg went 1 -> 2.
             #
             # The tiers are now, top to bottom:
-            #   4  torrey           native ARM, dedicated builder
-            #   3  talos k8s nodes  native ARM, but with a day job (nix-personal)
+            #   4  torrey           native aarch64, dedicated builder
+            #   3  talos k8s nodes  native aarch64, but with a day job (nix-personal)
             #   2  nas-sdg          EMULATED ARM / native x86_64
             #   1  nas-sct          native x86_64, overflow, possibly over a WAN
             #
@@ -254,16 +305,21 @@ in {
             # would have collapsed native ARM and emulated ARM into ONE tier,
             # letting qemu win aarch64 work on a tie-break. That costs hours,
             # silently — the exact inversion these comments exist to prevent.
+            #
+            # armv7l is ranked separately and this host is no longer in that
+            # race at all — see tourmaline's entry below.
             speedFactor = 4;
 
-            # gccarch-armv7-a for the reason spelled out at length above: the
-            # platform alone is not enough, nix matches requiredSystemFeatures.
-            # torrey supplies the other half itself via
-            # nix.settings.system-features (nix-personal hosts/torrey/builder.nix).
+            # No gccarch-armv7-a: this host cannot execute armv7l (16 KiB pages,
+            # see the header). Advertising the feature is what made nix dispatch
+            # armv7l here and segfault, instead of routing it to tourmaline,
+            # which builds it fine. The same "worse than useless" trap the talos
+            # nodes hit for a different reason (nix-personal
+            # modules/talos-builders.nix).
             #
             # gccarch-armv8-a because this really is armv8 hardware — nas-sdg
             # cannot honestly claim that, since its aarch64 is qemu.
-            supportedFeatures = ["big-parallel" "gccarch-armv7-a" "gccarch-armv8-a"];
+            supportedFeatures = ["big-parallel" "gccarch-armv8-a"];
             publicHostKey = torreyPublicHostKey;
           }
           {
@@ -323,13 +379,33 @@ in {
             publicHostKey = sctPublicHostKey;
           }
           {
-            # tourmaline — a SECOND native armv7l builder AND a native
-            # aarch64-linux builder, both deliberately ranked as OVERFLOW
-            # behind torrey rather than as a peer.
+            # tourmaline — the fleet's ONLY native armv7l builder, and a native
+            # aarch64-linux builder ranked as OVERFLOW behind torrey.
             #
-            # Its Cortex-A72 implements AArch32 at EL0, same as torrey's A76, and
-            # it advertises gccarch-armv7-a — so armv7l runs on the CPU, not
-            # through qemu. Verified on the host, not assumed.
+            # The two roles are no longer symmetric, and that asymmetry is new.
+            # For aarch64 this is still the spill-over box behind torrey. For
+            # armv7l it is now the ONLY one: torrey lost the capability when it
+            # moved to the Pi 5 vendor kernel and its 16 KiB pages (see torrey's
+            # entry above). It was promoted by subtraction, not by choice. If
+            # this host is down, armv7l work falls all the way to emulation on
+            # nas-sdg — there is no native tier left below it.
+            #
+            # Its Cortex-A72 implements AArch32 at EL0, and — the half torrey's
+            # entry shows is not automatic — its kernel keeps 4 KiB pages. That
+            # holds through the vendor-kernel switch (nix-personal#358): the Pi 4
+            # defconfig bcm2711_defconfig never sets CONFIG_ARM64_16K_PAGES and
+            # inherits the arm64 `default ARM64_4K_PAGES`. Verified by building
+            # both configs at the same vendor kernel version rather than assumed:
+            #
+            #   tourmaline linux-rpi 6.18.39: CONFIG_ARM64_4K_PAGES=y
+            #   torrey     linux-rpi 6.18.39: CONFIG_ARM64_16K_PAGES=y
+            #
+            # Both also carry CONFIG_COMPAT_32BIT_TIME=y, so neither has the
+            # talos nodes' missing-32-bit-time-syscall fault. RE-CHECK THE PAGE
+            # SIZE ON ANY KERNEL CHANGE HERE: it is the single property this
+            # host's armv7l role depends on, the fleet has no native fallback if
+            # it flips, and nothing fails loudly when it does — torrey's
+            # regression went unnoticed until a windowpi build segfaulted.
             hostName = "nix-builder-tourmaline";
 
             # armv7l-linux AND aarch64-linux (nix-personal#351,
@@ -379,18 +455,19 @@ in {
             # additional swap pressure is not.
             maxJobs = 3;
 
-            # BELOW torrey's 4, which is the entire point: torrey is the box built
-            # for armv7l AND aarch64 and fills first for both, this absorbs the
-            # spill. ABOVE nas-sdg's 2 because that machine's armv7l/aarch64 are
-            # EMULATED, and native must outrank qemu — the same invariant
-            # torrey's entry protects. speedFactor is per-ENTRY, not
-            # per-platform, so this single value ranks tourmaline below torrey
-            # for both systems it now advertises — adding aarch64-linux to
-            # `systems` above did not require, and could not silently skip, a
-            # ranking decision of its own.
+            # BELOW torrey's 4 — which now only decides AARCH64, since torrey no
+            # longer advertises armv7l at all. For aarch64 torrey fills first and
+            # this absorbs the spill; for armv7l this entry is uncontested among
+            # native builders and the ranking only has to beat qemu. ABOVE
+            # nas-sdg's 2 because that machine's armv7l/aarch64 are EMULATED, and
+            # native must outrank qemu — the same invariant torrey's entry
+            # protects. speedFactor is per-ENTRY, not per-platform, so this
+            # single value ranks tourmaline below torrey for aarch64 and above
+            # nas-sdg for both.
             #
-            #   4 torrey       native armv7l + aarch64, dedicated builder
-            #   3 tourmaline   native armv7l + aarch64, also a print/UPS appliance
+            #   4 torrey       native aarch64, dedicated builder
+            #   3 tourmaline   native armv7l (ONLY native source) + aarch64,
+            #                  also a print/UPS appliance
             #   2 nas-sdg      EMULATED armv7l/aarch64, native x86_64
             #   1 nas-sct      native x86_64 overflow
             #
@@ -400,14 +477,20 @@ in {
             # bounded, ranked exception to that default, not a reversal of
             # it). `systems` only adds ELIGIBILITY; speedFactor is the
             # separate axis that controls how much work actually lands here,
-            # and it is unchanged at 3. Torrey already advertises both
-            # platforms at 4, so for every aarch64 derivation tourmaline is
-            # now eligible for, torrey was already an equal-or-better
-            # candidate before this change and still is after it — nix
-            # prefers the highest speedFactor with a free slot, so torrey
-            # fills first exactly as it already does for armv7l, and
-            # tourmaline only sees aarch64 spillover, the same role it
-            # already plays for armv7l today. maxJobs (3) and cores (3) below
+            # and it is unchanged at 3. Torrey advertises aarch64 at 4, so for
+            # every aarch64 derivation tourmaline is eligible for, torrey was
+            # already an equal-or-better candidate before this change and still
+            # is after it — nix prefers the highest speedFactor with a free
+            # slot, so torrey fills first and tourmaline only sees aarch64
+            # spillover.
+            #
+            # WHAT CHANGED SINCE: the armv7l half of that argument no longer
+            # holds, because torrey no longer advertises armv7l. This box now
+            # takes armv7l work FIRST rather than as spill, so the appliance
+            # crowding this paragraph bounds is real load, not overflow. The
+            # bound itself is unchanged and still the right one — maxJobs 3 —
+            # but the honest statement is that windowpi-class armv7l builds now
+            # land here by default and run for hours. maxJobs (3) and cores (3) below
             # are unchanged, so the concurrency ceiling — the thing that
             # actually bounds how badly a build can crowd out CUPS/NUT — is
             # identical to before; only the TYPE of work that can fill it
