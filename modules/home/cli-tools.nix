@@ -114,6 +114,12 @@ in {
       # general utilities
       bat # cat/pager with syntax highlighting; also colored MANPAGER (zsh.nix)
       btop
+      # CRLF<->LF conversion (dos2unix/unix2dos/mac2unix). Fleet-wide rather
+      # than per-host: Windows-authored files land on whichever machine is
+      # nearest -- the work laptops pull them out of SharePoint/Teams, and
+      # they arrive on the personal boxes as email attachments and repo
+      # checkouts. In stable on both channels, so it is safe for this list.
+      dos2unix
       dtc
       expect
       eza # iconified ls/tree, aliased over ls (zsh.nix)
