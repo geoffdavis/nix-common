@@ -207,12 +207,17 @@ in {
             # N100 (4 E-cores) that will sit at the far end of a WAN link. sdg
             # should win every time both are free.
             #
-            # CHECK BEFORE CHANGING AGAIN: the native ARM builders must outrank
-            # this one — torrey is 4, tourmaline is 3, and this host's ARM is
-            # qemu while theirs runs on the CPU. Both still exceed 2. Raising
-            # this above them would silently route aarch64 work to the
-            # emulator. (This comment previously said torrey was 3; it was
-            # raised to 4 when tourmaline joined at 3.)
+            # CHECK BEFORE CHANGING AGAIN: tourmaline (3) still outranks this,
+            # native ARM beating this host's qemu ARM as intended. torrey does
+            # NOT currently outrank this — it was temporarily dropped to 1,
+            # below this entry, pending an active memory-corruption
+            # investigation (see torrey's own entry below for the full
+            # rationale). That is a deliberate, TEMPORARY inversion: normally
+            # native ARM must always outrank emulated ARM, and torrey should
+            # move back above this once the investigation resolves. Do not
+            # raise this entry to compensate — fix it by restoring torrey's
+            # speedFactor instead, or the inversion becomes permanent by
+            # accident.
             speedFactor = 2;
             # No gccarch-armv7-a here, deliberately: it is the feature nixpkgs'
             # armv7l stdenv requires, and advertising it alongside an
@@ -288,27 +293,41 @@ in {
             # real ARM cores rather than emulated ones.
             maxJobs = 2;
 
-            # HIGHER THAN NAS-SDG (1), and that is the whole point of this
-            # entry. Both machines advertise aarch64-linux, so without a speed
-            # preference nix could hand native ARM work to the emulator —
-            # silently, and hours slower. speedFactor is what makes the native
-            # path win.
-            # RAISED 3 -> 4 when nas-sct joined and nas-sdg went 1 -> 2.
+            # LOWERED 4 -> 1, TEMPORARILY (as of 2026-08-19), pending an
+            # active hardware investigation: torrey produces genuine,
+            # intermittent memory corruption under sustained build load —
+            # GCC internal-compiler-error segfaults and corrupted intermediate
+            # assembly, at a repeatable rate of roughly 85-90% of trial builds
+            # across ten-plus trials, including after the box was moved from a
+            # precarious dangling mount to a proper rack mount (which did not
+            # measurably change the failure rate). Evidence and trial log
+            # lives in nix-personal's session history for this investigation;
+            # hosts/torrey/hardware.nix there carries the kernel-parameter
+            # side of it. Until that investigation concludes, torrey's output
+            # cannot be trusted enough to be this fleet's FIRST choice for
+            # aarch64-linux work: a corrupted derivation built here would get
+            # cached and substituted elsewhere as if it were good.
+            #
+            # 1 rather than something between 1 and 2: the failure rate is too
+            # high to leave this as a near-peer of nas-sdg's emulated tier.
+            # Ties numerically with nas-sct below, but nas-sct is
+            # systems = ["x86_64-linux"] only, so there is no real dispatch
+            # ambiguity for aarch64-linux work — this is genuine last resort,
+            # used only when nas-sdg's emulated tier (and, on hosts that also
+            # import nix-personal's talos-builders.nix, the Talos pool) are
+            # both unavailable.
             #
             # The tiers are now, top to bottom:
-            #   4  torrey           native aarch64, dedicated builder
-            #   3  talos k8s nodes  native aarch64, but with a day job (nix-personal)
+            #   3  tourmaline       native aarch64, Pi 4 appliance
             #   2  nas-sdg          EMULATED ARM / native x86_64
-            #   1  nas-sct          native x86_64, overflow, possibly over a WAN
+            #   1  torrey           native aarch64, UNTRUSTED pending corruption investigation
+            #   1  nas-sct          native x86_64, overflow, possibly over a WAN (different systems, no conflict)
             #
-            # Raising nas-sdg to 2 without also lifting this and the talos entries
-            # would have collapsed native ARM and emulated ARM into ONE tier,
-            # letting qemu win aarch64 work on a tie-break. That costs hours,
-            # silently — the exact inversion these comments exist to prevent.
-            #
-            # armv7l is ranked separately and this host is no longer in that
-            # race at all — see tourmaline's entry below.
-            speedFactor = 4;
+            # RESTORE TO 4 (or remove the entry outright, if the investigation
+            # concludes the corruption is unfixable) once the investigation
+            # resolves one way or the other — do not leave this stuck at 1
+            # indefinitely without following up.
+            speedFactor = 1;
 
             # No gccarch-armv7-a: this host cannot execute armv7l (16 KiB pages,
             # see the header). Advertising the feature is what made nix dispatch
