@@ -69,6 +69,36 @@ in {
       # hardened = false; } — the fleet convention. The daemon runs from first
       # boot; unenrolled it just sits in NeedsLogin, which is harmless.
       services.netbird.enable = true;
+
+      # DNS: resolved, not plain resolvconf — and this is a correctness
+      # requirement, not a preference.
+      #
+      # netbird needs per-domain resolution to do split DNS. resolvconf has
+      # none, so netbird falls back to rewriting /etc/resolv.conf to point ALL
+      # system DNS at its own in-process resolver on wt0. That makes the
+      # overlay a hard dependency of every lookup on the host, including the
+      # one netbird itself needs to come back:
+      #
+      #   netbird loses management
+      #     -> its resolver stops answering
+      #     -> resolv.conf still points at it, so ALL DNS fails
+      #     -> netbird cannot resolve api.netbird.io to reconnect
+      #
+      # which is a closed loop with no self-recovery. Observed on tourmaline
+      # 2026-08-19: DNS dead, resolv.conf holding `nameserver <its own overlay
+      # IP>`, recovered only by hand-writing a LAN nameserver. birdrock hit
+      # the same thing in June and fixed it exactly this way (see
+      # nix-personal hosts/birdrock/network.nix) — "any daemon DNS stall
+      # presented as total network problems".
+      #
+      # With resolved, netbird registers only its MATCH DOMAINS
+      # (netbird.cloud, the realm, …) on wt0 and every other lookup rides the
+      # host's normal DNS, so a disconnected overlay costs overlay names and
+      # nothing else.
+      #
+      # mkDefault: a host with a deliberate DNS design of its own can still
+      # override it, but it should have to say so.
+      services.resolved.enable = lib.mkDefault true;
     }
 
     (lib.mkIf (cfg.useRoutingFeatures != null) {
@@ -119,11 +149,46 @@ in {
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
+          # `netbird up` BLOCKS until it reaches the management service, and
+          # systemd's default here is infinity. On tourmaline 2026-08-19 that
+          # turned a transient DNS outage into a permanent wedge: this unit
+          # sat in `activating` for 20 minutes, multi-user.target waited on
+          # it, and switch-to-configuration blocked behind that — so the
+          # deploy never failed either, it HUNG, which meant deploy-rs's
+          # magicRollback could not fire (it reverts a failed activation, not
+          # a stuck one). A bounded failure is recoverable; an unbounded wait
+          # is not.
+          TimeoutStartSec = "120s";
         };
         script = ''
           key_file="${cfg.setupKeyFile}"
-          if netbird status 2>/dev/null | grep -q "Management: Connected"; then
-            echo "already enrolled; nothing to do"
+          state_file="/var/lib/netbird/config.json"
+
+          # Gate on ENROLLMENT, not connectivity.
+          #
+          # This used to test `netbird status | grep "Management: Connected"`,
+          # which is a CONNECTIVITY check wearing an enrollment check's
+          # clothes. Any network disruption — a resolver restart, a VLAN
+          # change, the overlay flapping — reads as "not enrolled", so the
+          # unit tries to re-enroll a host that is already enrolled and holds
+          # a valid identity. On tourmaline that fired during a networking
+          # migration while /var/lib/netbird/config.json was intact and 2001
+          # bytes on disk, untouched since March.
+          #
+          # The identity is the right signal: config.json carries the peer's
+          # WireGuard private key, and its presence is exactly what makes
+          # enrollment unnecessary. Whether the daemon can currently REACH
+          # management is netbird's problem to retry, not this unit's problem
+          # to solve by minting a new peer.
+          # Whitespace-tolerant on purpose: netbird writes config.json
+          # PRETTY-PRINTED, so the naive '"PrivateKey":"' (no space) never
+          # matches. Verified against a real identity on tourmaline — the file
+          # contains `"PrivateKey": "` — and a gate that never matches is
+          # WORSE than the connectivity check it replaces, because it would
+          # re-enroll on every single activation rather than only during a
+          # network blip.
+          if [ -s "$state_file" ] && grep -qE '"PrivateKey"[[:space:]]*:[[:space:]]*"[^"]' "$state_file"; then
+            echo "already enrolled (identity present in $state_file); nothing to do"
             exit 0
           fi
           if grep -q '^PLACEHOLDER' "$key_file"; then
@@ -135,7 +200,17 @@ in {
             exit 0
           fi
           # --setup-key-file keeps the key off argv (no /proc leak).
-          netbird up --setup-key-file "$key_file"
+          #
+          # Bounded independently of TimeoutStartSec so the failure is
+          # ATTRIBUTABLE: a timeout here says "enrollment could not reach
+          # management", where a unit-level kill says only "something took too
+          # long". --kill-after because `netbird up` does not always honour
+          # SIGTERM promptly, and a plain `timeout` that cannot kill its child
+          # bounds nothing (see nix-common cache-push, same lesson).
+          if ! timeout --kill-after=15s 90s netbird up --setup-key-file "$key_file"; then
+            echo "netbird-join: enrollment did not complete within 90s — the host keeps its existing identity, if any" >&2
+            exit 1
+          fi
         '';
       };
     })

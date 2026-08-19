@@ -23,26 +23,26 @@
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.233";
+    version = "2.1.235";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.233/darwin-arm64/claude";
-      sha256 = "sha256-vEZrbN5j7a/Hc/RxofuYeH+rsx9SJAyGFs5+H1h7IS0=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.235/darwin-arm64/claude";
+      sha256 = "sha256-g7j4Bvby7qMWz+JGYo5sIzdHEdho8f0ECdtVG4d7d0g=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.233";
+    version = "2.1.235";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.233/linux-x64/claude";
-      sha256 = "sha256-VdKBCW9X1BHrvdlNv16f86zLfAVxPjc0jCwR1Lg7+dk=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.235/linux-x64/claude";
+      sha256 = "sha256-v88K4tv5SytqEGB0qr85OLmhCInDtnjky1oAwDJ01dU=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.147.0";
+    version = "0.148.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.147.0/codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-vXWNU9VuQdxl4EX0WJ33mgOO0ZegEa3LUqJY5q1kz9o=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.148.0/codex-package-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-jHkFAK8rpudM5JSP4mxlGsH3f227AFtHyNJv9xEUYmI=";
     };
   };
   copilot-cli-darwin-arm64 = {
@@ -63,18 +63,18 @@
   };
   terraform-darwin-arm64 = {
     pname = "terraform-darwin-arm64";
-    version = "1.15.8";
+    version = "1.15.9";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_darwin_arm64.zip";
-      sha256 = "sha256-8hARDFaYuU2AOnpjzbAlG1RVwVCEFHiAjiu7ND+V7Wg=";
+      url = "https://releases.hashicorp.com/terraform/1.15.9/terraform_1.15.9_darwin_arm64.zip";
+      sha256 = "sha256-BbJ1hqXX2EEFaQ7MzH7bv0i8PW1Xd0XLYfFjupkK308=";
     };
   };
   terraform-linux-x64 = {
     pname = "terraform-linux-x64";
-    version = "1.15.8";
+    version = "1.15.9";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip";
-      sha256 = "sha256-0lzntpAgE62QXbPS6rC+TNkFiH/oi4GmFxuNVQPDHz0=";
+      url = "https://releases.hashicorp.com/terraform/1.15.9/terraform_1.15.9_linux_amd64.zip";
+      sha256 = "sha256-du3Qsi0vJ9PS4JfNeTIJZG9xnPYPAv869iawc2ETfaE=";
     };
   };
 }
