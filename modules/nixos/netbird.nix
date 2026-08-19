@@ -69,6 +69,36 @@ in {
       # hardened = false; } — the fleet convention. The daemon runs from first
       # boot; unenrolled it just sits in NeedsLogin, which is harmless.
       services.netbird.enable = true;
+
+      # DNS: resolved, not plain resolvconf — and this is a correctness
+      # requirement, not a preference.
+      #
+      # netbird needs per-domain resolution to do split DNS. resolvconf has
+      # none, so netbird falls back to rewriting /etc/resolv.conf to point ALL
+      # system DNS at its own in-process resolver on wt0. That makes the
+      # overlay a hard dependency of every lookup on the host, including the
+      # one netbird itself needs to come back:
+      #
+      #   netbird loses management
+      #     -> its resolver stops answering
+      #     -> resolv.conf still points at it, so ALL DNS fails
+      #     -> netbird cannot resolve api.netbird.io to reconnect
+      #
+      # which is a closed loop with no self-recovery. Observed on tourmaline
+      # 2026-08-19: DNS dead, resolv.conf holding `nameserver <its own overlay
+      # IP>`, recovered only by hand-writing a LAN nameserver. birdrock hit
+      # the same thing in June and fixed it exactly this way (see
+      # nix-personal hosts/birdrock/network.nix) — "any daemon DNS stall
+      # presented as total network problems".
+      #
+      # With resolved, netbird registers only its MATCH DOMAINS
+      # (netbird.cloud, the realm, …) on wt0 and every other lookup rides the
+      # host's normal DNS, so a disconnected overlay costs overlay names and
+      # nothing else.
+      #
+      # mkDefault: a host with a deliberate DNS design of its own can still
+      # override it, but it should have to say so.
+      services.resolved.enable = lib.mkDefault true;
     }
 
     (lib.mkIf (cfg.useRoutingFeatures != null) {
