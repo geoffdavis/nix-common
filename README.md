@@ -23,6 +23,8 @@ NixOS modules:
   maintainer's NAS binary cache
 - `nixosModules.cache-push` — post-build-hook push to that same cache
 - `nixosModules.onepassword` — 1Password system pieces (polkit, groups)
+- `nixosModules.distrobox` — distrobox + its rootless podman backend (opt-in,
+  `my.distrobox.enable`)
 - `nixosModules.steam` — Steam + gamescope
 - `nixosModules.opendeck` — re-export of the opendeck-nix module
 

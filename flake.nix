@@ -192,6 +192,9 @@
     # nix-personal (#124).
     nixosModules.iodd = ./modules/nixos/iodd.nix;
     nixosModules.nas-backup = ./modules/nixos/nas-backup.nix;
+    # Opt-in distrobox + rootless podman backend (my.distrobox.enable, off by
+    # default) for running a mutable FHS distro against the host's $HOME.
+    nixosModules.distrobox = ./modules/nixos/distrobox.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
