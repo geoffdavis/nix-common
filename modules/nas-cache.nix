@@ -207,12 +207,12 @@ in {
             # N100 (4 E-cores) that will sit at the far end of a WAN link. sdg
             # should win every time both are free.
             #
-            # CHECK BEFORE CHANGING AGAIN: the native ARM builders must outrank
-            # this one — torrey is 4, tourmaline is 3, and this host's ARM is
-            # qemu while theirs runs on the CPU. Both still exceed 2. Raising
-            # this above them would silently route aarch64 work to the
-            # emulator. (This comment previously said torrey was 3; it was
-            # raised to 4 when tourmaline joined at 3.)
+            # CHECK BEFORE CHANGING AGAIN: tourmaline (3) still outranks this,
+            # native ARM beating this host's qemu ARM as intended. torrey has
+            # no entry at all right now — quarantined, not merely
+            # deprioritized, pending an active memory-corruption investigation
+            # (see the quarantine block further down for the full rationale).
+            # Do not raise this entry to compensate for torrey's absence.
             speedFactor = 2;
             # No gccarch-armv7-a here, deliberately: it is the feature nixpkgs'
             # armv7l stdenv requires, and advertising it alongside an
@@ -223,105 +223,103 @@ in {
             supportedFeatures = ["big-parallel"];
             publicHostKey = builderPublicHostKey;
           }
-          {
-            # torrey — the NATIVE aarch64 builder (nix-personal#351). A
-            # Raspberry Pi 5. This is the entry the nas-sdg comment above
-            # anticipates when it says "the fix is a NATIVE aarch64 builder as
-            # an additional buildMachines entry, not a redesign".
-            #
-            # aarch64 ONLY. It used to carry armv7l too, on the strength of a
-            # measured boot line:
-            #
-            #   [    0.154620] CPU features: detected: 32-bit EL0 Support
-            #
-            # That line is still true and is NOT sufficient. The CPU implements
-            # AArch32 at EL0; the KERNEL is what stops it being usable. torrey
-            # runs the Raspberry Pi vendor kernel (linux-rpi), whose Pi 5
-            # defconfig sets the page size explicitly:
-            #
-            #   arch/arm64/configs/bcm2712_defconfig: CONFIG_ARM64_16K_PAGES=y
-            #
-            # and nixpkgs' armv7l binaries carry 4 KiB-granular PT_LOAD
-            # segments (p_align 0x1000, first LOAD at vaddr 0xf000 — not a
-            # multiple of 16384). A 16 KiB-page kernel cannot map them, so every
-            # armv7l binary takes SIGSEGV the instant it is exec'd. The arm64
-            # Kconfig says so in as many words:
-            #
-            #   config COMPAT ... depends on ARM64_4K_PAGES || EXPERT
-            #     "If you use a page size other than 4KB (i.e, 16KB or 64KB),
-            #      please be aware that you will only be able to execute
-            #      AArch32 binaries that were compiled with page size aligned
-            #      segments."
-            #
-            # torrey has CONFIG_EXPERT=y, which is the ONLY reason CONFIG_COMPAT
-            # is set at all here — so the box advertises a 32-bit capability it
-            # cannot deliver. This is a Pi 5 fact, not an ARM one: the Pi 4
-            # defconfig (bcm2711_defconfig) never sets 16K and inherits the
-            # arm64 `default ARM64_4K_PAGES`, so tourmaline keeps working armv7l
-            # even after it moves to the vendor kernel (nix-personal#358).
-            # Verified by building both configs at the same vendor kernel
-            # version, 6.18.39-stable_20260724.
-            #
-            # HOW IT SURFACED, because the symptom did not name the cause:
-            # `task check:windowpi` on the darwin host failed within ~2 minutes,
-            # every time, on whichever armv7l derivation landed here first —
-            # "builder failed due to signal 11 (Segmentation fault)" with an
-            # EMPTY build log, because nothing ever got far enough to write one.
-            #
-            # This regressed silently when torrey moved from mainline (4 KiB) to
-            # the vendor kernel in nix-personal#360. Do not restore armv7l here
-            # on the strength of the CPU feature line — the only thing that
-            # would make it true again is a linux-rpi built with
-            # CONFIG_ARM64_4K_PAGES, which is a multi-hour compile that
-            # substitutes nowhere and diverges from what Raspberry Pi ships and
-            # tests on a Pi 5.
-            hostName = "nix-builder-torrey";
-
-            # No x86_64-linux: torrey cannot build it, natively or otherwise.
-            # nas-sdg remains the only x86 builder and keeps that traffic.
-            systems = ["aarch64-linux"];
-            protocol = "ssh-ng";
-            sshUser = "nix-remote-builder";
-            sshKey = "/etc/nix/builder_ed25519";
-
-            # 4 cores, 8 GB. Modest against nas-sdg's 12 threads, but these are
-            # real ARM cores rather than emulated ones.
-            maxJobs = 2;
-
-            # HIGHER THAN NAS-SDG (1), and that is the whole point of this
-            # entry. Both machines advertise aarch64-linux, so without a speed
-            # preference nix could hand native ARM work to the emulator —
-            # silently, and hours slower. speedFactor is what makes the native
-            # path win.
-            # RAISED 3 -> 4 when nas-sct joined and nas-sdg went 1 -> 2.
-            #
-            # The tiers are now, top to bottom:
-            #   4  torrey           native aarch64, dedicated builder
-            #   3  talos k8s nodes  native aarch64, but with a day job (nix-personal)
-            #   2  nas-sdg          EMULATED ARM / native x86_64
-            #   1  nas-sct          native x86_64, overflow, possibly over a WAN
-            #
-            # Raising nas-sdg to 2 without also lifting this and the talos entries
-            # would have collapsed native ARM and emulated ARM into ONE tier,
-            # letting qemu win aarch64 work on a tie-break. That costs hours,
-            # silently — the exact inversion these comments exist to prevent.
-            #
-            # armv7l is ranked separately and this host is no longer in that
-            # race at all — see tourmaline's entry below.
-            speedFactor = 4;
-
-            # No gccarch-armv7-a: this host cannot execute armv7l (16 KiB pages,
-            # see the header). Advertising the feature is what made nix dispatch
-            # armv7l here and segfault, instead of routing it to tourmaline,
-            # which builds it fine. The same "worse than useless" trap the talos
-            # nodes hit for a different reason (nix-personal
-            # modules/talos-builders.nix).
-            #
-            # gccarch-armv8-a because this really is armv8 hardware — nas-sdg
-            # cannot honestly claim that, since its aarch64 is qemu.
-            supportedFeatures = ["big-parallel" "gccarch-armv8-a"];
-            publicHostKey = torreyPublicHostKey;
-          }
+          # ── torrey: QUARANTINED — THE HOST CORRUPTS MEMORY ──────────────
+          #
+          # torrey's buildMachines entry USED TO BE HERE (nix-personal#351: a
+          # Raspberry Pi 5, the fleet's native aarch64 builder at speedFactor
+          # 4). It is deliberately absent. Do not restore it without reading
+          # this and re-testing the hardware first.
+          #
+          # THE BOX MISCOMPILES. Building linux-rpi 6.18.39 for pacificbeach
+          # produced FOUR independent GCC internal compiler errors — all
+          # "Segmentation fault", in four unrelated translation units:
+          #
+          #   arch/arm64/kvm/hyp/nvhe/pkvm.c:934
+          #   mm/swap.c:1117
+          #   kernel/sched/core.c:10905
+          #   fs/pidfs.c:1087
+          #
+          # …and, decisively, CORRUPTED SOURCE TEXT. gcc read this line out of
+          # include/linux/cpumask.h with bytes replaced mid-token:
+          #
+          #   static __always_inline bool zalloc_cpumask_var_node(…)
+          #            ^ stray '\1'   ^ NUL   ^ stray '\200'  -> "ways_inline"
+          #
+          # \1 \0 \200 little-endian is 0x80000001 — BYTE-IDENTICAL to the
+          # corruption constant measured on this board at bring-up
+          # (nix-personal hosts/torrey/hardware.nix: "replace the upper 32 bits
+          # of a 64-bit word with a constant 0x80000001"). Same fault, same
+          # signature. A compiler bug fails deterministically in ONE place;
+          # random segfaults plus mangled source text is memory.
+          #
+          # THE NUMA MITIGATION IS PRESENT AND WORKING — this is NOT a
+          # regression of it, and re-applying it will not help. Verified live
+          # on the host: 8 NUMA nodes online at ~1 GB each, "NUMA default
+          # policy overridden to 'interleave:0-7'", DMA IOMMU likewise,
+          # cma=256M, and Stage B's thermal fix healthy (thermal_zone0 +
+          # cooling_device0, 47.4 °C). Every parameter stuck.
+          #
+          # It was never a fix, and hardware.nix says so itself: "WHAT THIS
+          # DOES NOT ESTABLISH: why … the underlying decode behaviour at the
+          # 2 GiB boundary is inferred and not proven." The validation was
+          # `memtester 4G, 3 loops` — ONE sequential 4 GB block. A parallel
+          # kernel build touches ~8 GB with heavy page-cache churn across all
+          # eight nodes, so interleaving no longer keeps allocations off the
+          # bad decode. Probabilistic avoidance, not repair.
+          #
+          # WHY QUARANTINE RATHER THAN DERATE speedFactor: a corrupting builder
+          # is worse than an absent one. This build failed LOUDLY, which was
+          # luck. Corruption landing on a keyword yields a syntax error;
+          # corruption landing in a data structure or an instruction encoding
+          # yields a kernel that compiles clean and is subtly wrong. Nix cannot
+          # catch that — it hashes what the builder produced, it does not
+          # compare against a reference, so a miscompiled output gets a valid
+          # hash and is trusted forever. torrey also runs my.cachePush, so its
+          # outputs reach the nas-sdg cache and the whole fleet; and it is the
+          # ONLY builder for linux-rpi, which substitutes nowhere — so
+          # tourmaline's, pacificbeach's and torrey's own kernels were all
+          # built here.
+          #
+          # There is no ECC on a Pi 5, so there is NO hardware error reporting.
+          # dmesg shows zero EDAC/MCE events and that means NOTHING; a crashing
+          # build is the only detector available.
+          #
+          # COST OF THIS REMOVAL, stated plainly: native aarch64 loses its top
+          # tier. aarch64 falls to tourmaline (native, Pi 4, ranked 3) and
+          # nas-sdg (EMULATED, 2), so linux-rpi now compiles on a 3.7 GiB Pi 4
+          # or under qemu — slow, and tight on memory. That is the correct
+          # trade against silently poisoning the fleet cache with a
+          # miscompiled kernel.
+          #
+          # TO RESTORE: re-test the hardware FIRST — memtester across ~7 GB
+          # (not 4) for multiple loops, since the 4 GB test passed while the
+          # fault was live. Only then re-add the entry, here, with
+          # systems = ["aarch64-linux"], maxJobs 2, speedFactor 4,
+          # supportedFeatures = ["big-parallel" "gccarch-armv8-a"] and
+          # publicHostKey = torreyPublicHostKey. Do NOT re-add armv7l-linux or
+          # gccarch-armv7-a — that is a separate and permanent constraint
+          # (16 KiB pages; see nix-personal hosts/torrey/builder.nix).
+          #
+          # The ssh/known_hosts config for nix-builder-torrey is deliberately
+          # LEFT IN PLACE further down: it is inert without a buildMachines
+          # entry, and keeping it makes restoring the host a one-hunk change.
+          #
+          # UPDATE 2026-08-20, DO NOT LOOSEN THIS ON THE STRENGTH OF WHAT
+          # FOLLOWS: this quarantine was briefly relaxed to a speedFactor
+          # derate (4 -> 1, last resort rather than removed) to test whether
+          # physically remounting the box — it had been dangling loose with
+          # cables running past it, not rack-mounted — was the actual cause.
+          # It was not. Ten-plus trials post-remount still showed the SAME
+          # ~85-90% failure rate as pre-remount, including a NEW failure
+          # signature under a concurrent memtester+build co-stress test (a
+          # bit-flip pattern at a second address, distinct from the original
+          # 0x80000001 one, roughly 1-in-4000 memtester passes). And a
+          # speedFactor derate does not prevent selection under load, only
+          # delay it: torrey still got dispatched real work once every
+          # higher-priority builder's job slots were saturated, and STILL
+          # corrupted it — a real `task check:windowpi` run hit both a GCC ICE
+          # (libunistring) and garbled assembly (libressl) on torrey the same
+          # way this commit's own linux-rpi build did. Back to full removal.
           {
             # nas-sct — a SECOND native x86_64-linux builder.
             #
