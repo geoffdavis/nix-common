@@ -23,26 +23,26 @@
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.235";
+    version = "2.1.241";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.235/darwin-arm64/claude";
-      sha256 = "sha256-g7j4Bvby7qMWz+JGYo5sIzdHEdho8f0ECdtVG4d7d0g=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.241/darwin-arm64/claude";
+      sha256 = "sha256-FJXrfELTtEUfXxzTi21JjSKko4yAK8K+XBzxeV5kgg0=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.235";
+    version = "2.1.241";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.235/linux-x64/claude";
-      sha256 = "sha256-v88K4tv5SytqEGB0qr85OLmhCInDtnjky1oAwDJ01dU=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.241/linux-x64/claude";
+      sha256 = "sha256-B3G9hmz/grdlgfwEmfZSnho2hFB48UT4yB3Ms7xwN7g=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.148.0";
+    version = "0.149.1";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.148.0/codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-jHkFAK8rpudM5JSP4mxlGsH3f227AFtHyNJv9xEUYmI=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.149.1/codex-package-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-HoUxrl9t6jxuEeU+dMxayBvxull/mylvsRLW6jD9r10=";
     };
   };
   copilot-cli-darwin-arm64 = {
