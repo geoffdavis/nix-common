@@ -108,8 +108,14 @@ in {
           }
         ];
         RunAtLoad = false;
-        StandardOutPath = "/var/log/${label}.log";
-        StandardErrorPath = "/var/log/${label}.log";
+        # NOT /var/log: launchd opens these paths AS UserName (geoff), and
+        # /var/log is root:wheel 0755 — a non-root LaunchDaemon can't create
+        # a file there, so it fails closed with EX_CONFIG (78) before the
+        # ProgramArguments even run, silently (no log file, no notification).
+        # Confirmed live 2026-08-25. ~/Library/Logs is geoff-writable and
+        # already exists as a standard per-user directory.
+        StandardOutPath = "/Users/${cfg.username}/Library/Logs/${label}.log";
+        StandardErrorPath = "/Users/${cfg.username}/Library/Logs/${label}.log";
         ProgramArguments = [
           "/bin/sh"
           "-c"
@@ -120,7 +126,7 @@ in {
             if ! ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}; then
               ${lib.optionalString cfg.notify.enable ''
               uid="$(/usr/bin/id -u ${cfg.username})"
-              /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check /var/log/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
+              /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
             ''}
               exit 1
             fi
