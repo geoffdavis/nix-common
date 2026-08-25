@@ -165,6 +165,10 @@
     # every remote build, while NixOS's generated ssh_config does not include
     # the directory at all and never sees it.
     darwinModules.netbird-ssh-config = ./modules/darwin/netbird-ssh-config.nix;
+    # Scheduled restic backups to the NAS rest-server, darwin equivalent of
+    # nixosModules.nas-backup (no services.restic on nix-darwin, so this
+    # schedules restic directly via launchd).
+    darwinModules.nas-backup = ./modules/darwin/nas-backup.nix;
     # NAS binary cache + x86_64-linux remote builder for system-level consumers
     # (nix-darwin + NixOS). Same file — both platforms share these option
     # namespaces (nix.settings, nix.buildMachines, programs.ssh.extraConfig).
