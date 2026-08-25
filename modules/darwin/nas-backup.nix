@@ -34,6 +34,7 @@
   ];
   excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ cfg.extraExcludes);
   pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
+  cacertArg = lib.optionalString (cfg.cacertFile != null) (" --cacert " + lib.escapeShellArg "${cfg.cacertFile}");
   label = "nas-backup-${cfg.name}";
 in {
   options.services.nasBackup = {
@@ -70,6 +71,20 @@ in {
       type = lib.types.listOf lib.types.str;
       default = [];
       description = "Extra restic exclude patterns, appended to the baseline.";
+    };
+
+    cacertFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "./certs/home-ca-root.pem";
+      description = ''
+        PEM CA bundle passed as restic's `--cacert`, for a rest-server
+        behind a private CA (macOS has no NixOS-style
+        `security.pki.certificateFiles` to trust it system-wide, and
+        --cacert is the narrowest fix — just this one restic invocation,
+        not the whole OS). Pass a real path literal (e.g. `./certs/foo.pem`)
+        so it's copied into the store as part of the closure, not a string.
+      '';
     };
 
     timer = {
@@ -123,7 +138,7 @@ in {
             sleep "$(( RANDOM % ${toString (cfg.timer.randomizedDelaySec + 1)} ))"
             export RESTIC_REPOSITORY_FILE="${cfg.repositoryFile}"
             export RESTIC_PASSWORD_FILE="${cfg.passwordFile}"
-            if ! ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}; then
+            if ! ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg}; then
               ${lib.optionalString cfg.notify.enable ''
               uid="$(/usr/bin/id -u ${cfg.username})"
               /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
