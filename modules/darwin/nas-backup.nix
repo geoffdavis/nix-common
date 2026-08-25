@@ -32,8 +32,8 @@
     "/Users/*/.npm/_cacache"
     "*.iso"
   ];
-  excludeArgs = lib.concatMapStrings (e: " --exclude '${e}'") (baselineExcludes ++ cfg.extraExcludes);
-  pathArgs = lib.concatMapStrings (p: " '${p}'") cfg.paths;
+  excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ cfg.extraExcludes);
+  pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
   label = "nas-backup-${cfg.name}";
 in {
   options.services.nasBackup = {
