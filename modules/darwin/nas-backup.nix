@@ -36,6 +36,11 @@
   pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
   cacertArg = lib.optionalString (cfg.cacertFile != null) (" --cacert " + lib.escapeShellArg "${cfg.cacertFile}");
   label = "nas-backup-${cfg.name}";
+  # Convention, not an option: a consumer's own status-widget script (e.g.
+  # an xbar plugin) derives this same path from username + name rather than
+  # this module exposing it — it's just where the live --json progress
+  # stream lands, sibling to the human-readable StandardOutPath log.
+  progressFile = "/Users/${cfg.username}/Library/Logs/${label}.progress.json";
 in {
   options.services.nasBackup = {
     enable = lib.mkEnableOption "restic backups to the NAS rest-server (darwin)";
@@ -138,7 +143,11 @@ in {
             sleep "$(( RANDOM % ${toString (cfg.timer.randomizedDelaySec + 1)} ))"
             export RESTIC_REPOSITORY_FILE="${cfg.repositoryFile}"
             export RESTIC_PASSWORD_FILE="${cfg.passwordFile}"
-            if ! ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg}; then
+            # --json's stdout stream goes only to progressFile (a status-widget
+            # feed, e.g. an xbar plugin) — stderr still reaches StandardErrorPath
+            # (this same log file) unredirected, so failures stay human-readable
+            # there instead of buried in NDJSON.
+            if ! ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile}; then
               ${lib.optionalString cfg.notify.enable ''
               uid="$(/usr/bin/id -u ${cfg.username})"
               /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
