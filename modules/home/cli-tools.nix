@@ -34,6 +34,18 @@
         "-skip=^TestServerMultipleRequestsSameConnection$"
       ];
   });
+
+  # nixpkgs' `ansible` is ansible-core only, built without pytz, and its
+  # bundled `ansible` (collections) dependency defaults withNetbox = false.
+  # The netbox.netbox collection's inventory plugin imports pytz for its
+  # auto-detection logic and pynetbox as its NetBox API client; missing
+  # either breaks the plugin with no visible error.
+  ansible = pkgs.python3Packages.toPythonApplication (
+    pkgs.python3Packages.ansible-core.override {
+      ansible = pkgs.python3Packages.ansible.override {withNetbox = true;};
+      extraPackages = ps: [ps.pytz];
+    }
+  );
 in {
   imports = [
     ./onepassword.nix

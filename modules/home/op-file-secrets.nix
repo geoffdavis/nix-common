@@ -72,10 +72,13 @@ in {
       # Activations run with a minimal PATH that often lacks op — a HM-as-NixOS
       # module, or standalone HM on a non-NixOS host. Fall back to well-known
       # setgid-shim locations across OSes: the NixOS wrappers, plus /usr/bin/op
-      # (the Ubuntu/Debian 1Password desktop-CLI integration shim) and a
-      # /usr/local manual-install path.
+      # (the Ubuntu/Debian 1Password desktop-CLI integration shim), a
+      # /usr/local manual-install path (also Homebrew's Intel-Mac prefix),
+      # and /opt/homebrew/bin/op (Homebrew's Apple Silicon prefix — confirmed
+      # missing live on windansea 2026-08-25: nix-darwin's activation PATH
+      # doesn't include it, so op-file-secrets silently skipped every file).
       if [ -z "$_op" ]; then
-        for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op; do
+        for _c in /run/wrappers/bin/op /run/current-system/sw/bin/op /etc/profiles/per-user/"$USER"/bin/op /usr/bin/op /usr/local/bin/op /opt/homebrew/bin/op; do
           if [ -x "$_c" ]; then
             _op="$_c"
             break
