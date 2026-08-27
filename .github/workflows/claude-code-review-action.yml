@@ -45,9 +45,22 @@ jobs:
           echo "bun=$bun/bin/bun" >> "$GITHUB_OUTPUT"
           echo "claude=$claude/bin/claude" >> "$GITHUB_OUTPUT"
 
+      # v1.0.139 passes --tsconfig-override to bun in its "post buffered
+      # inline comments" step, which trips a Bun runtime bug ("Internal
+      # error: directory mismatch for directory .../tsconfig.json"). On
+      # self-hosted runners this does not fail the job -- it corrupts that
+      # step's filesystem view just enough that it can't read back the
+      # comments buffer, so the run reports is_error: false, does real
+      # review work, and silently posts nothing ("No buffered inline
+      # comments"). v1.0.207 drops --tsconfig-override entirely (see that
+      # release's action.yml). Root-caused via this repo's own PRs
+      # #170/#171/#172, all silently empty despite real turns and real cost
+      # under the old pin, plus the same bug independently found and worked
+      # around by a downstream consumer on a different runner/action-tag
+      # combination without it ever getting reported back here.
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@64de744025ca9e24df2b88204b4f1e968f39f009 # v1.0.139
+        uses: anthropics/claude-code-action@70fec183852c4f82f3f1969faed7dd60c5149ca7 # v1.0.207
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           path_to_bun_executable: ${{ steps.nixtools.outputs.bun }}
