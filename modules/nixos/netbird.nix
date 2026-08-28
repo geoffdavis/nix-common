@@ -99,6 +99,24 @@ in {
       # mkDefault: a host with a deliberate DNS design of its own can still
       # override it, but it should have to say so.
       services.resolved.enable = lib.mkDefault true;
+
+      # Upstream services.netbird writes the config.d override file
+      # (environment.etc."netbird/config.d/50-nixos.json", built from
+      # services.netbird.clients.default.config -- IFaceBlackList, DNS
+      # resolver address, etc.) but wires no restartTriggers to it. A host
+      # that overrides that option gets the new file on disk at
+      # activation, but the already-running daemon keeps its OLD config
+      # until something restarts it by hand -- a change that LOOKS
+      # deployed but silently is not. Hit live 2026-08-28 (nas-sdg): a
+      # podman-bridge ICE-candidate-blacklist fix activated cleanly and
+      # never took effect until a manual `systemctl restart netbird`.
+      # "netbird" specifically, not a generic client-name lookup: this
+      # module only ever uses the services.netbird.enable=true compat
+      # alias (client name "netbird", see above), never the multi-client
+      # services.netbird.clients.<name> API directly.
+      systemd.services.netbird.restartTriggers = [
+        config.environment.etc."netbird/config.d/50-nixos.json".source
+      ];
     }
 
     (lib.mkIf (cfg.useRoutingFeatures != null) {
