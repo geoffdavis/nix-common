@@ -55,10 +55,17 @@ in {
     skills = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = {};
-      example = lib.literalExpression ''{ my-skill = ./skills/my-skill/SKILL.md; }'';
+      example = lib.literalExpression ''{ my-skill = ./skills/my-skill; }'';
       description = ''
-        Skills to install, as a map of skill name to its SKILL.md path. Each
-        becomes ~/.claude/skills/<name>/SKILL.md.
+        Skills to install, as a map of skill name to the skill's DIRECTORY
+        (the one containing its `SKILL.md`). The whole directory is installed
+        to ~/.claude/skills/<name>/.
+
+        A directory rather than the bare `SKILL.md`: skills may bundle
+        resources their instructions reference by relative path
+        (`references/`, `scripts/`, `assets/`). Installing only the markdown
+        would let such a skill load and then fail on first use of a sibling
+        file — a failure that surfaces mid-task rather than at switch time.
 
         Keep the attribute name equal to the `name` in the file's YAML
         frontmatter — Claude Code matches on the frontmatter, while the
@@ -68,9 +75,18 @@ in {
   };
 
   config = lib.mkIf (cfg.enable && cfg.skills != {}) {
+    # `recursive = true` symlinks each file in the tree individually rather
+    # than symlinking the directory itself, so ~/.claude/skills/<name> stays a
+    # real directory. That matters because Claude Code (and the user) may add
+    # or generate files alongside a managed skill; a single directory symlink
+    # would make the whole path read-only and any such write fail.
     home.file =
       lib.mapAttrs'
-      (name: src: lib.nameValuePair ".claude/skills/${name}/SKILL.md" {source = src;})
+      (name: src:
+        lib.nameValuePair ".claude/skills/${name}" {
+          source = src;
+          recursive = true;
+        })
       cfg.skills;
   };
 }
