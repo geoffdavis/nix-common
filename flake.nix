@@ -222,6 +222,13 @@
     # Needs flake inputs (the prebuilt-database HM module), hence import-with-args.
     homeModules.nix-index = import ./modules/home/nix-index.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
+    # Claude Code skills, installed into ~/.claude/skills so they load in EVERY
+    # session regardless of cwd (a repo-local .claude/skills/ loads only when
+    # the session is rooted in that repo — see the module header for the
+    # incident behind that argument). Imported by ai-tools.nix, so hosts
+    # installing claude-code get them automatically; exported here for
+    # consumers wanting the skills without the AI packages.
+    homeModules.claude-skills = ./modules/home/claude-skills.nix;
     # docx2pdf via pipx — macOS only, requires Microsoft Word. opt-in per host.
     homeModules.doc-tools = ./modules/home/doc-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
