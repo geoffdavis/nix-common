@@ -126,6 +126,12 @@
         meta.mainProgram = "codex";
       };
 in {
+  # Skills ride along with claude-code: a host that installs the tool also gets
+  # the guidance that makes it safe to point at this fleet's secrets. Its own
+  # module (opt out with claudeSkills.enable = false) rather than inlined here;
+  # see modules/home/claude-skills.nix for why skills ship declaratively at all.
+  imports = [./claude-skills.nix];
+
   options.aiTools = {
     claude.enable = lib.mkOption {
       type = lib.types.bool;
