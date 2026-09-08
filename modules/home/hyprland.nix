@@ -120,6 +120,8 @@ in {
       description = "Laptop-only waybar modules: battery and backlight (their modules-right entries and config blocks).";
     };
 
+    gpuStatus.enable = lib.mkEnableOption "GPU utilization waybar module (Intel iGPU freq ratio + NVIDIA dGPU nvidia-smi)";
+
     onePasswordTray = {
       enable =
         lib.mkEnableOption "the 1Password tray launcher (waits for waybar's StatusNotifier watcher before `1password --silent`, so the tray icon registers)";
