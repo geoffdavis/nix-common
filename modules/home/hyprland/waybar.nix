@@ -50,7 +50,6 @@ in {
                 "temperature"
               ]
               ++ lib.optional cfg.gpuStatus.enable "custom/gpu"
-              ++ lib.optional cfg.gpuStatus.enable "custom/gpu"
               ++ lib.optional cfg.laptop.enable "battery"
               ++ lib.optional cfg.g502.enable "custom/mouse"
               ++ [
@@ -202,15 +201,6 @@ in {
               on-click-right = "loginctl lock-session";
             };
 
-            # GPU utilization: Intel iGPU (freq ratio) + NVIDIA dGPU (nvidia-smi).
-            # 5s interval — GPU load changes slowly.
-            "custom/gpu" = {
-              exec = "${h.gpuStatus}/bin/waybar-gpu-status";
-              interval = 5;
-              format = "{}";
-              tooltip = true;
-              return-type = "json";
-            };
             # GPU utilization: Intel iGPU (freq ratio) + NVIDIA dGPU (nvidia-smi).
             # 5s interval — GPU load changes slowly.
             "custom/gpu" = {
