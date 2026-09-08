@@ -50,6 +50,7 @@ in {
                 "temperature"
               ]
               ++ lib.optional cfg.gpuStatus.enable "custom/gpu"
+              ++ lib.optional cfg.gpuStatus.enable "custom/gpu"
               ++ lib.optional cfg.laptop.enable "battery"
               ++ lib.optional cfg.g502.enable "custom/mouse"
               ++ [
@@ -210,6 +211,15 @@ in {
               tooltip = true;
               return-type = "json";
             };
+            # GPU utilization: Intel iGPU (freq ratio) + NVIDIA dGPU (nvidia-smi).
+            # 5s interval — GPU load changes slowly.
+            "custom/gpu" = {
+              exec = "${h.gpuStatus}/bin/waybar-gpu-status";
+              interval = 5;
+              format = "{}";
+              tooltip = true;
+              return-type = "json";
+            };
           }
           # Laptop-only modules, behind the laptop gate (default on). Attr names
           # render sorted in the generated JSON, so merging them in here is
@@ -309,6 +319,7 @@ in {
           #temperature     { color: @teal;      border-bottom: 2px solid @teal; }
           #backlight       { color: @yellow;    border-bottom: 2px solid @yellow; }
           #battery         { color: @green;     border-bottom: 2px solid @green; }
+          #custom-gpu      { color: @maroon;    border-bottom: 2px solid @maroon; }
           #custom-gpu      { color: @maroon;    border-bottom: 2px solid @maroon; }
           ${lib.optionalString cfg.g502.enable "#custom-mouse    { color: @pink;      border-bottom: 2px solid @pink; }\n#custom-mouse.hidden { padding: 0; margin: 0; border-bottom: none; }\n"}#idle_inhibitor  { color: @green; }
           #idle_inhibitor.activated { color: @red; }

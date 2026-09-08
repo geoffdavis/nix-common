@@ -165,6 +165,36 @@
     fi
   '';
 
+  # GPU utilization for waybar. Reads Intel iGPU (gt_cur_freq_mhz / gt_max_freq_mhz
+  # ratio — same fallback path btop uses when i915.enable_guc=2 is absent) and
+  # NVIDIA dGPU (nvidia-smi utilization.gpu), emitting "iGPU 65% dGPU 12%".
+  gpuStatus = pkgs.writeShellScriptBin "waybar-gpu-status" ''
+    intel_util=""
+    cur=$(${pkgs.coreutils}/bin/cat /sys/class/drm/card1/gt_cur_freq_mhz 2>/dev/null)
+    max=$(${pkgs.coreutils}/bin/cat /sys/class/drm/card1/gt_max_freq_mhz 2>/dev/null)
+    if [ -n "$cur" ] && [ -n "$max" ] && [ "$max" -gt 0 ] 2>/dev/null; then
+      intel_util="$(( (cur * 100) / max ))"
+    fi
+
+    nvidia_util=""
+    if command -v nvidia-smi &>/dev/null; then
+      raw=$(${pkgs.nvidia_xorg}/bin/nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
+      if [ -n "$raw" ]; then
+        nvidia_util="$raw"
+      fi
+    fi
+
+    out=""
+    if [ -n "$intel_util" ]; then
+      out="iGPU ${intel_util}%"
+    fi
+    if [ -n "$nvidia_util" ]; then
+      [ -n "$out" ] && out="$out dGPU"
+      out="$out${nvidia_util}%"
+    fi
+    [ -n "$out" ] && echo "$out" || echo "no GPU"
+  '';
+
   # waybar light/dark indicator: moon glyph when dark, sun when light, read
   # from darkman. printf emits the nerd-font codepoints (avoids glyph-drop).
   themeIcon = pkgs.writeShellScriptBin "waybar-theme-icon" ''
