@@ -42,6 +42,11 @@
     # via homeModules.nix-index.
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs-nixos";
+
+    # Hermes keeps its own nixpkgs pin: its uv2nix environment is resolved
+    # against that package set and cannot safely follow our stable channels.
+    hermes-agent.url = "github:NousResearch/hermes-agent";
+    hermes-nixpkgs.follows = "hermes-agent/nixpkgs";
   };
 
   outputs = inputs: let
@@ -222,6 +227,9 @@
     # Needs flake inputs (the prebuilt-database HM module), hence import-with-args.
     homeModules.nix-index = import ./modules/home/nix-index.nix inputs;
     homeModules.ai-tools = ./modules/home/ai-tools.nix;
+    # Hermes' upstream Home Manager module with the local-first Mnemosyne
+    # memory provider included and selected by default.
+    homeModules.hermes-agent = import ./modules/home/hermes-agent.nix inputs;
     # Claude Code skills, installed into ~/.claude/skills so they load in EVERY
     # session regardless of cwd (a repo-local .claude/skills/ loads only when
     # the session is rooted in that repo — see the module header for the
