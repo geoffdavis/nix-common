@@ -102,11 +102,23 @@ in {
   # actually wants Nix to own config.yaml.
   services.hermes-agent.package = lib.mkDefault hermesWithMnemosyne;
 
-  # The CLI (and HERMES_HOME) on PATH, and the Desktop application, both
-  # built from the same extended package above. Neither depends on
-  # `services.hermes-agent.enable`.
   programs.hermes-agent = {
     enable = lib.mkDefault true;
     package = lib.mkDefault config.services.hermes-agent.package;
   };
+
+  # A previous release enabled the upstream service and wrote this marker.
+  # Remove only that exact marker during migration, then restore the former
+  # Mnemosyne defaults through Hermes' public config interface. This keeps the
+  # migration safe for every consumer of this shared module while leaving all
+  # later runtime configuration changes mutable and unmanaged.
+  home.activation.hermesAgentMigrateMutableConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    hermesManagedMarker=${lib.escapeShellArg "${config.home.homeDirectory}/.hermes/.managed"}
+    if [ -f "$hermesManagedMarker" ] && [ "$(cat "$hermesManagedMarker")" = "home-manager" ]; then
+      $DRY_RUN_CMD rm -f "$hermesManagedMarker"
+      $DRY_RUN_CMD ${hermesWithMnemosyne}/bin/hermes config set memory.provider mnemosyne >/dev/null
+      $DRY_RUN_CMD ${hermesWithMnemosyne}/bin/hermes config set memory.memory_enabled false >/dev/null
+      $DRY_RUN_CMD ${hermesWithMnemosyne}/bin/hermes config set memory.user_profile_enabled false >/dev/null
+    fi
+  '';
 }
