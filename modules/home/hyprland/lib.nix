@@ -135,6 +135,73 @@
 
   # --- helper scripts (were duplicated verbatim across both hosts) ------------
 
+  # GPU utilization for waybar.
+  #
+  # Intel iGPU: reads the i915 perf PMU (the same mechanism btop uses), NOT
+  # gt_cur_freq_mhz/gt_max_freq_mhz — that ratio reports the current clock vs.
+  # max clock, which pins near 100% under light load (the GPU boosts clocks
+  # fast even at low occupancy) and does not track actual engine busy time.
+  # kernel.perf_event_paranoid=0 (set host-wide) lets an unprivileged user
+  # open the i915 PMU's per-engine busy counters
+  # (/sys/bus/event_source/devices/i915/events/{rcs0,vcs0,bcs0,vecs0}-busy),
+  # which accumulate nanoseconds each engine has been active during a single
+  # perf_event_open session. `perf stat -I 1000 --interval-count 1` opens the
+  # events, flushes exactly one 1000ms interval's busy-ns per engine, then
+  # exits — giving true occupancy over that window, matching btop's reading.
+  #
+  # NVIDIA dGPU: nvidia-smi utilization.gpu (driver-reported, already correct).
+  # Deliberately unqualified — nvidia-smi ships with the host's proprietary
+  # driver, not nixpkgs, so it's resolved off PATH like pactl/wpctl above.
+  #
+  # Emits "iGPU 45% dGPU 12%".
+  gpuStatus = pkgs.writeShellScriptBin "waybar-gpu-status" ''
+    set -u
+
+    # One `perf stat -I 1000 --interval-count 1` invocation flushes exactly one
+    # 1000ms busy-ns report per engine, then exits. --interval-count 1 matters:
+    # without it perf ALSO prints a final flush at process exit, and summing
+    # both blocks double-counts (observed: reported ~100% when true occupancy
+    # was ~50%).
+    intel_util=""
+    if [ -d /sys/bus/event_source/devices/i915 ]; then
+      report=$(perf stat -a -I 1000 --interval-count 1 \
+        -e i915/rcs0-busy/ -e i915/vcs0-busy/ -e i915/bcs0-busy/ -e i915/vecs0-busy/ \
+        -- ${pkgs.coreutils}/bin/sleep 1.1 2>&1)
+
+      total_ns=0
+      while read -r _time ns _unit _rest; do
+        ns=$(echo "$ns" | tr -d ',')
+        if [ -z "$ns" ] || ! [[ "$ns" =~ ^[0-9]+$ ]]; then
+          continue
+        fi
+        total_ns=$((total_ns + ns))
+      done < <(echo "$report" | ${pkgs.gnugrep}/bin/grep -P '^\s*[\d.]+\s+[\d,]+\s+ns\s+i915/')
+
+      if [ "$total_ns" -gt 0 ]; then
+        intel_util=$(( (total_ns * 100) / 1000000000 ))
+        [ "$intel_util" -gt 100 ] && intel_util=100
+      else
+        intel_util=0
+      fi
+    fi
+
+    nvidia_util=""
+    if command -v nvidia-smi &>/dev/null; then
+      raw=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
+      [ -n "$raw" ] && nvidia_util="$raw"
+    fi
+
+    out=""
+    if [ -n "$intel_util" ]; then
+      out="iGPU ''${intel_util}%"
+    fi
+    if [ -n "$nvidia_util" ]; then
+      [ -n "$out" ] && out="$out dGPU" || out="dGPU"
+      out="$out ''${nvidia_util}%"
+    fi
+    [ -n "$out" ] && printf '{"text": "%s", "class": "gpu"}\n' "$out" || printf '{"text": "no GPU", "class": "gpu"}\n'
+  '';
+
   # waybar light/dark indicator: moon glyph when dark, sun when light, read
   # from darkman. printf emits the nerd-font codepoints (avoids glyph-drop).
   themeIcon = pkgs.writeShellScriptBin "waybar-theme-icon" ''
@@ -452,6 +519,7 @@ in {
     fol
     g502Status
     glKitty
+    gpuStatus
     hyprctl
     hyprspace
     keyboundWorkspaces
