@@ -38,11 +38,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-710pCcivSfMattVIfpAxZ3e8L6wXCt/oFgcWyqiq9Pk=",
+            "sha256": "sha256-VT0bnp5waLJ1wKeDx+E5/2UDCW8obmdMjJGTefsOymI=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.263/darwin-arm64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.266/darwin-arm64/claude"
         },
-        "version": "2.1.263"
+        "version": "2.1.266"
     },
     "claude-code-linux-x64": {
         "cargoLock": null,
@@ -53,11 +53,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-JtAgNR6BEvQAZ5Dzz85DtMnfDBux0OVCNk1kFRuB1bo=",
+            "sha256": "sha256-GYQnBemJOT/Ok2gE320qsDSGDiS4+IgDV5gdh//YP6w=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.263/linux-x64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.266/linux-x64/claude"
         },
-        "version": "2.1.263"
+        "version": "2.1.266"
     },
     "codex-linux-x64": {
         "cargoLock": null,
