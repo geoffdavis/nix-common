@@ -199,7 +199,7 @@
       [ -n "$out" ] && out="$out dGPU" || out="dGPU"
       out="$out ''${nvidia_util}%"
     fi
-    [ -n "$out" ] && echo "$out" || echo "no GPU"
+    [ -n "$out" ] && printf '{"text": "%s", "class": "gpu"}\n' "$out" || printf '{"text": "no GPU", "class": "gpu"}\n'
   '';
 
   # waybar light/dark indicator: moon glyph when dark, sun when light, read
