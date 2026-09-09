@@ -1,10 +1,25 @@
-# modules/home/hermes-agent.nix — Hermes Agent with Mnemosyne memory.
-# IMPORT-IS-OPT-IN: importing this module selects and configures the backend.
+# modules/home/hermes-agent.nix — Hermes Agent package, extended with Mnemosyne.
+# IMPORT-IS-OPT-IN: importing this module selects the package.
 #
-# Imports Hermes' upstream Home Manager module and changes its default package
-# to include the Mnemosyne provider. Importing this module opts the consumer in:
-# every Hermes surface uses the same provider-capable package and Mnemosyne is
-# selected unless the consumer overrides the service settings.
+# Imports Hermes' upstream Home Manager module for its `programs.hermes-agent`
+# (CLI + Desktop) options and package plumbing only, and changes the default
+# package (`services.hermes-agent.package`, inherited by
+# `programs.hermes-agent.package`) to one extended with the Mnemosyne provider.
+# Every Hermes surface a consumer builds from
+# `config.services.hermes-agent.package` — the CLI, Desktop backend, and a
+# systemd/launchd gateway — shares that one package.
+#
+# This module does NOT enable `services.hermes-agent`. That upstream service
+# owns config.yaml declaratively (deep-merging `settings` on every activation)
+# and writes a `~/.hermes/.managed` marker with `HERMES_MANAGED=home-manager`,
+# which makes Hermes itself refuse `hermes config set`/`config edit` and any
+# other programmatic config write — including from provider profiles like
+# Donna. Runtime config.yaml and per-profile config must stay mutable, so
+# ownership of the provider selection and other runtime settings is left
+# entirely to the mutable config.yaml, not to Nix. A consumer that wants the
+# gateway/backend units runs its own systemd/launchd units against
+# `config.services.hermes-agent.package` instead of enabling the upstream
+# service.
 inputs: {
   config,
   lib,
@@ -80,20 +95,16 @@ inputs: {
 in {
   imports = [inputs.hermes-agent.homeManagerModules.default];
 
-  services.hermes-agent = {
-    enable = lib.mkDefault true;
-    package = lib.mkDefault hermesWithMnemosyne;
-    settings = lib.mkDefault {
-      memory = {
-        provider = "mnemosyne";
-        # Mnemosyne owns durable memory when selected. Leaving the built-in files
-        # enabled duplicates writes and injects the same facts twice.
-        memory_enabled = false;
-        user_profile_enabled = false;
-      };
-    };
-  };
+  # Package only. `enable` stays at its upstream default (false): no managed
+  # service, no activation-owned config.yaml, no `.managed` marker. A
+  # consumer can still read `config.services.hermes-agent.package` for its own
+  # units, or opt into the upstream service with `enable = true` if it
+  # actually wants Nix to own config.yaml.
+  services.hermes-agent.package = lib.mkDefault hermesWithMnemosyne;
 
+  # The CLI (and HERMES_HOME) on PATH, and the Desktop application, both
+  # built from the same extended package above. Neither depends on
+  # `services.hermes-agent.enable`.
   programs.hermes-agent = {
     enable = lib.mkDefault true;
     package = lib.mkDefault config.services.hermes-agent.package;
