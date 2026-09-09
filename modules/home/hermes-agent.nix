@@ -83,7 +83,7 @@ in {
   services.hermes-agent = {
     enable = lib.mkDefault true;
     package = lib.mkDefault hermesWithMnemosyne;
-    settings = {
+    settings = lib.mkDefault {
       memory = {
         provider = "mnemosyne";
         # Mnemosyne owns durable memory when selected. Leaving the built-in files
