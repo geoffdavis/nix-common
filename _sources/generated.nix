@@ -15,34 +15,34 @@
   };
   _1password-gui-linux-x64 = {
     pname = "_1password-gui-linux-x64";
-    version = "8.12.34";
+    version = "8.12.36";
     src = fetchurl {
-      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.34.x64.tar.gz";
-      sha256 = "sha256-KXeEqmZ3C2RWB6fwTJuixK6+1PRtISAkh/UhulcrexM=";
+      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.36.x64.tar.gz";
+      sha256 = "sha256-OTyTyAJf7l3adqTQ8eR46YUmzJRuWKIu/ib1QOorVyk=";
     };
   };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.266";
+    version = "2.1.267";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.266/darwin-arm64/claude";
-      sha256 = "sha256-VT0bnp5waLJ1wKeDx+E5/2UDCW8obmdMjJGTefsOymI=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.267/darwin-arm64/claude";
+      sha256 = "sha256-poHzAI8AUAKa7ryrOvUbtqVd3rYlo68xQaRBbUPNJVg=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.266";
+    version = "2.1.267";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.266/linux-x64/claude";
-      sha256 = "sha256-GYQnBemJOT/Ok2gE320qsDSGDiS4+IgDV5gdh//YP6w=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.267/linux-x64/claude";
+      sha256 = "sha256-A5nHk/9XHVlG75I9gLTzMNBaxLaEKmsHdUaPXTiUA8A=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.153.4";
+    version = "0.154.0";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.153.4/codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-qCIYfhokIMYcWSZyG/vYeHAe2VVHybsNTeRJiha6GCE=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.154.0/codex-package-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-/G4+O4Xyz31mRSDuXGan/kqhK659RoNPR+LxZf0Nb3g=";
     };
   };
   copilot-cli-darwin-arm64 = {
@@ -63,18 +63,18 @@
   };
   terraform-darwin-arm64 = {
     pname = "terraform-darwin-arm64";
-    version = "1.16.1";
+    version = "1.16.2";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.16.1/terraform_1.16.1_darwin_arm64.zip";
-      sha256 = "sha256-4iy6dh3b1NIYk5socVqzrzeq+KQu+kH311ssPXNjYGA=";
+      url = "https://releases.hashicorp.com/terraform/1.16.2/terraform_1.16.2_darwin_arm64.zip";
+      sha256 = "sha256-fAoLMciqVBNRNpvPe2KnKJ+8Id5+V3ZprrptQvTmzEE=";
     };
   };
   terraform-linux-x64 = {
     pname = "terraform-linux-x64";
-    version = "1.16.1";
+    version = "1.16.2";
     src = fetchurl {
-      url = "https://releases.hashicorp.com/terraform/1.16.1/terraform_1.16.1_linux_amd64.zip";
-      sha256 = "sha256-dF0ztLAreYDGKjjsG+6iTuCE6oyvP1A8IAVUvZoMvkk=";
+      url = "https://releases.hashicorp.com/terraform/1.16.2/terraform_1.16.2_linux_amd64.zip";
+      sha256 = "sha256-DRcBHwxGZFObFksESQPQTilshsE8ufKAQAdsZc+zmFo=";
     };
   };
 }
