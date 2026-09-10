@@ -20,6 +20,7 @@
 #   hyprland/wlogout.nix programs.wlogout (power menu)
 #   hyprland/session.nix kitty, walker/elephant/mako, session units
 #   hyprland/binds.nix   wayland.windowManager.hyprland (settings + binds)
+#   hyprland/lock.nix    programs.hyprlock (shared lock-screen appearance)
 {
   config,
   lib,
@@ -32,6 +33,7 @@
 in {
   imports = [
     ./hyprland/binds.nix
+    ./hyprland/lock.nix
     ./hyprland/session.nix
     ./hyprland/waybar.nix
     ./hyprland/wlogout.nix
@@ -86,6 +88,9 @@ in {
 
     wlogout.enable =
       lib.mkEnableOption "the wlogout power menu (layout + Catppuccin Mocha style)" // {default = true;};
+
+    lock.enable =
+      lib.mkEnableOption "the shared hyprlock lock screen (appearance only — Catppuccin colors, 2s grace, hidden cursor, the password input-field). Every value is mkDefault, so a host can still set `programs.hyprlock.package` or override an individual setting with a plain assignment. The idle daemon that *triggers* the lock (services.hypridle) is deliberately NOT shared — its listeners and lock_cmd are host hardware/auth specific. Colors come from catppuccin/nix's hyprlock module; turn this off on a consumer that doesn't use it" // {default = true;};
 
     uwsm.enable =
       lib.mkEnableOption "uwsm-managed Hyprland session integration (Universal Wayland Session Manager). uwsm owns the session, so this turns OFF home-manager's own session integration (wayland.windowManager.hyprland.systemd.enable) and binds the desktop's systemd user services to the stock graphical-session.target that uwsm brings up (see hyprland-desktop.sessionTarget), and makes logout run the built-in `uwsm stop -r`. Because that target is shared with every other desktop session on the host, the session services also gain an XDG-autostart ExecCondition so they stay out of a GNOME/Plasma login. uwsm and HM's session integration cannot coexist — both manage graphical-session.target and uwsm refuses to start if it is already active. Pair with programs.hyprland.withUWSM at the system level; the Hyprland package's own \"Hyprland (uwsm-managed)\" session entry is used (no custom waylandCompositors needed)";
