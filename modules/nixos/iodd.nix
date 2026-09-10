@@ -1,4 +1,4 @@
-# modules/iodd.nix — tooling for driving IODD virtual-drive USB enclosures
+# modules/nixos/iodd.nix — tooling for driving IODD virtual-drive USB enclosures
 # (iodd ST400 et al.) from Linux, shared by birdrock and the NAS fleet.
 #
 # The IODD firmware mounts VHD/ISO image files that live on its internal disk,

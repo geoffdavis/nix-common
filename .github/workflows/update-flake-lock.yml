@@ -2,12 +2,9 @@
 # Trigger an ad-hoc bump from the Actions tab or via:
 #   gh workflow run update-flake-lock.yml
 #
-# Note: PRs opened by the default GITHUB_TOKEN do not trigger downstream
-# workflows (GitHub anti-recursion feature), which leaves bump PRs BLOCKED
-# when branch protection requires lint / flake-check. The BOT_PAT secret (a
-# fine-grained PAT with contents + pull-requests write) makes the PR come
-# from a user token so CI fires normally; if the secret is absent we fall
-# back to GITHUB_TOKEN and the old close-and-reopen dance applies.
+# Thin wrapper: the steps and the pinned action SHA live in the reusable
+# update-flake-lock-action.yml alongside this file. Triggers, top-level
+# permissions and the repo-specific inputs stay here.
 
 name: update-flake-lock
 
@@ -17,21 +14,13 @@ on:
     # Mondays at 07:00 UTC — fresh PR at start of week.
     - cron: "0 7 * * 1"
 
+# Granted at the caller so the reusable workflow's job permissions are within
+# the token's cap.
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
   update:
-    # Self-hosted nix runner pool; Nix already present (no installer step).
-    runs-on: [self-hosted, nix, x86_64-linux]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
-        with:
-          token: ${{ secrets.BOT_PAT || github.token }}
-          pr-labels: |
-            dependencies
-            automated
+    uses: ./.github/workflows/update-flake-lock-action.yml
+    secrets: inherit
