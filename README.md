@@ -20,7 +20,8 @@ NixOS modules:
 - `nixosModules.nas-backup` — parameterized restic backup (repository, paths,
   btrfs snapshot staging, notify hooks)
 - `nixosModules.nas-cache` — substituter + remote-builder client for the
-  maintainer's NAS binary cache
+  maintainer's NAS binary cache (`my.nasCache.keepNativeBuildsLocal`, default
+  off, keeps this host's own system home instead of offloading it)
 - `nixosModules.cache-push` — post-build-hook push to that same cache
 - `nixosModules.onepassword` — 1Password system pieces (polkit, groups)
 - `nixosModules.distrobox` — distrobox + its rootless podman backend (opt-in,

@@ -23,11 +23,18 @@
 #
 # IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
 # config applies unconditionally (module-contract.md, "Two module classes").
+# `my.nasCache.keepNativeBuildsLocal` (declared below) is a TUNING knob on
+# that unconditional config, not a second enable gate: it defaults false and
+# a host that never sets it gets exactly the list it got before the option
+# existed.
 {
   config,
+  lib,
   pkgs,
   ...
 }: let
+  cfg = config.my.nasCache;
+
   # cacheUrl + cachePublicKey live in the shared endpoint file so this module
   # and homeModules.nas-cache can never drift apart.
   inherit (import ./shared/nas-cache-endpoint.nix) cacheUrl cachePublicKey;
@@ -116,7 +123,84 @@
     if (config.networking.hostName or null) == null || config.networking.hostName == ""
     then null
     else "nix-builder-${config.networking.hostName}";
+
+  # This host's OWN platform, e.g. "x86_64-linux" on the NAS boxes,
+  # "aarch64-darwin" on the Macs. Comes from pkgs, not from networking, so it
+  # is always a plain string — no null-tolerance needed here, unlike
+  # selfBuilderAlias above.
+  localSystem = pkgs.stdenv.hostPlatform.system;
+
+  # Drop `localSystem` from one builder entry's advertised platforms. Used
+  # only when my.nasCache.keepNativeBuildsLocal is set; see the option's
+  # description for why this is not the default.
+  stripNative = m: m // {systems = builtins.filter (s: s != localSystem) m.systems;};
+
+  # my.nasCache.keepNativeBuildsLocal, applied to the whole list.
+  #
+  # This runs AFTER the self-exclusion filter below, never instead of it. The
+  # two look similar and are not: self-exclusion answers "is this entry ME?"
+  # (a host must not offload to itself under another name) and stays
+  # load-bearing even with this option on, because a builder's own entry
+  # advertises platforms beyond its native one. This one answers "can I build
+  # this platform myself?" and only ever narrows `systems`.
+  #
+  # An entry stripped down to no platforms at all is dropped rather than left
+  # in place: `systems = []` matches nothing, so keeping it would leave a
+  # builder nix can never select — plus a live ssh alias implying otherwise.
+  keepNativeLocal = machines:
+    if cfg.keepNativeBuildsLocal
+    then builtins.filter (m: m.systems != []) (map stripNative machines)
+    else machines;
 in {
+  # WHY THIS EXISTS (measured 2026-09-09, not read out of the manual): nix's
+  # scheduler has NO local-vs-remote speed comparison. A remote builder with a
+  # free slot ALWAYS wins over building locally, and speedFactor only ranks
+  # remote builders against each OTHER. So any x86_64-linux host that imports
+  # this module ships its x86_64-linux derivations to nas-sdg before it will
+  # build a single one at home — even when it is idle and nas-sdg is not.
+  #
+  # Observed live: GitHub scheduled a `build (windowpi)` job onto nas-sct's
+  # runner; nas-sct immediately handed the derivations straight back to
+  # nas-sdg over ssh-ng (six nix-remote-builder connections in three minutes)
+  # while nas-sdg had no runner job of its own. Adding CI runners therefore
+  # did NOT distribute compilation — everything still funnelled into nas-sdg,
+  # which is also the fleet's monitoring hub, binary cache, app host and
+  # replication target, and which spent that afternoon at 96 °C with the fans
+  # saturated.
+  #
+  # NOT fleet-wide, and that is the whole reason this is an option rather
+  # than a change to the list: birdrock is an old Intel T2 MacBook Air where
+  # local builds are genuinely worse than the round trip, and it must keep
+  # offloading. The hosts that want this are the appliance-class boxes that
+  # are already builders in their own right — "if GitHub told a runner to run
+  # on nas-sct, nas-sct should not farm its work off somewhere else unless
+  # it's arm stuff. It's an appliance box."
+  options.my.nasCache.keepNativeBuildsLocal = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    example = true;
+    description = ''
+      Build derivations for THIS host's own system locally instead of
+      offloading them to a remote builder.
+
+      Nix always prefers a remote builder with a free slot over the local
+      machine — speedFactor only ranks remote builders against each other —
+      so a capable x86_64-linux box that imports this module otherwise ships
+      x86_64-linux work to nas-sdg even when it could build it natively.
+
+      When enabled, this host's own system is removed from every remaining
+      buildMachines entry, and any entry left advertising nothing is dropped.
+      Cross-platform offload is unaffected: an x86_64-linux host with this set
+      still sends aarch64-linux and armv7l-linux work to the fleet's ARM
+      builders.
+
+      Default false: existing consumers keep their current buildMachines list
+      byte-for-byte. Set it on hosts that are appliance-class builders in
+      their own right (the NAS boxes), NOT on thermally-limited laptops where
+      offloading is the point.
+    '';
+  };
+
   config = {
     # Substitution: pull paths the NAS has already built instead of rebuilding.
     # Harmonia priority 50 keeps cache.nixos.org (40) preferred; the NAS
@@ -147,7 +231,11 @@ in {
       # avoids it with `nix.distributedBuilds = lib.mkForce false`. This filter
       # is the general form, so a future builder that also imports nas-cache
       # gets it for free.
-      buildMachines =
+      #
+      # keepNativeLocal wraps the result and is a NO-OP unless the host sets
+      # my.nasCache.keepNativeBuildsLocal (default false) — see its definition
+      # in the let block above.
+      buildMachines = keepNativeLocal (
         builtins.filter
         (m: selfBuilderAlias == null || m.hostName != selfBuilderAlias)
         [
@@ -528,7 +616,8 @@ in {
             supportedFeatures = ["big-parallel" "gccarch-armv7-a" "gccarch-armv8-a"];
             publicHostKey = tourmalinePublicHostKey;
           }
-        ];
+        ]
+      );
     };
 
     # System-level ssh config — root's nix-daemon never sees user-level
