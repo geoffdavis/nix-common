@@ -1,0 +1,93 @@
+# Reusable: weekly `nix flake update` auto-PR. Called by each repo's thin
+# update-flake-lock.yml wrapper so the pinned action SHA and the steps live in
+# one place (bump here, not in four repos). Triggers stay in the callers.
+#
+# Note: PRs opened by the default GITHUB_TOKEN do not trigger downstream
+# workflows (GitHub anti-recursion feature), which leaves bump PRs BLOCKED
+# when branch protection requires lint / flake-check. The BOT_PAT secret (a
+# fine-grained PAT with contents + pull-requests write) makes the PR come
+# from a user token so CI fires normally; if the secret is absent we fall
+# back to GITHUB_TOKEN and the old close-and-reopen dance applies.
+name: update-flake-lock-action (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      flake-inputs:
+        description: >-
+          Space-separated flake inputs to update. Empty (the default) updates
+          all inputs. Repos with private git+ssh inputs, or with a nix-common
+          rev that must go through `task bump:common`, list only their public
+          inputs here.
+        type: string
+        default: ""
+      branch:
+        description: >-
+          Branch the bump PR is opened from. Matches the action's own default;
+          only override it if a repo already uses a different bump branch.
+        type: string
+        default: update_flake_lock_action
+      resync-ci-pin:
+        description: >-
+          Run nix-common's `sync-pin` against the bump branch and fold any
+          ci.yml change into the same PR. `update-flake-lock` only touches
+          flake.lock, so repos whose ci.yml carries an `@<sha>` pin on a
+          nix-common reusable workflow need this or their verify-pin job
+          fails closed on every weekly bump.
+        type: boolean
+        default: false
+    secrets:
+      BOT_PAT:
+        description: >-
+          Fine-grained PAT with contents + pull-requests write. Optional —
+          without it the job falls back to GITHUB_TOKEN (see header).
+        required: false
+
+jobs:
+  update:
+    # Self-hosted nix runner pool; Nix already present (no installer step).
+    runs-on: [self-hosted, nix, x86_64-linux]
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # Pinned to immutable commit SHAs; comments name the tag the SHA
+      # was resolved from so dependabot / a human can bump intentionally.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Only the resync path needs persisted push credentials on the bump
+          # branch (BOT_PAT so that push triggers CI). Without resync — or
+          # without BOT_PAT — this resolves to github.token, which is exactly
+          # checkout's own default, so non-resync callers are unaffected.
+          token: ${{ (inputs.resync-ci-pin && secrets.BOT_PAT) || github.token }}
+
+      - name: Update flake.lock
+        id: update
+        uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
+        with:
+          token: ${{ secrets.BOT_PAT || github.token }}
+          # Empty string is the action's default and means "update all".
+          inputs: ${{ inputs.flake-inputs }}
+          branch: ${{ inputs.branch }}
+          pr-labels: |
+            dependencies
+            automated
+
+      - name: Resync ci.yml pin
+        if: inputs.resync-ci-pin && steps.update.outputs.pull-request-number
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          set -eu
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
+          nix run github:geoffdavis/nix-common#sync-pin
+          if git diff --quiet -- .github/workflows/ci.yml; then
+            echo "ci.yml pin already in sync with flake.lock"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "ci: resync nix-common workflow pin from flake.lock" \
+            -- .github/workflows/ci.yml
+          git push origin "$BRANCH"
