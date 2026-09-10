@@ -74,6 +74,25 @@
     xdotool # libxdo.so.3
   ]);
 
+  # Apply Copilot-only Node runtime defaults without changing the caller's
+  # explicit NODE_OPTIONS.  This is deliberately separate from `override`: it
+  # is an opt-in runtime policy, not a vendor-source/package override.
+  copilotCli = let
+    base = override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs;
+  in
+    if base == null || cfg.copilotCli.nodeOptions == []
+    then base
+    else
+      base.overrideAttrs (prev: {
+        nativeBuildInputs = (prev.nativeBuildInputs or []) ++ [pkgs.makeWrapper];
+        postFixup =
+          (prev.postFixup or "")
+          + ''
+            wrapProgram "$out/bin/copilot" \
+              --set-default NODE_OPTIONS ${lib.escapeShellArg (lib.concatStringsSep " " cfg.copilotCli.nodeOptions)}
+          '';
+      });
+
   # codex needs a custom derivation: nixpkgs builds it from Cargo source
   # (would force a cargoHash bump every release), but the vendor publishes
   # prebuilt static-musl binaries. Linux-x64 only.
@@ -148,12 +167,22 @@ in {
       default = true;
       description = "Install github-copilot-cli. Set false to opt out on a host.";
     };
+    copilotCli.nodeOptions = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = ["--max-old-space-size=12288"];
+      description = ''
+        Node options used by github-copilot-cli only when NODE_OPTIONS is unset.
+        Use this to set a process-specific V8 heap ceiling without changing other
+        Node applications or overriding an explicit caller setting.
+      '';
+    };
   };
 
   config.home.packages =
     lib.filter (p: p != null) (
       lib.optional cfg.claude.enable (override pkgs.claude-code "claude-code" [])
-      ++ lib.optional cfg.copilotCli.enable (override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs)
+      ++ lib.optional cfg.copilotCli.enable copilotCli
       ++ lib.optional cfg.codex.enable codex
     )
     # codex's Linux sandbox shells out to bubblewrap (bwrap) and degrades
