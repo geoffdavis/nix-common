@@ -156,18 +156,40 @@ in {
             # port field, so the alias carries HostName + Port + key.
             hostName = "nix-builder-nas-sdg";
             # aarch64-linux is EMULATED on nas-sdg (boot.binfmt.emulatedSystems),
-            # not native. Listed so aarch64-DARWIN clients — which cannot build
-            # aarch64-linux at all — have somewhere to send a Raspberry Pi
-            # closure; without it there is nowhere in the fleet to build one.
+            # not native. It is still listed, but BOTH of the reasons this
+            # comment used to give for listing it are now false. They are
+            # corrected here rather than deleted, because the correction is
+            # what argues for eventually removing this platform — and for not
+            # removing it yet.
             #
-            # Cheap in practice: aarch64-linux is a first-class Hydra platform,
-            # so packages substitute prebuilt and only trivial per-host
-            # derivations execute under qemu. A host that pins a NON-cached
-            # kernel (e.g. nixos-hardware's linux-rpi) would instead compile it
-            # emulated, which is hours — pin mainline on aarch64 hosts.
+            # WAS: "without it there is nowhere in the fleet to build one."
+            # True when written (2026-08-03); false since 2026-08-08/09, when
+            # tourmaline gained a builder endpoint (native aarch64, entry
+            # below) and three RPi5 Talos nodes joined. Those three sat at
+            # load 0.6 — idle — through the emulated build described next.
             #
-            # If this ever gets slow, the fix is a NATIVE aarch64 builder as an
-            # additional buildMachines entry, not a redesign.
+            # WAS: "only trivial per-host derivations execute under qemu."
+            # That assumed every aarch64 host runs a MAINLINE kernel, which
+            # substitutes from cache.nixos.org. torrey and pacificbeach both
+            # run `linux-rpi`, the Raspberry Pi VENDOR kernel, which
+            # substitutes NOWHERE (nix-personal#430) — so a kernel bump on
+            # either host is a full kernel compiled under qemu, not a trivial
+            # derivation. Measured 2026-09-09: 55+ minutes, 173 concurrent
+            # qemu processes, load 55 on 12 threads, on the box that is also
+            # the fleet's cache/monitoring/app host.
+            #
+            # WHY IT STAYS ANYWAY, FOR NOW: aarch64-DARWIN clients cannot
+            # build aarch64-linux at all, and nas-sct, pacificbeach, nas-cin
+            # and windowpi all reach ARM through this entry. Removing it turns
+            # slow builds into "Failed to find a machine for remote build" for
+            # every one of them unless nas-sdg is verified to chain aarch64
+            # onward to the native pool instead of hard-failing. That
+            # verification is pending — do it BEFORE dropping aarch64-linux
+            # here.
+            #
+            # The durable fix is more NATIVE aarch64 capacity as additional
+            # buildMachines entries (tourmaline already is one; torrey is
+            # quarantined, see below), not a redesign of this list.
             #
             # armv7l-linux is DELIBERATELY ABSENT, and must stay absent. This
             # host once advertised it (emulated, for windowpi — a Raspberry Pi
