@@ -289,11 +289,8 @@ in {
             # should win every time both are free.
             #
             # CHECK BEFORE CHANGING AGAIN: this value only decides x86_64 now,
-            # since this entry carries no ARM platform to contend for. torrey has
-            # no entry at all right now — quarantined, not merely
-            # deprioritized, pending an active memory-corruption investigation
-            # (see the quarantine block further down for the full rationale).
-            # Do not raise this entry to compensate for torrey's absence.
+            # since this entry carries no ARM platform to contend for. The ARM
+            # ranking is torrey 4 then tourmaline 3, both below.
             speedFactor = 2;
             # No gccarch-armv7-a here, deliberately: it is the feature nixpkgs'
             # armv7l stdenv requires, and advertising it alongside an
@@ -304,102 +301,45 @@ in {
             supportedFeatures = ["big-parallel"];
             publicHostKey = builderPublicHostKey;
           }
-          # ── torrey: QUARANTINED — THE HOST CORRUPTS MEMORY ──────────────
-          #
-          # torrey's buildMachines entry USED TO BE HERE (nix-personal#351: a
-          # Raspberry Pi 5, the fleet's native aarch64 builder at speedFactor
-          # 4). It is deliberately absent. Do not restore it without reading
-          # this and re-testing the hardware first.
-          #
-          # THE BOX MISCOMPILES. Building linux-rpi 6.18.39 for pacificbeach
-          # produced FOUR independent GCC internal compiler errors — all
-          # "Segmentation fault", in four unrelated translation units:
-          #
-          #   arch/arm64/kvm/hyp/nvhe/pkvm.c:934
-          #   mm/swap.c:1117
-          #   kernel/sched/core.c:10905
-          #   fs/pidfs.c:1087
-          #
-          # …and, decisively, CORRUPTED SOURCE TEXT. gcc read this line out of
-          # include/linux/cpumask.h with bytes replaced mid-token:
-          #
-          #   static __always_inline bool zalloc_cpumask_var_node(…)
-          #            ^ stray '\1'   ^ NUL   ^ stray '\200'  -> "ways_inline"
-          #
-          # \1 \0 \200 little-endian is 0x80000001 — BYTE-IDENTICAL to the
-          # corruption constant measured on this board at bring-up
-          # (nix-personal hosts/torrey/hardware.nix: "replace the upper 32 bits
-          # of a 64-bit word with a constant 0x80000001"). Same fault, same
-          # signature. A compiler bug fails deterministically in ONE place;
-          # random segfaults plus mangled source text is memory.
-          #
-          # THE NUMA MITIGATION IS PRESENT AND WORKING — this is NOT a
-          # regression of it, and re-applying it will not help. Verified live
-          # on the host: 8 NUMA nodes online at ~1 GB each, "NUMA default
-          # policy overridden to 'interleave:0-7'", DMA IOMMU likewise,
-          # cma=256M, and Stage B's thermal fix healthy (thermal_zone0 +
-          # cooling_device0, 47.4 °C). Every parameter stuck.
-          #
-          # It was never a fix, and hardware.nix says so itself: "WHAT THIS
-          # DOES NOT ESTABLISH: why … the underlying decode behaviour at the
-          # 2 GiB boundary is inferred and not proven." The validation was
-          # `memtester 4G, 3 loops` — ONE sequential 4 GB block. A parallel
-          # kernel build touches ~8 GB with heavy page-cache churn across all
-          # eight nodes, so interleaving no longer keeps allocations off the
-          # bad decode. Probabilistic avoidance, not repair.
-          #
-          # WHY QUARANTINE RATHER THAN DERATE speedFactor: a corrupting builder
-          # is worse than an absent one. This build failed LOUDLY, which was
-          # luck. Corruption landing on a keyword yields a syntax error;
-          # corruption landing in a data structure or an instruction encoding
-          # yields a kernel that compiles clean and is subtly wrong. Nix cannot
-          # catch that — it hashes what the builder produced, it does not
-          # compare against a reference, so a miscompiled output gets a valid
-          # hash and is trusted forever. torrey also runs my.cachePush, so its
-          # outputs reach the nas-sdg cache and the whole fleet; and it is the
-          # ONLY builder for linux-rpi, which substitutes nowhere — so
-          # tourmaline's, pacificbeach's and torrey's own kernels were all
-          # built here.
-          #
-          # There is no ECC on a Pi 5, so there is NO hardware error reporting.
-          # dmesg shows zero EDAC/MCE events and that means NOTHING; a crashing
-          # build is the only detector available.
-          #
-          # COST OF THIS REMOVAL, stated plainly: native aarch64 loses its top
-          # tier. aarch64 falls to tourmaline (native, Pi 4, ranked 3), so
-          # linux-rpi now compiles on a 3.7 GiB box — slow, and tight on
-          # memory. That is the correct trade against silently poisoning the
-          # fleet cache with a miscompiled kernel.
-          #
-          # TO RESTORE: re-test the hardware FIRST — memtester across ~7 GB
-          # (not 4) for multiple loops, since the 4 GB test passed while the
-          # fault was live. Only then re-add the entry, here, with
-          # systems = ["aarch64-linux"], maxJobs 2, speedFactor 4,
-          # supportedFeatures = ["big-parallel" "gccarch-armv8-a"] and
-          # publicHostKey = torreyPublicHostKey. Do NOT re-add armv7l-linux or
-          # gccarch-armv7-a — that is a separate and permanent constraint
-          # (16 KiB pages; see nix-personal hosts/torrey/builder.nix).
-          #
-          # The ssh/known_hosts config for nix-builder-torrey is deliberately
-          # LEFT IN PLACE further down: it is inert without a buildMachines
-          # entry, and keeping it makes restoring the host a one-hunk change.
-          #
-          # UPDATE 2026-08-20, DO NOT LOOSEN THIS ON THE STRENGTH OF WHAT
-          # FOLLOWS: this quarantine was briefly relaxed to a speedFactor
-          # derate (4 -> 1, last resort rather than removed) to test whether
-          # physically remounting the box — it had been dangling loose with
-          # cables running past it, not rack-mounted — was the actual cause.
-          # It was not. Ten-plus trials post-remount still showed the SAME
-          # ~85-90% failure rate as pre-remount, including a NEW failure
-          # signature under a concurrent memtester+build co-stress test (a
-          # bit-flip pattern at a second address, distinct from the original
-          # 0x80000001 one, roughly 1-in-4000 memtester passes). And a
-          # speedFactor derate does not prevent selection under load, only
-          # delay it: torrey still got dispatched real work once every
-          # higher-priority builder's job slots were saturated, and STILL
-          # corrupted it — a real `task check:windowpi` run hit both a GCC ICE
-          # (libunistring) and garbled assembly (libressl) on torrey the same
-          # way this commit's own linux-rpi build did. Back to full removal.
+          {
+            # torrey — native aarch64, the fleet's fastest ARM builder.
+            #
+            # RESTORED 2026-09-13. It was quarantined for "corrupting memory":
+            # GCC ICEs in unrelated translation units plus source text mangled
+            # with 0x80000001. That was real, but the cause was not the silicon
+            # -- `cma=` on the kernel command line BYPASSES the DT linux,cma
+            # node and its alloc-ranges constraint, so the pool landed above the
+            # low 1 GB the Pi 5 firmware mailbox can address. Every property
+            # request then went unanswered and rpi_firmware retried at ~1 Hz,
+            # writing RPI_FIRMWARE_STATUS_ERROR -- literally 0x80000001 -- into
+            # an already-freed buffer at offset +4. That is why only the upper
+            # 32 bits of a 64-bit word ever changed. Fixed in nix-personal#680
+            # by sizing CMA through the overlay instead; upstream has the same
+            # bug open as raspberrypi/linux#7230.
+            #
+            # Verified on the fixed host before restoring: CMA reserved at
+            # 0x2e000000 (inside the mailbox's reach), zero rpi_firmware errors,
+            # and memtester clean across ~7 GB -- the gate the quarantine asked
+            # for, since its 4 GB run passed while the fault was live.
+            #
+            # NO armv7l-linux and NO gccarch-armv7-a. That is a separate and
+            # permanent constraint -- 16 KiB pages cannot map nixpkgs' 4 KiB
+            # -aligned armv7l segments (nix-personal hosts/torrey/builder.nix)
+            # -- and is unrelated to the corruption.
+            hostName = "nix-builder-torrey";
+            systems = ["aarch64-linux"];
+            protocol = "ssh-ng";
+            sshUser = "nix-remote-builder";
+            sshKey = "/etc/nix/builder_ed25519";
+            maxJobs = 2;
+
+            # ABOVE tourmaline's 3: a Pi 5 with NVMe against a Pi 4 with 3.7 GiB
+            # doing every ARM build in the fleet today. torrey fills first,
+            # tourmaline absorbs the spill.
+            speedFactor = 4;
+            supportedFeatures = ["big-parallel" "gccarch-armv8-a"];
+            publicHostKey = torreyPublicHostKey;
+          }
           {
             # nas-sct — a SECOND native x86_64-linux builder.
             #
