@@ -49,7 +49,7 @@ tasks:
         echo "  2. task contract && task fmt && task lint"
 
   update:sources:
-    desc: Update every pinned upstream source (claude-code, copilot-cli, codex, terraform, _1password-{cli,gui}) via nvfetcher; writes _sources/generated.{nix,json}
+    desc: Update every pinned upstream source (claude-code, copilot-cli, codex, terraform) via nvfetcher; writes _sources/generated.{nix,json}
     cmds:
       - nix run nixpkgs#nvfetcher --
       # Format nvfetcher's output so it passes the repo's alejandra check

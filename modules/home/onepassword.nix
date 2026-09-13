@@ -1,14 +1,17 @@
-# modules/home/onepassword.nix — version-pinned 1Password CLI + GUI on Linux.
+# modules/home/onepassword.nix — 1Password CLI + GUI as user packages on
+# Linux.
 #
-# The pinned derivations live in modules/shared/onepassword-packages.nix
-# (vendor stable channel via nvfetcher; see the rationale there).
+# The packages come from nixpkgs. On NixOS hosts nixosModules.common applies
+# the onepassword-unstable overlay (see flake.nix for why unstable), and
+# useGlobalPkgs means this module sees it too; consumers that are not NixOS
+# should add overlays.onepassword-unstable themselves.
 #
 # Linux-x86_64 only. macOS hosts install 1Password via Homebrew casks
 # declared in modules/darwin/common.nix.
 #
 # Imported transitively by cli-tools.nix, so every consumer of cli-tools /
-# desktop-base / gnome-desktop-base picks up the pinned versions
-# transparently — no host-side opt-in needed.
+# desktop-base / gnome-desktop-base picks these up transparently — no
+# host-side opt-in needed.
 #
 # Where these packages should actually be used:
 #
@@ -31,7 +34,6 @@
   config,
   ...
 }: let
-  pinned = import ../shared/onepassword-packages.nix {inherit lib pkgs;};
   isLinuxX64 = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
   cfg = config.onepassword;
 in {
@@ -40,7 +42,7 @@ in {
       type = lib.types.bool;
       default = true;
       description = ''
-        Install the pinned 1Password CLI + GUI as user packages (Linux-x64
+        Install the 1Password CLI + GUI as user packages (Linux-x64
         only). Set to false on hosts where 1Password comes from the system
         layer: NixOS (nixosModules.onepassword) and non-NixOS desktops
         (vendor .deb).
@@ -60,5 +62,5 @@ in {
 
   config.home.packages =
     lib.mkIf (cfg.installPackages && isLinuxX64)
-    ([pinned.cli] ++ lib.optional cfg.installGui pinned.gui);
+    ([pkgs._1password-cli] ++ lib.optional cfg.installGui pkgs._1password-gui);
 }

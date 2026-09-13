@@ -1,5 +1,5 @@
 # Weekly auto-PR that bumps every pinned upstream source (claude-code,
-# github-copilot-cli, codex, _1password-cli, _1password-gui) via nvfetcher.
+# github-copilot-cli, codex, terraform) via nvfetcher.
 # Replaces the per-tool update-ai-tools.yml — adding a new tracked package
 # now means a new entry in /nvfetcher.toml, no workflow changes.
 #
@@ -56,7 +56,7 @@ jobs:
             _sources/generated.json
           body: |
             Auto-bump of pinned upstream sources via nvfetcher
-            (claude-code, github-copilot-cli, codex, _1password-cli, _1password-gui).
+            (claude-code, github-copilot-cli, codex, terraform).
 
             Consumer repos pick this up on their next `task bump:common` run.
           labels: |
