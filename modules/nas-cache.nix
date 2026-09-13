@@ -243,41 +243,12 @@ in {
             # Alias resolved by the ssh config below — buildMachines has no
             # port field, so the alias carries HostName + Port + key.
             hostName = "nix-builder-nas-sdg";
-            # aarch64-linux is EMULATED on nas-sdg (boot.binfmt.emulatedSystems),
-            # not native. It is still listed, but BOTH of the reasons this
-            # comment used to give for listing it are now false. They are
-            # corrected here rather than deleted, because the correction is
-            # what argues for eventually removing this platform — and for not
-            # removing it yet.
-            #
-            # WAS: "without it there is nowhere in the fleet to build one."
-            # True when written (2026-08-03); false since 2026-08-08/09, when
-            # tourmaline gained a builder endpoint (native aarch64, entry
-            # below) and three RPi5 Talos nodes joined. Those three sat at
-            # load 0.6 — idle — through the emulated build described next.
-            #
-            # WAS: "only trivial per-host derivations execute under qemu."
-            # That assumed every aarch64 host runs a MAINLINE kernel, which
-            # substitutes from cache.nixos.org. torrey and pacificbeach both
-            # run `linux-rpi`, the Raspberry Pi VENDOR kernel, which
-            # substitutes NOWHERE (nix-personal#430) — so a kernel bump on
-            # either host is a full kernel compiled under qemu, not a trivial
-            # derivation. Measured 2026-09-09: 55+ minutes, 173 concurrent
-            # qemu processes, load 55 on 12 threads, on the box that is also
-            # the fleet's cache/monitoring/app host.
-            #
-            # WHY IT STAYS ANYWAY, FOR NOW: aarch64-DARWIN clients cannot
-            # build aarch64-linux at all, and nas-sct, pacificbeach, nas-cin
-            # and windowpi all reach ARM through this entry. Removing it turns
-            # slow builds into "Failed to find a machine for remote build" for
-            # every one of them unless nas-sdg is verified to chain aarch64
-            # onward to the native pool instead of hard-failing. That
-            # verification is pending — do it BEFORE dropping aarch64-linux
-            # here.
-            #
-            # The durable fix is more NATIVE aarch64 capacity as additional
-            # buildMachines entries (tourmaline already is one; torrey is
-            # quarantined, see below), not a redesign of this list.
+            # aarch64-linux REMOVED 2026-09-13: nas-sdg dropped it from its own
+            # extra-platforms, so this host REFUSES aarch64 jobs and
+            # advertising it was false. It was only ever EMULATED here, and a
+            # linux-rpi bump under qemu measured 55+ min / 173 qemu procs /
+            # load 55. Native aarch64 is tourmaline (below) and the ARM builder
+            # pool; nix picks those directly, so nothing chains through here.
             #
             # armv7l-linux is DELIBERATELY ABSENT, and must stay absent. This
             # host once advertised it (emulated, for windowpi — a Raspberry Pi
@@ -302,7 +273,7 @@ in {
             # "Failed to find a machine for remote build". That is the correct
             # trade — the paragraph above is the evidence — but it means armv7l
             # capacity is now single-homed.
-            systems = ["x86_64-linux" "aarch64-linux"];
+            systems = ["x86_64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
             sshKey = "/etc/nix/builder_ed25519";
@@ -317,8 +288,8 @@ in {
             # N100 (4 E-cores) that will sit at the far end of a WAN link. sdg
             # should win every time both are free.
             #
-            # CHECK BEFORE CHANGING AGAIN: tourmaline (3) still outranks this,
-            # native ARM beating this host's qemu ARM as intended. torrey has
+            # CHECK BEFORE CHANGING AGAIN: this value only decides x86_64 now,
+            # since this entry carries no ARM platform to contend for. torrey has
             # no entry at all right now — quarantined, not merely
             # deprioritized, pending an active memory-corruption investigation
             # (see the quarantine block further down for the full rationale).
@@ -395,11 +366,10 @@ in {
           # build is the only detector available.
           #
           # COST OF THIS REMOVAL, stated plainly: native aarch64 loses its top
-          # tier. aarch64 falls to tourmaline (native, Pi 4, ranked 3) and
-          # nas-sdg (EMULATED, 2), so linux-rpi now compiles on a 3.7 GiB Pi 4
-          # or under qemu — slow, and tight on memory. That is the correct
-          # trade against silently poisoning the fleet cache with a
-          # miscompiled kernel.
+          # tier. aarch64 falls to tourmaline (native, Pi 4, ranked 3), so
+          # linux-rpi now compiles on a 3.7 GiB box — slow, and tight on
+          # memory. That is the correct trade against silently poisoning the
+          # fleet cache with a miscompiled kernel.
           #
           # TO RESTORE: re-test the hardware FIRST — memtester across ~7 GB
           # (not 4) for multiple loops, since the 4 GB test passed while the
@@ -452,7 +422,7 @@ in {
             hostName = "nix-builder-nas-sct";
 
             # x86_64-linux ONLY, and deliberately so. sct could run
-            # boot.binfmt.emulatedSystems like sdg does, but a SECOND emulated
+            # boot.binfmt.emulatedSystems, as sdg used to, but an emulated
             # aarch64/armv7l endpoint is worse than none: it would advertise
             # platforms it can only emulate, and at speedFactor 1 it would be
             # picked up as overflow precisely when the native builders are busy
@@ -495,8 +465,8 @@ in {
             # armv7l it is now the ONLY one: torrey lost the capability when it
             # moved to the Pi 5 vendor kernel and its 16 KiB pages (see torrey's
             # entry above). It was promoted by subtraction, not by choice. If
-            # this host is down, armv7l work falls all the way to emulation on
-            # nas-sdg — there is no native tier left below it.
+            # this host is down, armv7l has no builder at all — nas-sdg carries
+            # neither armv7l nor aarch64, so there is no tier below it.
             #
             # Its Cortex-A72 implements AArch32 at EL0, and — the half torrey's
             # entry shows is not automatic — its kernel keeps 4 KiB pages. That
@@ -524,8 +494,9 @@ in {
             # not repeating. It is true of CACHED aarch64. `linux-rpi`, the
             # Raspberry Pi VENDOR kernel, is not in cache.nixos.org and never
             # will be, so it is the one class of aarch64 derivation the fleet
-            # must always build itself. nas-sdg can only do that under qemu
-            # (hours); tourmaline does it natively, same as torrey.
+            # must always build itself. nas-sdg cannot build it at all now — it
+            # carries no aarch64 and refuses the job; tourmaline does it
+            # natively, same as torrey.
             #
             # Ranked identically to armv7l below torrey (see the speedFactor
             # comment below for why that ranking is what makes this safe):
@@ -565,18 +536,15 @@ in {
 
             # BELOW torrey's 4 — which now only decides AARCH64, since torrey no
             # longer advertises armv7l at all. For aarch64 torrey fills first and
-            # this absorbs the spill; for armv7l this entry is uncontested among
-            # native builders and the ranking only has to beat qemu. ABOVE
-            # nas-sdg's 2 because that machine's armv7l/aarch64 are EMULATED, and
-            # native must outrank qemu — the same invariant torrey's entry
-            # protects. speedFactor is per-ENTRY, not per-platform, so this
-            # single value ranks tourmaline below torrey for aarch64 and above
-            # nas-sdg for both.
+            # this absorbs the spill; for armv7l this entry is uncontested.
+            # speedFactor is per-ENTRY, not per-platform, so this single value
+            # ranks tourmaline below torrey for aarch64 and is the only ARM
+            # ranking that matters otherwise — nas-sdg no longer carries ARM.
             #
             #   4 torrey       native aarch64, dedicated builder
             #   3 tourmaline   native armv7l (ONLY native source) + aarch64,
             #                  also a print/UPS appliance
-            #   2 nas-sdg      EMULATED armv7l/aarch64, native x86_64
+            #   2 nas-sdg      native x86_64 only
             #   1 nas-sct      native x86_64 overflow
             #
             # WHY BROADENING armv7l-ONLY TO +aarch64 IS SAFE (2026-08-11): this
