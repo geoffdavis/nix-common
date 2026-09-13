@@ -5,22 +5,6 @@
   fetchFromGitHub,
   dockerTools,
 }: {
-  _1password-cli-linux-x64 = {
-    pname = "_1password-cli-linux-x64";
-    version = "2.39.0";
-    src = fetchurl {
-      url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip";
-      sha256 = "sha256-b7p/N2tsbexJ9BsGQIkwpDrQZMzhA8aizls9BBOoZDQ=";
-    };
-  };
-  _1password-gui-linux-x64 = {
-    pname = "_1password-gui-linux-x64";
-    version = "8.12.36";
-    src = fetchurl {
-      url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.36.x64.tar.gz";
-      sha256 = "sha256-OTyTyAJf7l3adqTQ8eR46YUmzJRuWKIu/ib1QOorVyk=";
-    };
-  };
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
     version = "2.1.267";

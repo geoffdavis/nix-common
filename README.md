@@ -41,7 +41,7 @@ Home modules — imported into a host's home-manager user (cross-platform
 unless noted):
 
 - `homeModules.cli-tools` — shared CLI packages. NOTE: transitively imports
-  `onepassword` (pinned 1Password CLI + GUI) and `terraform` — importing this
+  `onepassword` (1Password CLI + GUI) and `terraform` — importing this
   module pulls both.
 - `homeModules.pre-commit-hooks` — installs pre-commit's git hooks for a
   configured list of repos on every activation, and rewrites the `/nix/store`
@@ -52,7 +52,7 @@ unless noted):
 - `homeModules.git` — git config + 1Password SSH commit signing
 - `homeModules.zsh` — zsh + oh-my-zsh + fzf/zoxide baseline
 - `homeModules.ssh` — 1Password SSH agent / `IdentityAgent` config
-- `homeModules.onepassword` — pinned 1Password CLI (+ GUI on Linux x86_64)
+- `homeModules.onepassword` — 1Password CLI (+ GUI on Linux x86_64)
 - `homeModules.terraform` — pinned terraform
 - `homeModules.graphics` — GUI / diagramming tools
 - `homeModules.desktop-base` — cli-tools + git + graphics + ssh, plus

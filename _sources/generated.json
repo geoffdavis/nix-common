@@ -1,34 +1,4 @@
 {
-    "_1password-cli-linux-x64": {
-        "cargoLock": null,
-        "date": null,
-        "extract": null,
-        "name": "_1password-cli-linux-x64",
-        "passthru": null,
-        "pinned": false,
-        "src": {
-            "name": null,
-            "sha256": "sha256-b7p/N2tsbexJ9BsGQIkwpDrQZMzhA8aizls9BBOoZDQ=",
-            "type": "url",
-            "url": "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_linux_amd64_v2.39.0.zip"
-        },
-        "version": "2.39.0"
-    },
-    "_1password-gui-linux-x64": {
-        "cargoLock": null,
-        "date": null,
-        "extract": null,
-        "name": "_1password-gui-linux-x64",
-        "passthru": null,
-        "pinned": false,
-        "src": {
-            "name": null,
-            "sha256": "sha256-OTyTyAJf7l3adqTQ8eR46YUmzJRuWKIu/ib1QOorVyk=",
-            "type": "url",
-            "url": "https://downloads.1password.com/linux/tar/stable/x86_64/1password-8.12.36.x64.tar.gz"
-        },
-        "version": "8.12.36"
-    },
     "claude-code-darwin-arm64": {
         "cargoLock": null,
         "date": null,

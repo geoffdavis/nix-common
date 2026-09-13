@@ -57,7 +57,32 @@
       then inputs.nixpkgs-darwin.legacyPackages.${system}
       else inputs.nixpkgs-nixos.legacyPackages.${system};
     forAllSystems = f: lib.genAttrs systems (system: f (pkgsFor system));
+
+    # 1Password CLI + GUI from the unstable channel. The stable channel
+    # freezes both several releases behind the vendor (26.05: cli 2.34.0,
+    # gui 8.12.21) and config/cache written by a newer build is unreadable
+    # by an older one -- which bites because the same account is driven from
+    # apt/Homebrew machines that track the vendor. Unstable is close enough
+    # (cli 2.39.0 == vendor current, gui one release behind) while leaving
+    # the packaging upstream's job: a repackaged vendor tarball used to live
+    # in modules/shared/onepassword-packages.nix, and broke every time
+    # 1Password moved a file inside it (8.12.36 renamed
+    # resources/1password.desktop).
+    #
+    # Applied by nixosModules.common, so NixOS consumers and their
+    # useGlobalPkgs home-manager get it with no host-side wiring. Darwin
+    # installs 1Password from Homebrew casks, so it is not applied there.
+    onepasswordUnstable = _final: prev: let
+      unstable = import inputs.nixpkgs-unstable {
+        inherit (prev.stdenv.hostPlatform) system;
+        # Carries the host's allowUnfreePredicate; both packages are unfree.
+        inherit (prev) config;
+      };
+    in {
+      inherit (unstable) _1password-cli _1password-gui;
+    };
   in {
+    overlays.onepassword-unstable = onepasswordUnstable;
     # Dev helper, single source of truth for the reusable-workflow pin rewrite.
     # Consumers call `nix run github:geoffdavis/nix-common#sync-pin` from their
     # Taskfile (after `nix flake update nix-common`) instead of carrying the
@@ -163,7 +188,11 @@
     # Opt-in build-output push to the nas-sdg cache (same file as
     # nixosModules.cache-push). Pairs with nas-cache on the pushing host.
     darwinModules.cache-push = ./modules/cache-push.nix;
-    nixosModules.common = ./modules/nixos/common.nix;
+    nixosModules.common = {
+      imports = [./modules/nixos/common.nix];
+      # See the onepasswordUnstable comment above.
+      nixpkgs.overlays = [onepasswordUnstable];
+    };
     # NAS binary cache for NixOS hosts (same file as darwinModules.nas-cache).
     nixosModules.nas-cache = ./modules/nas-cache.nix;
     # Opt-in build-output push to the nas-sdg cache (same file as

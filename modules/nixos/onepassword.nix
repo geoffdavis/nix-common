@@ -1,6 +1,7 @@
-# modules/nixos/onepassword.nix — 1Password GUI + CLI on NixOS hosts,
-# version-pinned to the vendor's stable channel (same sources as the home
-# module; see modules/shared/onepassword-packages.nix).
+# modules/nixos/onepassword.nix — 1Password GUI + CLI on NixOS hosts.
+#
+# The packages come from nixpkgs via the onepassword-unstable overlay that
+# nixosModules.common applies (see flake.nix for why unstable).
 #
 # Why not home.packages (modules/home/onepassword.nix)? The 1Password app
 # only accepts CLI-integration connections from an `op` binary it can
@@ -16,19 +17,7 @@
 # this module can't know the host's user.
 # IMPORT-IS-OPT-IN: base/profile module — importing it IS the enable;
 # config applies unconditionally (module-contract.md, "Two module classes").
-{
-  lib,
-  pkgs,
-  ...
-}: let
-  pinned = import ../shared/onepassword-packages.nix {inherit lib pkgs;};
-in {
-  programs._1password = {
-    enable = true;
-    package = pinned.cli;
-  };
-  programs._1password-gui = {
-    enable = true;
-    package = pinned.gui;
-  };
+_: {
+  programs._1password.enable = true;
+  programs._1password-gui.enable = true;
 }

@@ -7,7 +7,7 @@
 #
 # Consumers:
 #   modules/home/ai-tools.nix     — claude-code, copilot-cli, codex
-#   modules/home/onepassword.nix  — _1password-cli, _1password-gui
+#   modules/home/terraform.nix    — terraform
 #
 # Adding a package: declare one entry per (package, platform). Run
 # `task update:sources` (or `nix run nixpkgs#nvfetcher`) to populate
@@ -59,16 +59,6 @@ src.github = "openai/codex"
 src.prefix = "rust-v"
 fetch.url = "https://github.com/openai/codex/releases/download/rust-v$ver/codex-package-x86_64-unknown-linux-musl.tar.gz"
 
-# ── 1Password CLI (linux-x64 zip from cache.agilebits.com). 1Password does
-# not publish CLI releases on GitHub — scrape the same-shaped RSS feed that
-# the GUI uses, but under /developers/cli/. Title format is consistent:
-# "1Password CLI X.Y.Z".
-# Darwin handled by Homebrew cask (see modules/darwin/common.nix).
-[_1password-cli-linux-x64]
-src.webpage = "https://releases.1password.com/developers/cli/index.xml"
-src.regex = '1Password CLI ([0-9]+\.[0-9]+\.[0-9]+)'
-fetch.url = "https://cache.agilebits.com/dist/1P/op2/pkg/v$ver/op_linux_amd64_v$ver.zip"
-
 # ── terraform (HashiCorp). nixpkgs lags upstream (25.11 ships 1.14.0 while
 # the user needs >=1.15). Override with HashiCorp's signed prebuilt binary
 # instead of buildGoModule (which would force a vendorHash bump every
@@ -82,14 +72,3 @@ fetch.url = "https://releases.hashicorp.com/terraform/$ver/terraform_$ver_linux_
 src.github = "hashicorp/terraform"
 src.prefix = "v"
 fetch.url = "https://releases.hashicorp.com/terraform/$ver/terraform_$ver_darwin_arm64.zip"
-
-# ── 1Password GUI (Linux desktop). No public GH releases.
-# Scrape the canonical stable RSS feed that 1Password's own infrastructure
-# publishes (releases.1password.com/linux/stable/). Title format varies across
-# the feed's history — the earliest items are "1Password Linux X.Y.Z", later
-# ones "1Password for Linux, X.Y X.Y.Z-N", current ones "1Password for Linux
-# X.Y.Z". The regex tolerates all three; nvchecker picks the highest semver.
-[_1password-gui-linux-x64]
-src.webpage = "https://releases.1password.com/linux/stable/index.xml"
-src.regex = '1Password[^<]*? ([0-9]+\.[0-9]+\.[0-9]+)'
-fetch.url = "https://downloads.1password.com/linux/tar/stable/x86_64/1password-$ver.x64.tar.gz"
