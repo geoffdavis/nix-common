@@ -1,7 +1,9 @@
-# modules/cache-push.nix — publish this host's local build outputs to
-# nas-sdg's file-based Nix cache (plain NAR + narinfo files on /tank, outside
-# the Nix store), so interactive/dev builds and locally-built closures don't
-# get recompiled elsewhere in the fleet.
+# modules/cache-push.nix — publish this host's local build outputs, and the
+# derivations that produced them, to nas-sdg's file-based Nix cache (plain
+# NAR + narinfo files on /tank, outside the Nix store), so interactive/dev
+# builds and locally-built closures don't get recompiled elsewhere in the
+# fleet — and so a consumer that needs the DERIVER rather than the output
+# can resolve it too (nix-personal's deploy.yml; see the hook body).
 #
 # WHY a file cache and not nas-sdg's Harmonia cache, which this module used
 # to push to directly: Harmonia serves nas-sdg's LIVE /nix/store, so every
@@ -126,10 +128,50 @@
         echo "cache-push: FAILED (exit $rc); NOT cached: $OUT_PATHS" >&2
       fi
     fi
+
+    # And the DERIVATION, which the copy above does not carry.
+    #
+    # `nix copy <out>` transfers outputs; the .drv that produced them is a
+    # separate store path and needs --derivation, which changes the meaning
+    # of every argument and so cannot share the call above.
+    #
+    # It matters because a consumer may need the deriver rather than the
+    # output. nix-personal's deploy.yml is exactly that: build.yml records
+    # `path:` and `deriver:` for the host closure, and the deploy job
+    # resolves BOTH before pushing with deploy-rs. With only the output
+    # published, it fails at "read build metadata comment" with
+    #
+    #   error: path '/nix/store/...-activatable-nixos-system-<host>-....drv'
+    #          is required, but there is no substituter that can build it
+    #
+    # naming a path that is real and correct, and simply absent from the
+    # cache. Hit live 2026-09-14 on every aarch64 host.
+    #
+    # Why it stayed hidden: that job runs on a nas-sdg runner, so for hosts
+    # built THERE the .drv is already in the local store and no substituter
+    # is consulted. Only closures built elsewhere — the ARM hosts, built on
+    # tourmaline — expose it, and tourmaline had no push hook at all until
+    # the same day, so the gap had never been reachable.
+    #
+    # DRV_PATH comes from nix itself (post-build-hook sets it alongside
+    # OUT_PATHS), so this needs no `nix-store --query --deriver` round trip
+    # and cannot disagree with what was just built. Kept non-fatal and
+    # separately greppable for the same reason as above: a broken cache must
+    # never fail a build, but it must not fail silently either.
+    if [ -n "''${DRV_PATH:-}" ]; then
+      drc=0
+      ${pkgs.coreutils}/bin/timeout --kill-after=60 600 ${config.nix.package}/bin/nix copy \
+        --no-check-sigs --derivation \
+        --to 'ssh-ng://nix-cache-push-nas-sdg' \
+        "$DRV_PATH" || drc=$?
+      if [ "$drc" -ne 0 ]; then
+        echo "cache-push: deriver NOT cached (exit $drc): $DRV_PATH" >&2
+      fi
+    fi
   '';
 in {
   options.my.cachePush.enable =
-    lib.mkEnableOption "pushing local build outputs to nas-sdg's file-based cache via a post-build-hook";
+    lib.mkEnableOption "pushing local build outputs and their derivations to nas-sdg's file-based cache via a post-build-hook";
 
   config = lib.mkIf cfg.enable {
     nix.settings.post-build-hook = "${pushHook}";
