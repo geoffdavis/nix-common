@@ -105,8 +105,14 @@ Sweep all four, every time:
 One command, from the repo root:
 
 ```sh
-git grep -in '<old-name>' -- '*.nix' '*.md' '*.yml'
+git grep -in '<old-name>'
 ```
+
+No pathspec on purpose. Restricting it to `*.nix '*.md' '*.yml'` looks
+thorough and silently skips `.sh`, `.py`, `.yaml`, `.json`, `.toml` and
+templates — all of which carry names too. Searching every tracked file is
+both shorter and correct; narrow it only when the noise is unmanageable, and
+then say so.
 
 The trap is checking only the file you are editing, believing that was a
 sweep, and shipping prose that contradicts the code. It has bitten twice:
@@ -122,7 +128,7 @@ script text that lands in the store, so editing it changes the closure while
 looking exactly like a comment change. Compare parse trees instead:
 
 ```sh
-for f in $(git diff --name-only -- '*.nix'); do
+for f in $(git diff HEAD --name-only -- '*.nix'); do
   d=$(dirname "$f"); b=$(basename "$f")
   git show "HEAD:$f" > "$d/.orig-$b"
   a=$( (cd "$d" && nix-instantiate --parse ".orig-$b" | shasum) )
@@ -131,6 +137,11 @@ for f in $(git diff --name-only -- '*.nix'); do
   [ "$a" = "$c" ] && echo "same $f" || echo "DIFFERS $f"
 done
 ```
+
+`git diff HEAD`, not `git diff`. The bare form compares the working tree to
+the *index*, so once you have staged the edit — the normal state just before
+committing — the loop runs zero times and reports success having checked
+nothing.
 
 Parse in the file's own directory — Nix resolves relative path literals at
 parse time, so a copy elsewhere reports spurious differences.
