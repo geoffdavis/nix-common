@@ -84,6 +84,42 @@ body), then commits the flake-input update — ready to push + open a PR.
 - One `enable` option per module, all config behind `lib.mkIf cfg.enable`,
   `lib.mkDefault` on anything a host might override.
 
+## Renames and removals: sweep the prose, not just the code
+
+Renaming or deleting anything with a name — a kernel module, an option, a
+file, a config key — is not done when the code builds. Every place that
+*mentions* the old name is now wrong, and nothing will fail to tell you.
+
+Sweep all four, every time:
+
+1. **Implementation** — the code that sets or uses it.
+2. **Option descriptions** — `mkEnableOption` / `mkOption` text. This is what
+   someone reads when deciding whether to switch the option on, so a stale
+   description misleads harder than a stale comment.
+3. **Comments** — including ones inside `'' … ''` strings. Those are
+   derivation text, so editing them changes the closure; they belong in a
+   separate commit from a comments-only change.
+4. **Docs, especially runbooks.** A verification step that greps for the old
+   name reports failure when things are actually working.
+
+One command, from the repo root:
+
+```sh
+git grep -in '<old-name>' -- '*.nix' '*.md' '*.yml'
+```
+
+The trap is checking only the file you are editing, believing that was a
+sweep, and shipping prose that contradicts the code. It has bitten twice:
+a LUKS recovery runbook still telling the operator to `lsmod | grep
+<removed-module>` at the step where they decide whether to go find a USB
+keyboard, and an option description still advertising a setting the program
+had dropped. Both were caught in review, not by the build — neither breaks
+anything, which is exactly why they survive.
+
+Dated records under `docs/superpowers/{plans,specs}/` are the deliberate
+exception: they describe what was true when written, and rewriting them makes
+them lie about their own moment.
+
 ## Workflow
 
 - `main` is PR-protected. Don't push directly. CI (`lint / lint`,
