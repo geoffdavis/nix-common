@@ -7,18 +7,18 @@
 }: {
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.271";
+    version = "2.1.272";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.271/darwin-arm64/claude";
-      sha256 = "sha256-h9EZ60Z4KhNp151ujMAFV/G1G8nbelG9AfovkJ2P49w=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.272/darwin-arm64/claude";
+      sha256 = "sha256-GV4k6OH5v0bx6u5y1DSjPhj59XlvKaY0igDRbF+K7nU=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.271";
+    version = "2.1.272";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.271/linux-x64/claude";
-      sha256 = "sha256-Xntvwk0OEk9o6ZoGQcR7ZilFxtGX12jXrXpyy/GJf1g=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.272/linux-x64/claude";
+      sha256 = "sha256-2BOWpmjrdvvdtJoqWEHxtdevlrTB9lAM7ZLyyYj1vNQ=";
     };
   };
   codex-linux-x64 = {
