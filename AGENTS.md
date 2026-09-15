@@ -116,6 +116,30 @@ keyboard, and an option description still advertising a setting the program
 had dropped. Both were caught in review, not by the build — neither breaks
 anything, which is exactly why they survive.
 
+**Verify a comments-only sweep; do not eyeball it.** "The diff contains
+nothing but `#` lines" is not evidence. A comment inside a `'' … ''` body is
+script text that lands in the store, so editing it changes the closure while
+looking exactly like a comment change. Compare parse trees instead:
+
+```sh
+for f in $(git diff --name-only -- '*.nix'); do
+  d=$(dirname "$f"); b=$(basename "$f")
+  git show "HEAD:$f" > "$d/.orig-$b"
+  a=$( (cd "$d" && nix-instantiate --parse ".orig-$b" | shasum) )
+  c=$( (cd "$d" && nix-instantiate --parse "$b"        | shasum) )
+  rm -f "$d/.orig-$b"
+  [ "$a" = "$c" ] && echo "same $f" || echo "DIFFERS $f"
+done
+```
+
+Parse in the file's own directory — Nix resolves relative path literals at
+parse time, so a copy elsewhere reports spurious differences.
+
+AST-identical means comments-only, and the commit can say so. AST-different
+while the diff shows only `#` lines means you edited a string: split that
+into its own commit and state the closure impact, rather than claiming the
+whole change is inert.
+
 Dated records under `docs/superpowers/{plans,specs}/` are the deliberate
 exception: they describe what was true when written, and rewriting them makes
 them lie about their own moment.
