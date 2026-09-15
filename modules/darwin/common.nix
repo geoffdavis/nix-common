@@ -85,6 +85,7 @@ in {
         "1password-cli"
         "font-hack-nerd-font"
         "ghostty"
+        "lm-studio"
       ];
     };
 
