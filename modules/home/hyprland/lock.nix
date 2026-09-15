@@ -30,7 +30,18 @@ in {
       settings = {
         general = {
           hide_cursor = lib.mkDefault true;
-          grace = lib.mkDefault 2;
+          # NO `grace` here. hyprlock removed the option -- 0.9.5's own
+          # reference config (share/hypr/hyprlock.conf) has a general block
+          # containing only hide_cursor, and grace appears nowhere in it.
+          # Setting it is not merely inert, it makes hyprlock log a parse
+          # error on every single lock:
+          #
+          #   Config error in file .../hyprlock.conf at line 9:
+          #   config option <general:grace> does not exist
+          #
+          # It was not moved to another section, so there is nothing to port
+          # it to; a grace period has to come from hypridle's lock_cmd timing
+          # instead.
         };
         background = lib.mkDefault [{color = "$base";}];
         input-field = lib.mkDefault [
