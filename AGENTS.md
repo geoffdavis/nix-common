@@ -130,13 +130,22 @@ looking exactly like a comment change. Compare parse trees instead:
 ```sh
 for f in $(git diff HEAD --name-only -- '*.nix'); do
   d=$(dirname "$f"); b=$(basename "$f")
-  git show "HEAD:$f" > "$d/.orig-$b"
-  a=$( (cd "$d" && nix-instantiate --parse ".orig-$b" | shasum) )
-  c=$( (cd "$d" && nix-instantiate --parse "$b"        | shasum) )
+  git show "HEAD:$f" > "$d/.orig-$b" || { echo "ABORT: no HEAD:$f"; rm -f "$d/.orig-$b"; break; }
+  a=$( cd "$d" && nix-instantiate --parse ".orig-$b" ) || { echo "ABORT: parse failed HEAD:$f"; rm -f "$d/.orig-$b"; break; }
+  c=$( cd "$d" && nix-instantiate --parse "$b"        ) || { echo "ABORT: parse failed $f";      rm -f "$d/.orig-$b"; break; }
   rm -f "$d/.orig-$b"
   [ "$a" = "$c" ] && echo "same $f" || echo "DIFFERS $f"
 done
 ```
+
+Compare the parse output itself, not a hash of it, and abort on a non-zero
+parse. Piping into `shasum` throws the parser's exit status away — the shell
+reports the last command in a pipeline, and without `set -o pipefail` a
+`nix-instantiate` that never ran (not installed, or a syntax error) still
+leaves `shasum` hashing empty input happily. Both sides then hash the empty
+string, compare equal, and the loop prints `same` for a file it never parsed.
+Same failure shape as the pathspec and the bare `git diff` below: the check
+passes loudest exactly when it has checked nothing.
 
 `git diff HEAD`, not `git diff`. The bare form compares the working tree to
 the *index*, so once you have staged the edit — the normal state just before
