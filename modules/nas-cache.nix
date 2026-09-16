@@ -151,7 +151,50 @@
     if cfg.keepNativeBuildsLocal
     then builtins.filter (m: m.systems != []) (map stripNative machines)
     else machines;
+
+  # ── /etc/nix/machines for hosts where nix-darwin does not write it ──────
+  #
+  # `nix.buildMachines` above is only ever CONSUMED by the nix-darwin/NixOS
+  # nix module, which gates every one of its outputs on `nix.enable`. On a
+  # Determinate-managed host that is `false` by design (Determinate owns
+  # /etc/nix/nix.conf; see nix-personal hosts/slurricane/default.nix), so the
+  # option evaluates to a full, correct list that nothing ever renders — the
+  # machine silently has no remote builders at all and falls back to building
+  # everything locally, which on an aarch64-darwin laptop means it cannot
+  # build Linux closures whatsoever. Found live 2026-09-15: a `deploy-rs`
+  # push from slurricane died at "Required system: 'x86_64-linux', Current
+  # system: 'aarch64-darwin'" while the identical command from windansea (same
+  # module, `nix.enable = true`) worked.
+  #
+  # Nothing else is needed to make this live: `builders` DEFAULTS to
+  # `@/etc/nix/machines` in nix itself, on every host checked, so writing the
+  # file is sufficient and no nix.conf edit is required. That matters here
+  # specifically because nix.conf is exactly what this class of host will not
+  # let us touch — the one file Determinate replaces.
+  #
+  # The rendering is nix's documented machines-file format, one builder per
+  # line, `-` for an empty field:
+  #   <protocol>://<sshUser>@<host> <systems,> <sshKey> <maxJobs> \
+  #     <speedFactor> <supportedFeatures,> <mandatoryFeatures,> <publicHostKey>
+  renderField = xs:
+    if xs == []
+    then "-"
+    else lib.concatStringsSep "," xs;
+
+  renderMachine = m:
+    lib.concatStringsSep " " [
+      "${m.protocol or "ssh"}://${m.sshUser}@${m.hostName}"
+      (renderField (m.systems or []))
+      (m.sshKey or "-")
+      (toString (m.maxJobs or 1))
+      (toString (m.speedFactor or 1))
+      (renderField (m.supportedFeatures or []))
+      (renderField (m.mandatoryFeatures or []))
+      (m.publicHostKey or "-")
+    ];
 in {
+  imports = [./shared/nix-custom-conf.nix];
+
   # WHY THIS EXISTS (measured 2026-09-09, not read out of the manual): nix's
   # scheduler has NO local-vs-remote speed comparison. A remote builder with a
   # free slot ALWAYS wins over building locally, and speedFactor only ranks
@@ -202,6 +245,41 @@ in {
   };
 
   config = {
+    # See renderMachine in the let block above for why this exists and why
+    # writing the file is sufficient on its own. Guarded so it is a strict
+    # no-op on every host where nix-darwin/NixOS already writes this file:
+    # with `nix.enable = true` (the default, and every other consumer of this
+    # module) the option below is never defined at all, so those hosts keep
+    # byte-for-byte the /etc/nix/machines they have today and cannot collide
+    # with the nix module's own definition of the same path.
+    environment.etc = lib.mkIf (!config.nix.enable) {
+      "nix/machines".text =
+        lib.concatMapStrings (m: renderMachine m + "\n")
+        config.nix.buildMachines;
+    };
+
+    # The same blind spot as the machines file above, for the CACHE half of
+    # this module: `nix.settings` below is consumed only by the nix module,
+    # so on `nix.enable = false` the substituter and its public key are
+    # evaluated and then dropped. Such a host would use the fleet's builders
+    # (above) while still fetching every path from cache.nixos.org or building
+    # it locally — the slower half of what importing this module is for.
+    #
+    # Routed through nixCustomConf because /etc/nix/nix.custom.conf is
+    # contended: darwinModules.determinate-gc puts its GC settings there too,
+    # and `environment.etc.<name>.text` is a plain string that cannot merge.
+    #
+    # `extra-*` forms, matching nix.settings above: these ADD to whatever
+    # Determinate already configures rather than replacing it, so the upstream
+    # cache keeps working. Trust comes from the system-level config here, which
+    # the daemon reads directly — the "you are not a trusted user" restriction
+    # applies to client-supplied settings, not to this file.
+    nixCustomConf.settings = lib.mkIf (!config.nix.enable) {
+      extra-substituters = [cacheUrl];
+      extra-trusted-public-keys = [cachePublicKey];
+      builders-use-substitutes = true;
+    };
+
     # Substitution: pull paths the NAS has already built instead of rebuilding.
     # Harmonia priority 50 keeps cache.nixos.org (40) preferred; the NAS
     # supplements with our own builds.

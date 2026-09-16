@@ -22,19 +22,26 @@
 }: let
   cfg = config.determinate-gc;
 in {
+  imports = [../shared/nix-custom-conf.nix];
+
   options.determinate-gc.enable =
     lib.mkEnableOption "scheduled nix GC + store optimisation on Determinate-managed darwin hosts (where nix-darwin's nix.gc is unavailable because nix.enable = false)";
 
   config = lib.mkIf cfg.enable {
     # Determinate includes /etc/nix/nix.custom.conf from its generated nix.conf,
     # so this is the sanctioned place to add daemon settings without fighting it.
-    environment.etc."nix/nix.custom.conf".text = ''
-      # Managed by nix-common darwinModules.determinate-gc. Disk-pressure GC +
-      # store optimisation; the time-based sweep is the launchd daemon below.
-      min-free = ${toString (1024 * 1024 * 1024)}
-      max-free = ${toString (5 * 1024 * 1024 * 1024)}
-      auto-optimise-store = true
-    '';
+    #
+    # Contributed through nixCustomConf rather than written directly: that file
+    # is contended (nas-cache needs the fleet substituter in it on exactly these
+    # hosts), and `environment.etc.<name>.text` is a plain string, so a second
+    # module defining it would be a conflict rather than a merge. Same three
+    # settings as before, same rendering — see modules/shared/nix-custom-conf.nix.
+    # The time-based sweep is still the launchd daemon below.
+    nixCustomConf.settings = {
+      min-free = 1024 * 1024 * 1024;
+      max-free = 5 * 1024 * 1024 * 1024;
+      auto-optimise-store = true;
+    };
 
     # Weekly time-based GC (the nix.gc.automatic equivalent). Runs as root so it
     # prunes every profile's old generations, not just one user's.
