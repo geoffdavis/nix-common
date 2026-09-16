@@ -193,6 +193,8 @@
       (m.publicHostKey or "-")
     ];
 in {
+  imports = [./shared/nix-custom-conf.nix];
+
   # WHY THIS EXISTS (measured 2026-09-09, not read out of the manual): nix's
   # scheduler has NO local-vs-remote speed comparison. A remote builder with a
   # free slot ALWAYS wins over building locally, and speedFactor only ranks
@@ -254,6 +256,28 @@ in {
       "nix/machines".text =
         lib.concatMapStrings (m: renderMachine m + "\n")
         config.nix.buildMachines;
+    };
+
+    # The same blind spot as the machines file above, for the CACHE half of
+    # this module: `nix.settings` below is consumed only by the nix module,
+    # so on `nix.enable = false` the substituter and its public key are
+    # evaluated and then dropped. Such a host would use the fleet's builders
+    # (above) while still fetching every path from cache.nixos.org or building
+    # it locally — the slower half of what importing this module is for.
+    #
+    # Routed through nixCustomConf because /etc/nix/nix.custom.conf is
+    # contended: darwinModules.determinate-gc puts its GC settings there too,
+    # and `environment.etc.<name>.text` is a plain string that cannot merge.
+    #
+    # `extra-*` forms, matching nix.settings above: these ADD to whatever
+    # Determinate already configures rather than replacing it, so the upstream
+    # cache keeps working. Trust comes from the system-level config here, which
+    # the daemon reads directly — the "you are not a trusted user" restriction
+    # applies to client-supplied settings, not to this file.
+    nixCustomConf.settings = lib.mkIf (!config.nix.enable) {
+      extra-substituters = [cacheUrl];
+      extra-trusted-public-keys = [cachePublicKey];
+      builders-use-substitutes = true;
     };
 
     # Substitution: pull paths the NAS has already built instead of rebuilding.
