@@ -12,6 +12,11 @@
   inherit (config.my) username;
   unfreePackageNames = import ../shared/unfree-package-names.nix;
 in {
+  # nixCustomConf: the one sanctioned channel for daemon settings on a
+  # Determinate-managed host, where `nix.enable = false` leaves every
+  # `nix.settings` below inert. See the trusted-users mirror in config.
+  imports = [../shared/nix-custom-conf.nix];
+
   options.my.username = lib.mkOption {
     type = lib.types.str;
     default = "geoff";
@@ -66,6 +71,32 @@ in {
         options = lib.mkDefault "--delete-older-than 30d";
       };
       optimise.automatic = lib.mkIf config.nix.enable (lib.mkDefault true);
+    };
+
+    # The trusted-users half of `nix.settings` above, for hosts where that
+    # attrset is never read: with `nix.enable = false` nix-darwin does not
+    # write nix.conf at all, so the primary user silently stays UNTRUSTED —
+    # Determinate's own nix.conf sets no trusted-users, leaving nix's default
+    # of `root` alone. (Determinate is often described as trusting the
+    # installing admin user; it does not. Verified on slurricane 2026-09-16:
+    # `nix config show` reported `trusted-users = root` with the account in
+    # the admin group.)
+    #
+    # The symptom is a daemon that discards the CLIENT's settings and says so
+    # on every command — "ignoring untrusted substituter …, you are not a
+    # trusted user" plus "ignoring the client-specified setting
+    # 'trusted-public-keys'". That silently drops any substituter a flake's
+    # own `nixConfig` contributes under `--accept-flake-config`, which the
+    # system file cannot compensate for: it is not in nix.custom.conf to
+    # begin with. Fleet caches survive only because nas-cache writes them
+    # here too (modules/nas-cache.nix), where trust is not in question.
+    #
+    # `extra-` so this ADDS to nix's built-in `root` rather than replacing it,
+    # matching the extra-* forms nas-cache uses in the same file. A no-op
+    # wherever nix-darwin owns nix.conf (`nix.enable = true`), which already
+    # gets the same grant from `trusted-users` above.
+    nixCustomConf.settings = lib.mkIf (!config.nix.enable) {
+      extra-trusted-users = [username];
     };
 
     # zsh sourcing of nix-darwin's environment changes.
