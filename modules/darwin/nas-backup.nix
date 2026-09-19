@@ -17,7 +17,7 @@
 #
 # ── HOURLY CADENCE ──────────────────────────────────────────────────────
 # The default schedule is hourly (timer.hour = null), for parity with the
-# Time Machine setup this replaced. Three things make an hourly restic job
+# Time Machine setup this replaced. Four things make an hourly restic job
 # safe that a once-nightly one could get away with ignoring:
 #
 #   1. Overlap. At 24 starts a day, a run that outlasts its slot is no
@@ -30,8 +30,20 @@
 #      resolve it. Nightly, that was one lost backup; hourly it would be 24
 #      failure notifications a day. preflight turns "can't reach the repo"
 #      into a clean skip instead of a failure.
-#   3. Notification volume. A genuine, persistent failure fires once and
-#      then at most every notify.minIntervalSec, rather than every hour.
+#   3. What counts as a failure. restic exit 3 means "snapshot created, but
+#      some source files were unreadable" — the permanent steady state on
+#      macOS, where a LaunchDaemon has no Full Disk Access and every run
+#      trips over the TCC-protected corners of ~/Library. It is logged, not
+#      notified, and not a non-zero exit.
+#   4. Notification volume. notify.enable is OFF by default here (it is on
+#      for the NixOS sibling): the only delivery path a LaunchDaemon has is
+#      osascript, which needs an Automation grant whose prompt names this
+#      module's own store-path wrapper and therefore cannot survive a
+#      rebuild. A consumer's status widget carries the signal instead. When
+#      it IS enabled, a genuine persistent failure fires once and then at
+#      most every notify.minIntervalSec, and the window is stamped on the
+#      ATTEMPT — so a delivery path that is itself broken cannot defeat its
+#      own rate limit.
 #
 # Snapshot volume is the server's problem, not this module's: the repo is
 # append-only and Backrest owns the forget/prune policy. Going from ~1 to
@@ -77,6 +89,11 @@
   # NOW" affordance (a menu-bar widget, a shell alias) tells this job that the
   # run it is about to request is not a duplicate, so timer.minIntervalSec
   # does not silently swallow it.
+  # Rewritten (not appended) each run that hits unreadable paths, so the
+  # full denial list stays available at bounded size while the log keeps
+  # only the count. Removed on a run with no denials, so its presence is
+  # itself the signal.
+  unreadableFile = "${logDir}/${label}.unreadable.txt";
   lockFile = "${logDir}/${label}.lock";
   stampFile = "${logDir}/${label}.stamp";
   notifyStamp = "${logDir}/${label}.notified";
@@ -152,11 +169,40 @@
     ${pkgs.flock}/bin/flock -n -E 4 ${lib.escapeShellArg lockFile} ${pkgs.writeShellScript "${label}-locked" ''
       set -u
       # --json's stdout stream goes only to progressFile (a status-widget
-      # feed, e.g. an xbar plugin) — stderr still reaches StandardErrorPath
-      # (this same log file) unredirected, so failures stay human-readable
-      # there instead of buried in NDJSON.
-      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile}
+      # feed, e.g. an xbar plugin). stderr is captured rather than left to
+      # flow straight to StandardErrorPath, so the TCC denials can be
+      # collapsed below; everything else still reaches the log verbatim.
+      err=$(${pkgs.coreutils}/bin/mktemp)
+      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile} 2>"$err"
       rc=$?
+
+      # ── collapse the unreadable-path spam ────────────────────────────────
+      # Every run, restic emits one stderr line per path macOS refuses it.
+      # A LaunchDaemon has no Full Disk Access, so that is ~34k lines a run
+      # on a real Mac — measured 2026-09-18: 33,655 of 34,118 log lines, 98.6%
+      # of a log nothing rotates.
+      #
+      # These are NOT excluded from the backup instead, deliberately. The
+      # paths are unreadable only because THIS PROCESS lacks the privilege,
+      # not because they are worthless — on the machine that prompted this
+      # they are ~1.25 GB of live app data (~/Library/Containers and Group
+      # Containers) plus Mail, Messages and Safari. An --exclude would end
+      # the noise by making a real gap in the backup permanent AND silent.
+      # Collapsing the log instead keeps the gap counted, every run, in one
+      # line you can actually see.
+      #
+      # The full list still lands in a sibling file, rewritten (not appended)
+      # each run, so the detail survives at bounded size.
+      denied=$(${pkgs.gnugrep}/bin/grep -c 'operation not permitted' "$err" || true)
+      ${pkgs.gnugrep}/bin/grep -v 'operation not permitted' "$err" >&2 || true
+      if [ "''${denied:-0}" -gt 0 ]; then
+        ${pkgs.gnugrep}/bin/grep 'operation not permitted' "$err" > ${lib.escapeShellArg unreadableFile} || true
+        echo "$(${pkgs.coreutils}/bin/date -Is) note: $denied path(s) unreadable, NOT in this snapshot (macOS TCC; this daemon has no Full Disk Access). Full list: ${unreadableFile}" >&2
+      else
+        ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg unreadableFile}
+      fi
+      ${pkgs.coreutils}/bin/rm -f "$err"
+
       # Stamp on the way out whether restic won or lost: a failing repo
       # should be retried next slot, not every time launchd twitches.
       ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg stampFile}
@@ -173,6 +219,23 @@
       exit 0
     fi
 
+    # restic exit 3 = "the snapshot was created, but some source files could
+    # not be read". On macOS that is the PERMANENT steady state, not a fault:
+    # a LaunchDaemon has no Full Disk Access, so every run trips over the
+    # TCC-protected corners of ~/Library (Mail, Messages, Safari, HomeKit,
+    # Group Containers/*, ...) and exits 3 with the backup itself complete.
+    # Treating it as failure meant every single hourly run took the failure
+    # path; verified live on a personal Mac 2026-09-18, 29 of 30 runs exited
+    # 3 while the snapshots landed hourly exactly as intended.
+    #
+    # It is still worth one line in the log — a jump in the unreadable count
+    # is how you would notice a NEW protected path — but it is not a
+    # notification, and it is not a non-zero exit.
+    if [ "$rc" -eq 3 ]; then
+      echo "$(${pkgs.coreutils}/bin/date -Is) ok: snapshot created; some source files were unreadable (restic exit 3, expected under macOS TCC)"
+      exit 0
+    fi
+
     echo "$(${pkgs.coreutils}/bin/date -Is) restic exited $rc"
     ${lib.optionalString cfg.notify.enable ''
       # ── notification rate limit ────────────────────────────────────────
@@ -181,15 +244,20 @@
       # broken credential posts a banner every hour until someone notices,
       # which trains you to dismiss it.
       if [ "$(age_of ${lib.escapeShellArg notifyStamp})" -ge ${toString cfg.notify.minIntervalSec} ]; then
+        # Stamp the ATTEMPT, before delivering, and never mind whether the
+        # banner lands. An earlier version stamped only on success, reasoning
+        # that a failure nobody saw should not burn the suppression window.
+        # That reasoning inverts the moment delivery is what is broken:
+        # osascript from a LaunchDaemon needs an Automation (Apple Events)
+        # grant, the prompt for it names this wrapper's bash, and an
+        # unanswered prompt is a failed delivery — so the window never
+        # engaged and the next slot prompted again, every hour, forever.
+        # A rate limit whose own precondition is that the thing it limits
+        # works is not a rate limit. The suppression window now holds
+        # regardless, and the log still records every failure.
+        ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
         uid="$(/usr/bin/id -u ${cfg.username})"
-        # Stamp only once the banner is actually delivered. With nobody
-        # logged into the GUI there is no session to post into and osascript
-        # fails — stamping first would let a failure nobody ever saw burn the
-        # whole suppression window, leaving the next login silent about a
-        # backup that is still broken.
-        if /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"'; then
-          ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
-        fi
+        /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
       fi
     ''}
     exit 1
@@ -313,7 +381,28 @@ in {
     };
 
     notify = {
-      enable = lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails" // {default = true;};
+      enable =
+        lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails"
+        // {
+          description = ''
+            Post a GUI notification when a backup run genuinely fails.
+
+            OFF by default on darwin, unlike the NixOS sibling, because the
+            only delivery path available to a LaunchDaemon is `osascript`,
+            and `display notification` from a daemon needs an Automation
+            (Apple Events) grant. The permission prompt names this module's
+            own wrapper — a content-addressed store path — so the grant does
+            not survive a rebuild that changes the script, and the prompt
+            comes back. A notifier that periodically demands to be
+            re-authorised is worse than no notifier.
+
+            Leave it off and let a status widget carry the signal: it derives
+            staleness from the newest snapshot's age, needs no TCC grant at
+            all, and is visible without interrupting anything. Turn this on
+            only if you have a delivery path you are willing to keep
+            authorised.
+          '';
+        };
       minIntervalSec = lib.mkOption {
         type = lib.types.int;
         default = 21600;
