@@ -30,8 +30,15 @@
 #      resolve it. Nightly, that was one lost backup; hourly it would be 24
 #      failure notifications a day. preflight turns "can't reach the repo"
 #      into a clean skip instead of a failure.
-#   3. Notification volume. A genuine, persistent failure fires once and
+#   3. What counts as a failure. restic exit 3 means "snapshot created, but
+#      some source files were unreadable" — the permanent steady state on
+#      macOS, where a LaunchDaemon has no Full Disk Access and every run
+#      trips over the TCC-protected corners of ~/Library. It is logged, not
+#      notified, and not a non-zero exit.
+#   4. Notification volume. A genuine, persistent failure fires once and
 #      then at most every notify.minIntervalSec, rather than every hour.
+#      The window is stamped on the ATTEMPT, so a notification path that is
+#      itself broken cannot defeat its own rate limit.
 #
 # Snapshot volume is the server's problem, not this module's: the repo is
 # append-only and Backrest owns the forget/prune policy. Going from ~1 to
@@ -173,6 +180,23 @@
       exit 0
     fi
 
+    # restic exit 3 = "the snapshot was created, but some source files could
+    # not be read". On macOS that is the PERMANENT steady state, not a fault:
+    # a LaunchDaemon has no Full Disk Access, so every run trips over the
+    # TCC-protected corners of ~/Library (Mail, Messages, Safari, HomeKit,
+    # Group Containers/*, ...) and exits 3 with the backup itself complete.
+    # Treating it as failure meant every single hourly run took the failure
+    # path; verified live on a personal Mac 2026-09-18, 29 of 30 runs exited
+    # 3 while the snapshots landed hourly exactly as intended.
+    #
+    # It is still worth one line in the log — a jump in the unreadable count
+    # is how you would notice a NEW protected path — but it is not a
+    # notification, and it is not a non-zero exit.
+    if [ "$rc" -eq 3 ]; then
+      echo "$(${pkgs.coreutils}/bin/date -Is) ok: snapshot created; some source files were unreadable (restic exit 3, expected under macOS TCC)"
+      exit 0
+    fi
+
     echo "$(${pkgs.coreutils}/bin/date -Is) restic exited $rc"
     ${lib.optionalString cfg.notify.enable ''
       # ── notification rate limit ────────────────────────────────────────
@@ -181,15 +205,20 @@
       # broken credential posts a banner every hour until someone notices,
       # which trains you to dismiss it.
       if [ "$(age_of ${lib.escapeShellArg notifyStamp})" -ge ${toString cfg.notify.minIntervalSec} ]; then
+        # Stamp the ATTEMPT, before delivering, and never mind whether the
+        # banner lands. An earlier version stamped only on success, reasoning
+        # that a failure nobody saw should not burn the suppression window.
+        # That reasoning inverts the moment delivery is what is broken:
+        # osascript from a LaunchDaemon needs an Automation (Apple Events)
+        # grant, the prompt for it names this wrapper's bash, and an
+        # unanswered prompt is a failed delivery — so the window never
+        # engaged and the next slot prompted again, every hour, forever.
+        # A rate limit whose own precondition is that the thing it limits
+        # works is not a rate limit. The suppression window now holds
+        # regardless, and the log still records every failure.
+        ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
         uid="$(/usr/bin/id -u ${cfg.username})"
-        # Stamp only once the banner is actually delivered. With nobody
-        # logged into the GUI there is no session to post into and osascript
-        # fails — stamping first would let a failure nobody ever saw burn the
-        # whole suppression window, leaving the next login silent about a
-        # backup that is still broken.
-        if /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"'; then
-          ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
-        fi
+        /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
       fi
     ''}
     exit 1
