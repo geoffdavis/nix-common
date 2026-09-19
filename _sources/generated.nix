@@ -7,42 +7,42 @@
 }: {
   claude-code-darwin-arm64 = {
     pname = "claude-code-darwin-arm64";
-    version = "2.1.273";
+    version = "2.1.278";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.273/darwin-arm64/claude";
-      sha256 = "sha256-lT6YgNvLC3DzHB9Qjeaj/TiXU9ExaIVX/ZktqRhGk/s=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.278/darwin-arm64/claude";
+      sha256 = "sha256-vSRWYvuKDjIbO/Ez6TA3HWVjw4dSeIXzCyYTrvO6FNY=";
     };
   };
   claude-code-linux-x64 = {
     pname = "claude-code-linux-x64";
-    version = "2.1.273";
+    version = "2.1.278";
     src = fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/2.1.273/linux-x64/claude";
-      sha256 = "sha256-bHUuLMfBEMnfFfJtjRNNQ4xa6V29YQ78GjCL9/nF9sE=";
+      url = "https://downloads.claude.ai/claude-code-releases/2.1.278/linux-x64/claude";
+      sha256 = "sha256-XEc1k3hE6E+KkzBuhBpbDhIlKQmweHD3ibGQRo2hR6s=";
     };
   };
   codex-linux-x64 = {
     pname = "codex-linux-x64";
-    version = "0.154.0";
+    version = "0.155.1";
     src = fetchurl {
-      url = "https://github.com/openai/codex/releases/download/rust-v0.154.0/codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "sha256-/G4+O4Xyz31mRSDuXGan/kqhK659RoNPR+LxZf0Nb3g=";
+      url = "https://github.com/openai/codex/releases/download/rust-v0.155.1/codex-package-x86_64-unknown-linux-musl.tar.gz";
+      sha256 = "sha256-pluJXGrBpzYpu+S4ZGQMhhM+lKQ7TWezEDBE4aMG1aI=";
     };
   };
   copilot-cli-darwin-arm64 = {
     pname = "copilot-cli-darwin-arm64";
-    version = "1.0.85";
+    version = "1.0.86";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.85/github-copilot-1.0.85-darwin-arm64.tgz";
-      sha256 = "sha256-pERdwnj48RS/0EaZxl+MvxvM5Lfs7DZZmTxgbNraosE=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.86/github-copilot-1.0.86-darwin-arm64.tgz";
+      sha256 = "sha256-TYT8dow/JoJAi3sfJsC5qdKgvqS+U8X6yeYCzqeyOuc=";
     };
   };
   copilot-cli-linux-x64 = {
     pname = "copilot-cli-linux-x64";
-    version = "1.0.85";
+    version = "1.0.86";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.85/github-copilot-1.0.85-linux-x64.tgz";
-      sha256 = "sha256-DOARUuOUOjyBGYYYOLYWSa0LI3gwQRzHqLurR/z2K7I=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.86/github-copilot-1.0.86-linux-x64.tgz";
+      sha256 = "sha256-UyhAGXSKwZjD28+boX8FQcj8qu4W5sZE6w5yhc39YRI=";
     };
   };
   terraform-darwin-arm64 = {
