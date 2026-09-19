@@ -17,7 +17,7 @@
 #
 # ── HOURLY CADENCE ──────────────────────────────────────────────────────
 # The default schedule is hourly (timer.hour = null), for parity with the
-# Time Machine setup this replaced. Three things make an hourly restic job
+# Time Machine setup this replaced. Four things make an hourly restic job
 # safe that a once-nightly one could get away with ignoring:
 #
 #   1. Overlap. At 24 starts a day, a run that outlasts its slot is no
@@ -35,10 +35,15 @@
 #      macOS, where a LaunchDaemon has no Full Disk Access and every run
 #      trips over the TCC-protected corners of ~/Library. It is logged, not
 #      notified, and not a non-zero exit.
-#   4. Notification volume. A genuine, persistent failure fires once and
-#      then at most every notify.minIntervalSec, rather than every hour.
-#      The window is stamped on the ATTEMPT, so a notification path that is
-#      itself broken cannot defeat its own rate limit.
+#   4. Notification volume. notify.enable is OFF by default here (it is on
+#      for the NixOS sibling): the only delivery path a LaunchDaemon has is
+#      osascript, which needs an Automation grant whose prompt names this
+#      module's own store-path wrapper and therefore cannot survive a
+#      rebuild. A consumer's status widget carries the signal instead. When
+#      it IS enabled, a genuine persistent failure fires once and then at
+#      most every notify.minIntervalSec, and the window is stamped on the
+#      ATTEMPT — so a delivery path that is itself broken cannot defeat its
+#      own rate limit.
 #
 # Snapshot volume is the server's problem, not this module's: the repo is
 # append-only and Backrest owns the forget/prune policy. Going from ~1 to
@@ -342,7 +347,28 @@ in {
     };
 
     notify = {
-      enable = lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails" // {default = true;};
+      enable =
+        lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails"
+        // {
+          description = ''
+            Post a GUI notification when a backup run genuinely fails.
+
+            OFF by default on darwin, unlike the NixOS sibling, because the
+            only delivery path available to a LaunchDaemon is `osascript`,
+            and `display notification` from a daemon needs an Automation
+            (Apple Events) grant. The permission prompt names this module's
+            own wrapper — a content-addressed store path — so the grant does
+            not survive a rebuild that changes the script, and the prompt
+            comes back. A notifier that periodically demands to be
+            re-authorised is worse than no notifier.
+
+            Leave it off and let a status widget carry the signal: it derives
+            staleness from the newest snapshot's age, needs no TCC grant at
+            all, and is visible without interrupting anything. Turn this on
+            only if you have a delivery path you are willing to keep
+            authorised.
+          '';
+        };
       minIntervalSec = lib.mkOption {
         type = lib.types.int;
         default = 21600;
