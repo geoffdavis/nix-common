@@ -89,6 +89,11 @@
   # NOW" affordance (a menu-bar widget, a shell alias) tells this job that the
   # run it is about to request is not a duplicate, so timer.minIntervalSec
   # does not silently swallow it.
+  # Rewritten (not appended) each run that hits unreadable paths, so the
+  # full denial list stays available at bounded size while the log keeps
+  # only the count. Removed on a run with no denials, so its presence is
+  # itself the signal.
+  unreadableFile = "${logDir}/${label}.unreadable.txt";
   lockFile = "${logDir}/${label}.lock";
   stampFile = "${logDir}/${label}.stamp";
   notifyStamp = "${logDir}/${label}.notified";
@@ -164,11 +169,40 @@
     ${pkgs.flock}/bin/flock -n -E 4 ${lib.escapeShellArg lockFile} ${pkgs.writeShellScript "${label}-locked" ''
       set -u
       # --json's stdout stream goes only to progressFile (a status-widget
-      # feed, e.g. an xbar plugin) — stderr still reaches StandardErrorPath
-      # (this same log file) unredirected, so failures stay human-readable
-      # there instead of buried in NDJSON.
-      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile}
+      # feed, e.g. an xbar plugin). stderr is captured rather than left to
+      # flow straight to StandardErrorPath, so the TCC denials can be
+      # collapsed below; everything else still reaches the log verbatim.
+      err=$(${pkgs.coreutils}/bin/mktemp)
+      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile} 2>"$err"
       rc=$?
+
+      # ── collapse the unreadable-path spam ────────────────────────────────
+      # Every run, restic emits one stderr line per path macOS refuses it.
+      # A LaunchDaemon has no Full Disk Access, so that is ~34k lines a run
+      # on a real Mac — measured 2026-09-18: 33,655 of 34,118 log lines, 98.6%
+      # of a log nothing rotates.
+      #
+      # These are NOT excluded from the backup instead, deliberately. The
+      # paths are unreadable only because THIS PROCESS lacks the privilege,
+      # not because they are worthless — on the machine that prompted this
+      # they are ~1.25 GB of live app data (~/Library/Containers and Group
+      # Containers) plus Mail, Messages and Safari. An --exclude would end
+      # the noise by making a real gap in the backup permanent AND silent.
+      # Collapsing the log instead keeps the gap counted, every run, in one
+      # line you can actually see.
+      #
+      # The full list still lands in a sibling file, rewritten (not appended)
+      # each run, so the detail survives at bounded size.
+      denied=$(${pkgs.gnugrep}/bin/grep -c 'operation not permitted' "$err" || true)
+      ${pkgs.gnugrep}/bin/grep -v 'operation not permitted' "$err" >&2 || true
+      if [ "''${denied:-0}" -gt 0 ]; then
+        ${pkgs.gnugrep}/bin/grep 'operation not permitted' "$err" > ${lib.escapeShellArg unreadableFile} || true
+        echo "$(${pkgs.coreutils}/bin/date -Is) note: $denied path(s) unreadable, NOT in this snapshot (macOS TCC; this daemon has no Full Disk Access). Full list: ${unreadableFile}" >&2
+      else
+        ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg unreadableFile}
+      fi
+      ${pkgs.coreutils}/bin/rm -f "$err"
+
       # Stamp on the way out whether restic won or lost: a failing repo
       # should be retried next slot, not every time launchd twitches.
       ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg stampFile}
