@@ -68,7 +68,87 @@
     "/Users/*/.npm/_cacache"
     "*.iso"
   ];
-  excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ cfg.extraExcludes);
+  # ── macOS TCC-protected paths ────────────────────────────────────────
+  # restic cannot read these: a LaunchDaemon holds no Full Disk Access, and
+  # macOS attributes the attempt to the daemon's executable — this module's
+  # own bash wrapper — so each run raises a permission prompt naming a nix
+  # store path. Unanswered, the prompt denies, which is why these show up as
+  # "operation not permitted" rather than as prompts in the log. Hourly, that
+  # is an hourly interruption.
+  #
+  # Excluding them changes nothing about what is protected: none of it is in
+  # any snapshot today, precisely because the prompts go unanswered. It only
+  # stops restic asking for what it will not be given.
+  #
+  # Derived mechanically from a real machine's denial list, not guessed, and
+  # deliberately NOT collapsed into tidier globs — verified against that list:
+  # all 765 denied paths are covered, while `Application Support/*`,
+  # `Group Containers/*` and `Preferences/com.apple.*` as blanket patterns
+  # would have taken 16 GB, 123 MB and 310 live preference files with them.
+  # The named entries below are the ones those globs could not express
+  # safely. What this does newly exclude is 36 readable Apple entries
+  # (~467 MB, 457 MB of it com.apple.wallpaper — stock assets).
+  #
+  # To CLOSE the gap instead of declaring it: grant the wrapper Full Disk
+  # Access and drop this list. The grant keys on the wrapper's store path,
+  # which is content-addressed on the script — stable across ordinary flake
+  # bumps, invalidated when this module's text changes.
+  tccProtected = [
+    "/Users/*/Library/Accounts"
+    "/Users/*/Library/AppleMediaServices"
+    "/Users/*/Library/Autosave Information"
+    "/Users/*/Library/Biome"
+    "/Users/*/Library/com.apple.aiml.instrumentation"
+    "/Users/*/Library/ContainerManager"
+    "/Users/*/Library/Containers"
+    "/Users/*/Library/Cookies"
+    "/Users/*/Library/CoreFollowUp"
+    "/Users/*/Library/Daemon Containers"
+    "/Users/*/Library/DoNotDisturb"
+    "/Users/*/Library/DuetExpertCenter"
+    "/Users/*/Library/HomeKit"
+    "/Users/*/Library/IdentityServices"
+    "/Users/*/Library/IntelligencePlatform"
+    "/Users/*/Library/Mail"
+    "/Users/*/Library/Messages"
+    "/Users/*/Library/PersonalizationPortrait"
+    "/Users/*/Library/Safari"
+    "/Users/*/Library/Sharing"
+    "/Users/*/Library/Shortcuts"
+    "/Users/*/Library/StatusKit"
+    "/Users/*/Library/Suggestions"
+    "/Users/*/Library/Trial"
+    "/Users/*/Library/Weather"
+    "/Users/*/Library/Group Containers/group.com.apple.*"
+    "/Users/*/Library/Group Containers/com.apple.bird"
+    "/Users/*/Library/Group Containers/com.apple.Home.group"
+    "/Users/*/Library/Group Containers/com.apple.messages"
+    "/Users/*/Library/Group Containers/com.apple.MessagesLegacyTransferArchive"
+    "/Users/*/Library/Group Containers/com.apple.PreviewLegacySignaturesConversion"
+    "/Users/*/Library/Group Containers/com.apple.stickersd.group"
+    "/Users/*/Library/Group Containers/com.apple.systempreferences.cache"
+    "/Users/*/Library/Application Support/com.apple.*"
+    "/Users/*/Library/Application Support/AddressBook"
+    "/Users/*/Library/Application Support/CallHistoryDB"
+    "/Users/*/Library/Application Support/CallHistoryTransactions"
+    "/Users/*/Library/Application Support/CloudDocs"
+    "/Users/*/Library/Application Support/DifferentialPrivacy"
+    "/Users/*/Library/Application Support/FaceTime"
+    "/Users/*/Library/Application Support/FileProvider"
+    "/Users/*/Library/Application Support/Knowledge"
+    "/Users/*/Library/Preferences/com.apple.AddressBook.plist"
+    "/Users/*/Library/Preferences/com.apple.homed.notbackedup.plist"
+    "/Users/*/Library/Preferences/com.apple.homed.plist"
+    "/Users/*/Library/Preferences/com.apple.madrid.plist"
+    "/Users/*/Library/Preferences/com.apple.messages.pinning.plist"
+    "/Users/*/Library/Preferences/com.apple.MobileSMS.CKDNDList.plist"
+    "/Users/*/Library/Preferences/com.apple.MobileSMS.plist"
+    "/Users/*/Library/Assistant/SiriVocabulary"
+    "/Users/*/Library/Metadata/CoreSpotlight"
+    "/Users/*/Library/com.apple.bluetooth.services.cloud/CachedRecords"
+  ];
+
+  excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ tccProtected ++ cfg.extraExcludes);
   pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
   cacertArg = lib.optionalString (cfg.cacertFile != null) (" --cacert " + lib.escapeShellArg "${cfg.cacertFile}");
   label = "nas-backup-${cfg.name}";
