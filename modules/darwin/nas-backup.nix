@@ -80,8 +80,21 @@
   # any snapshot today, precisely because the prompts go unanswered. It only
   # stops restic asking for what it will not be given.
   #
-  # Derived mechanically from a real machine's denial list, not guessed, and
-  # deliberately NOT collapsed into tidier globs — verified against that list:
+  # Derived from a real machine's denial list — with one correction learned
+  # the hard way. A denial list only names what restic was REFUSED, and a
+  # readable path in the same TCC class still triggers the approval check
+  # when restic touches it. Excluding only the denied set therefore cut the
+  # kernel's app-data approval requests from 4 per run to 2, not to 0.
+  #
+  # ~/Library/Group Containers is now excluded WHOLESALE for that reason: 14
+  # of its entries were readable and thus absent from the denial list, among
+  # them 1Password's (121 MB) and Zoom's — which hold LIVE UNIX SOCKETS,
+  # including 1Password's SSH agent. Walking into those is what made
+  # 1Password raise its own authorisation prompts, quite apart from TCC.
+  # Backing up another app's group container is pointless anyway: it is that
+  # app's own synced state, and a socket cannot be restored.
+  #
+  # The rest is deliberately NOT collapsed into tidier globs — verified:
   # all 765 denied paths are covered, while `Application Support/*`,
   # `Group Containers/*` and `Preferences/com.apple.*` as blanket patterns
   # would have taken 16 GB, 123 MB and 310 live preference files with them.
@@ -101,6 +114,7 @@
     "/Users/*/Library/com.apple.aiml.instrumentation"
     "/Users/*/Library/ContainerManager"
     "/Users/*/Library/Containers"
+    "/Users/*/Library/Group Containers"
     "/Users/*/Library/Cookies"
     "/Users/*/Library/CoreFollowUp"
     "/Users/*/Library/Daemon Containers"
@@ -119,14 +133,6 @@
     "/Users/*/Library/Suggestions"
     "/Users/*/Library/Trial"
     "/Users/*/Library/Weather"
-    "/Users/*/Library/Group Containers/group.com.apple.*"
-    "/Users/*/Library/Group Containers/com.apple.bird"
-    "/Users/*/Library/Group Containers/com.apple.Home.group"
-    "/Users/*/Library/Group Containers/com.apple.messages"
-    "/Users/*/Library/Group Containers/com.apple.MessagesLegacyTransferArchive"
-    "/Users/*/Library/Group Containers/com.apple.PreviewLegacySignaturesConversion"
-    "/Users/*/Library/Group Containers/com.apple.stickersd.group"
-    "/Users/*/Library/Group Containers/com.apple.systempreferences.cache"
     "/Users/*/Library/Application Support/com.apple.*"
     "/Users/*/Library/Application Support/AddressBook"
     "/Users/*/Library/Application Support/CallHistoryDB"
