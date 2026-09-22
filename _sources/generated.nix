@@ -31,18 +31,18 @@
   };
   copilot-cli-darwin-arm64 = {
     pname = "copilot-cli-darwin-arm64";
-    version = "1.0.86";
+    version = "1.0.87";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.86/github-copilot-1.0.86-darwin-arm64.tgz";
-      sha256 = "sha256-TYT8dow/JoJAi3sfJsC5qdKgvqS+U8X6yeYCzqeyOuc=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.87/github-copilot-1.0.87-darwin-arm64.tgz";
+      sha256 = "sha256-B4k/un5/nAeWdt3s/xvAuGb0oI+b/viqSmzkVRD68Hg=";
     };
   };
   copilot-cli-linux-x64 = {
     pname = "copilot-cli-linux-x64";
-    version = "1.0.86";
+    version = "1.0.87";
     src = fetchurl {
-      url = "https://github.com/github/copilot-cli/releases/download/v1.0.86/github-copilot-1.0.86-linux-x64.tgz";
-      sha256 = "sha256-UyhAGXSKwZjD28+boX8FQcj8qu4W5sZE6w5yhc39YRI=";
+      url = "https://github.com/github/copilot-cli/releases/download/v1.0.87/github-copilot-1.0.87-linux-x64.tgz";
+      sha256 = "sha256-cPcnPEq5T00cOsN/aPlO456qgJajoOjkHUoaPwjAdRs=";
     };
   };
   terraform-darwin-arm64 = {
