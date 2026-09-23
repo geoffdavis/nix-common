@@ -212,6 +212,9 @@
     # nix-personal (#124).
     nixosModules.iodd = ./modules/nixos/iodd.nix;
     nixosModules.nas-backup = ./modules/nixos/nas-backup.nix;
+    # Per-device hidraw uaccess udev rules for VIA/Vial keyboard configurator
+    # support (my.via-keyboard.enable / .devices).
+    nixosModules.via-keyboard = ./modules/nixos/via-keyboard.nix;
     # Opt-in distrobox + rootless podman backend (my.distrobox.enable, off by
     # default) for running a mutable FHS distro against the host's $HOME.
     nixosModules.distrobox = ./modules/nixos/distrobox.nix;
