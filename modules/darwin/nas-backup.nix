@@ -17,7 +17,7 @@
 #
 # ── HOURLY CADENCE ──────────────────────────────────────────────────────
 # The default schedule is hourly (timer.hour = null), for parity with the
-# Time Machine setup this replaced. Three things make an hourly restic job
+# Time Machine setup this replaced. Four things make an hourly restic job
 # safe that a once-nightly one could get away with ignoring:
 #
 #   1. Overlap. At 24 starts a day, a run that outlasts its slot is no
@@ -30,8 +30,20 @@
 #      resolve it. Nightly, that was one lost backup; hourly it would be 24
 #      failure notifications a day. preflight turns "can't reach the repo"
 #      into a clean skip instead of a failure.
-#   3. Notification volume. A genuine, persistent failure fires once and
-#      then at most every notify.minIntervalSec, rather than every hour.
+#   3. What counts as a failure. restic exit 3 means "snapshot created, but
+#      some source files were unreadable" — the permanent steady state on
+#      macOS, where a LaunchDaemon has no Full Disk Access and every run
+#      trips over the TCC-protected corners of ~/Library. It is logged, not
+#      notified, and not a non-zero exit.
+#   4. Notification volume. notify.enable is OFF by default here (it is on
+#      for the NixOS sibling): the only delivery path a LaunchDaemon has is
+#      osascript, which needs an Automation grant whose prompt names this
+#      module's own store-path wrapper and therefore cannot survive a
+#      rebuild. A consumer's status widget carries the signal instead. When
+#      it IS enabled, a genuine persistent failure fires once and then at
+#      most every notify.minIntervalSec, and the window is stamped on the
+#      ATTEMPT — so a delivery path that is itself broken cannot defeat its
+#      own rate limit.
 #
 # Snapshot volume is the server's problem, not this module's: the repo is
 # append-only and Backrest owns the forget/prune policy. Going from ~1 to
@@ -56,9 +68,121 @@
     "/Users/*/.npm/_cacache"
     "*.iso"
   ];
-  excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ cfg.extraExcludes);
+  # ── macOS TCC-protected paths ────────────────────────────────────────
+  # restic cannot read these: a LaunchDaemon holds no Full Disk Access, and
+  # macOS attributes the attempt to the daemon's executable — this module's
+  # own bash wrapper — so each run raises a permission prompt naming a nix
+  # store path. Unanswered, the prompt denies, which is why these show up as
+  # "operation not permitted" rather than as prompts in the log. Hourly, that
+  # is an hourly interruption.
+  #
+  # Excluding them changes nothing about what is protected: none of it is in
+  # any snapshot today, precisely because the prompts go unanswered. It only
+  # stops restic asking for what it will not be given.
+  #
+  # Derived from a real machine's denial list — with one correction learned
+  # the hard way. A denial list only names what restic was REFUSED, and a
+  # readable path in the same TCC class still triggers the approval check
+  # when restic touches it. Excluding only the denied set therefore cut the
+  # kernel's app-data approval requests from 4 per run to 2, not to 0.
+  #
+  # ~/Library/Group Containers is now excluded WHOLESALE for that reason: 14
+  # of its entries were readable and thus absent from the denial list, among
+  # them 1Password's (121 MB) and Zoom's — which hold LIVE UNIX SOCKETS,
+  # including 1Password's SSH agent. Walking into those is what made
+  # 1Password raise its own authorisation prompts, quite apart from TCC.
+  # Backing up another app's group container is pointless anyway: it is that
+  # app's own synced state, and a socket cannot be restored.
+  #
+  # The rest is deliberately NOT collapsed into tidier globs — verified:
+  # all 765 denied paths are covered, while `Application Support/*`,
+  # `Group Containers/*` and `Preferences/com.apple.*` as blanket patterns
+  # would have taken 16 GB, 123 MB and 310 live preference files with them.
+  # The named entries below are the ones those globs could not express
+  # safely. What this does newly exclude is 36 readable Apple entries
+  # (~467 MB, 457 MB of it com.apple.wallpaper — stock assets).
+  #
+  # To CLOSE the gap instead of declaring it: grant the wrapper Full Disk
+  # Access and drop this list. The grant keys on the wrapper's store path,
+  # which is content-addressed on the script — stable across ordinary flake
+  # bumps, invalidated when this module's text changes.
+  tccProtected = [
+    "/Users/*/Library/Accounts"
+    "/Users/*/Library/AppleMediaServices"
+    "/Users/*/Library/Autosave Information"
+    "/Users/*/Library/Biome"
+    "/Users/*/Library/com.apple.aiml.instrumentation"
+    "/Users/*/Library/ContainerManager"
+    "/Users/*/Library/Containers"
+    "/Users/*/Library/Group Containers"
+    "/Users/*/Library/Cookies"
+    "/Users/*/Library/CoreFollowUp"
+    "/Users/*/Library/Daemon Containers"
+    "/Users/*/Library/DoNotDisturb"
+    "/Users/*/Library/DuetExpertCenter"
+    "/Users/*/Library/HomeKit"
+    "/Users/*/Library/IdentityServices"
+    "/Users/*/Library/IntelligencePlatform"
+    "/Users/*/Library/Mail"
+    "/Users/*/Library/Messages"
+    "/Users/*/Library/PersonalizationPortrait"
+    "/Users/*/Library/Safari"
+    "/Users/*/Library/Sharing"
+    "/Users/*/Library/Shortcuts"
+    "/Users/*/Library/StatusKit"
+    "/Users/*/Library/Suggestions"
+    "/Users/*/Library/Trial"
+    "/Users/*/Library/Weather"
+    "/Users/*/Library/Application Support/com.apple.*"
+    "/Users/*/Library/Application Support/AddressBook"
+    "/Users/*/Library/Application Support/CallHistoryDB"
+    "/Users/*/Library/Application Support/CallHistoryTransactions"
+    "/Users/*/Library/Application Support/CloudDocs"
+    "/Users/*/Library/Application Support/DifferentialPrivacy"
+    "/Users/*/Library/Application Support/FaceTime"
+    "/Users/*/Library/Application Support/FileProvider"
+    "/Users/*/Library/Application Support/Knowledge"
+    "/Users/*/Library/Preferences/com.apple.AddressBook.plist"
+    "/Users/*/Library/Preferences/com.apple.homed.notbackedup.plist"
+    "/Users/*/Library/Preferences/com.apple.homed.plist"
+    "/Users/*/Library/Preferences/com.apple.madrid.plist"
+    "/Users/*/Library/Preferences/com.apple.messages.pinning.plist"
+    "/Users/*/Library/Preferences/com.apple.MobileSMS.CKDNDList.plist"
+    "/Users/*/Library/Preferences/com.apple.MobileSMS.plist"
+    "/Users/*/Library/Assistant/SiriVocabulary"
+    "/Users/*/Library/Metadata/CoreSpotlight"
+    "/Users/*/Library/com.apple.bluetooth.services.cloud/CachedRecords"
+  ];
+
+  excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ tccProtected ++ cfg.extraExcludes);
   pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
   cacertArg = lib.optionalString (cfg.cacertFile != null) (" --cacert " + lib.escapeShellArg "${cfg.cacertFile}");
+  # ── snapshot hostname ────────────────────────────────────────────────
+  # Pin what restic stamps each snapshot with, instead of letting it call
+  # gethostname(2). On macOS that syscall does NOT return the machine's
+  # configured name: scutil's HostName is usually unset (nix-darwin's
+  # networking.hostName is deliberately avoided by some consumers because
+  # activation would perform a live scutil rename), so the kernel falls back
+  # to whatever the current network hands it — the DHCP/DNS domain on a
+  # known network, the mDNS `<name>.local` otherwise.
+  #
+  # A laptop therefore writes snapshots under TWO OR MORE names depending on
+  # where it woke up. That matters because restic groups snapshots by host:
+  # `forget` defaults to --group-by host,paths, so each name is its own
+  # retention series. Observed on a personal Mac 2026-09-23 — one repo split
+  # into `slurricane.local` (14 snapshots, frozen the moment it came home)
+  # and `slurricane.home.geoffdavis.com` (77 and counting). The frozen set is
+  # not covered by any policy aimed at the live name and never ages out.
+  #
+  # Null keeps restic's own behaviour, so this is opt-in and existing repos
+  # do not silently re-group on a flake bump.
+  #
+  # NOTE when adopting it on a repo with history: pinning starts a NEW host
+  # group. Snapshots already written under the old name(s) stay where they
+  # are — restic has no command to re-stamp a snapshot's host — so either let
+  # them age out under a policy that names them, or forget them explicitly
+  # once the pinned series is long enough to stand on its own.
+  hostArg = lib.optionalString (cfg.host != null) (" --host " + lib.escapeShellArg cfg.host);
   label = "nas-backup-${cfg.name}";
   logDir = "/Users/${cfg.username}/Library/Logs";
   # Convention, not an option: a consumer's own status-widget script (e.g.
@@ -77,6 +201,11 @@
   # NOW" affordance (a menu-bar widget, a shell alias) tells this job that the
   # run it is about to request is not a duplicate, so timer.minIntervalSec
   # does not silently swallow it.
+  # Rewritten (not appended) each run that hits unreadable paths, so the
+  # full denial list stays available at bounded size while the log keeps
+  # only the count. Removed on a run with no denials, so its presence is
+  # itself the signal.
+  unreadableFile = "${logDir}/${label}.unreadable.txt";
   lockFile = "${logDir}/${label}.lock";
   stampFile = "${logDir}/${label}.stamp";
   notifyStamp = "${logDir}/${label}.notified";
@@ -152,11 +281,40 @@
     ${pkgs.flock}/bin/flock -n -E 4 ${lib.escapeShellArg lockFile} ${pkgs.writeShellScript "${label}-locked" ''
       set -u
       # --json's stdout stream goes only to progressFile (a status-widget
-      # feed, e.g. an xbar plugin) — stderr still reaches StandardErrorPath
-      # (this same log file) unredirected, so failures stay human-readable
-      # there instead of buried in NDJSON.
-      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile}
+      # feed, e.g. an xbar plugin). stderr is captured rather than left to
+      # flow straight to StandardErrorPath, so the TCC denials can be
+      # collapsed below; everything else still reaches the log verbatim.
+      err=$(${pkgs.coreutils}/bin/mktemp)
+      ${pkgs.restic}/bin/restic backup${hostArg}${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile} 2>"$err"
       rc=$?
+
+      # ── collapse the unreadable-path spam ────────────────────────────────
+      # Every run, restic emits one stderr line per path macOS refuses it.
+      # A LaunchDaemon has no Full Disk Access, so that is ~34k lines a run
+      # on a real Mac — measured 2026-09-18: 33,655 of 34,118 log lines, 98.6%
+      # of a log nothing rotates.
+      #
+      # These are NOT excluded from the backup instead, deliberately. The
+      # paths are unreadable only because THIS PROCESS lacks the privilege,
+      # not because they are worthless — on the machine that prompted this
+      # they are ~1.25 GB of live app data (~/Library/Containers and Group
+      # Containers) plus Mail, Messages and Safari. An --exclude would end
+      # the noise by making a real gap in the backup permanent AND silent.
+      # Collapsing the log instead keeps the gap counted, every run, in one
+      # line you can actually see.
+      #
+      # The full list still lands in a sibling file, rewritten (not appended)
+      # each run, so the detail survives at bounded size.
+      denied=$(${pkgs.gnugrep}/bin/grep -c 'operation not permitted' "$err" || true)
+      ${pkgs.gnugrep}/bin/grep -v 'operation not permitted' "$err" >&2 || true
+      if [ "''${denied:-0}" -gt 0 ]; then
+        ${pkgs.gnugrep}/bin/grep 'operation not permitted' "$err" > ${lib.escapeShellArg unreadableFile} || true
+        echo "$(${pkgs.coreutils}/bin/date -Is) note: $denied path(s) unreadable, NOT in this snapshot (macOS TCC; this daemon has no Full Disk Access). Full list: ${unreadableFile}" >&2
+      else
+        ${pkgs.coreutils}/bin/rm -f ${lib.escapeShellArg unreadableFile}
+      fi
+      ${pkgs.coreutils}/bin/rm -f "$err"
+
       # Stamp on the way out whether restic won or lost: a failing repo
       # should be retried next slot, not every time launchd twitches.
       ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg stampFile}
@@ -173,6 +331,23 @@
       exit 0
     fi
 
+    # restic exit 3 = "the snapshot was created, but some source files could
+    # not be read". On macOS that is the PERMANENT steady state, not a fault:
+    # a LaunchDaemon has no Full Disk Access, so every run trips over the
+    # TCC-protected corners of ~/Library (Mail, Messages, Safari, HomeKit,
+    # Group Containers/*, ...) and exits 3 with the backup itself complete.
+    # Treating it as failure meant every single hourly run took the failure
+    # path; verified live on a personal Mac 2026-09-18, 29 of 30 runs exited
+    # 3 while the snapshots landed hourly exactly as intended.
+    #
+    # It is still worth one line in the log — a jump in the unreadable count
+    # is how you would notice a NEW protected path — but it is not a
+    # notification, and it is not a non-zero exit.
+    if [ "$rc" -eq 3 ]; then
+      echo "$(${pkgs.coreutils}/bin/date -Is) ok: snapshot created; some source files were unreadable (restic exit 3, expected under macOS TCC)"
+      exit 0
+    fi
+
     echo "$(${pkgs.coreutils}/bin/date -Is) restic exited $rc"
     ${lib.optionalString cfg.notify.enable ''
       # ── notification rate limit ────────────────────────────────────────
@@ -181,15 +356,20 @@
       # broken credential posts a banner every hour until someone notices,
       # which trains you to dismiss it.
       if [ "$(age_of ${lib.escapeShellArg notifyStamp})" -ge ${toString cfg.notify.minIntervalSec} ]; then
+        # Stamp the ATTEMPT, before delivering, and never mind whether the
+        # banner lands. An earlier version stamped only on success, reasoning
+        # that a failure nobody saw should not burn the suppression window.
+        # That reasoning inverts the moment delivery is what is broken:
+        # osascript from a LaunchDaemon needs an Automation (Apple Events)
+        # grant, the prompt for it names this wrapper's bash, and an
+        # unanswered prompt is a failed delivery — so the window never
+        # engaged and the next slot prompted again, every hour, forever.
+        # A rate limit whose own precondition is that the thing it limits
+        # works is not a rate limit. The suppression window now holds
+        # regardless, and the log still records every failure.
+        ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
         uid="$(/usr/bin/id -u ${cfg.username})"
-        # Stamp only once the banner is actually delivered. With nobody
-        # logged into the GUI there is no session to post into and osascript
-        # fails — stamping first would let a failure nobody ever saw burn the
-        # whole suppression window, leaving the next login silent about a
-        # backup that is still broken.
-        if /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"'; then
-          ${pkgs.coreutils}/bin/touch ${lib.escapeShellArg notifyStamp}
-        fi
+        /bin/launchctl asuser "$uid" /usr/bin/osascript -e 'display notification "check ~/Library/Logs/${label}.log" with title "NAS backup failed" subtitle "${label}"' || true
       fi
     ''}
     exit 1
@@ -207,6 +387,23 @@ in {
     username = lib.mkOption {
       type = lib.types.str;
       description = "macOS user the backup runs as, and whose home holds repositoryFile/passwordFile.";
+    };
+
+    host = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "slurricane";
+      description = ''
+        Hostname restic stamps on each snapshot (`restic backup --host`).
+
+        Null lets restic call gethostname(2), which on macOS follows the
+        network rather than the machine — see the hostArg comment above.
+        Set it to this Mac's stable short name so `forget`'s default
+        --group-by host,paths sees ONE retention series per machine.
+
+        Changing it starts a new host group; snapshots under the previous
+        name are not re-stamped.
+      '';
     };
 
     repositoryFile = lib.mkOption {
@@ -313,7 +510,28 @@ in {
     };
 
     notify = {
-      enable = lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails" // {default = true;};
+      enable =
+        lib.mkEnableOption "a GUI notification in the logged-in session when a backup run fails"
+        // {
+          description = ''
+            Post a GUI notification when a backup run genuinely fails.
+
+            OFF by default on darwin, unlike the NixOS sibling, because the
+            only delivery path available to a LaunchDaemon is `osascript`,
+            and `display notification` from a daemon needs an Automation
+            (Apple Events) grant. The permission prompt names this module's
+            own wrapper — a content-addressed store path — so the grant does
+            not survive a rebuild that changes the script, and the prompt
+            comes back. A notifier that periodically demands to be
+            re-authorised is worse than no notifier.
+
+            Leave it off and let a status widget carry the signal: it derives
+            staleness from the newest snapshot's age, needs no TCC grant at
+            all, and is visible without interrupting anything. Turn this on
+            only if you have a delivery path you are willing to keep
+            authorised.
+          '';
+        };
       minIntervalSec = lib.mkOption {
         type = lib.types.int;
         default = 21600;
