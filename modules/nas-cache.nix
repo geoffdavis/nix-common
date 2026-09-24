@@ -10,7 +10,9 @@
 # homeModules.nas-cache instead (substituter only; buildMachines is not a
 # home-manager option).
 #
-# One-time per-client setup (the nix-daemon runs as root):
+# One-time per-client setup (the nix-daemon runs as root). Use the path in
+# my.nasCache.builderKeyPath, NOT a hardcoded one -- a host running
+# nix-darwin's linux-builder must move it off the default, see that option:
 #   sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/builder_ed25519 \
 #     -C "nix-builder@$(hostname -s)"
 #   # add the .pub to my.nixCache.builderKeys in nix-personal on EVERY builder
@@ -218,6 +220,44 @@ in {
   # are already builders in their own right — "if GitHub told a runner to run
   # on nas-sct, nas-sct should not farm its work off somewhere else unless
   # it's arm stuff. It's an appliance box."
+  # The private key this host authenticates to the fleet's builders and cache
+  # with. An option, not a constant, because the default path COLLIDES with
+  # nix-darwin.
+  #
+  # nix-darwin's `nix.linux-builder` hardcodes /etc/nix/builder_ed25519 for
+  # its VM's own SSH key (modules/nix/linux-builder.nix, `sshKey =` and the
+  # `IdentityFile` in its ssh config) and offers no way to move it. Enabling a
+  # linux-builder on a host that also imports this module therefore OVERWRITES
+  # the fleet credential in place, with no warning and no backup, and the host
+  # silently loses remote builds and cache-push at the next activation.
+  #
+  # Found the hard way on slurricane 2026-09-24: enabling the builder VM
+  # replaced a key generated 2026-08-30, and `ssh nix-remote-builder@nas-sdg`
+  # started returning "Permission denied (publickey)" while the registered
+  # public halves in nas-sdg's pushKeys and builder-client-keys were left
+  # pointing at a private key that no longer existed anywhere.
+  #
+  # Default is unchanged, so no existing host re-keys on a flake bump. A host
+  # that runs a linux-builder sets this to something else and generates a key
+  # there; the two then coexist.
+  options.my.nasCache.builderKeyPath = lib.mkOption {
+    type = lib.types.str;
+    default = "/etc/nix/builder_ed25519";
+    example = "/etc/nix/fleet_builder_ed25519";
+    description = ''
+      Path to this host's private key for the fleet's remote builders and
+      cache-push target.
+
+      MUST differ from /etc/nix/builder_ed25519 on any host that enables
+      nix-darwin's `nix.linux-builder`, which hardcodes that path for the
+      builder VM and will overwrite whatever is there.
+
+      Changing it does not move or create a key. Generate one at the new path
+      and register its public half in nix-personal's
+      modules/builder-client-keys.nix and hosts/nas-sdg/nix.nix `pushKeys`.
+    '';
+  };
+
   options.my.nasCache.keepNativeBuildsLocal = lib.mkOption {
     type = lib.types.bool;
     default = false;
@@ -354,7 +394,7 @@ in {
             systems = ["x86_64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
-            sshKey = "/etc/nix/builder_ed25519";
+            sshKey = cfg.builderKeyPath;
             maxJobs = 4;
 
             # RAISED FROM 1 to 2 when nas-sct joined as a second x86_64 builder.
@@ -408,7 +448,7 @@ in {
             systems = ["aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
-            sshKey = "/etc/nix/builder_ed25519";
+            sshKey = cfg.builderKeyPath;
             maxJobs = 2;
 
             # ABOVE tourmaline's 3: a Pi 5 with NVMe against a Pi 4 with 3.7 GiB
@@ -450,7 +490,7 @@ in {
             systems = ["x86_64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
-            sshKey = "/etc/nix/builder_ed25519";
+            sshKey = cfg.builderKeyPath;
 
             # 4 cores / 15 GB, but this is an appliance with a day job: a
             # FreeIPA replica VM, five gh-runners, a ZFS replication target and
@@ -523,7 +563,7 @@ in {
             systems = ["armv7l-linux" "aarch64-linux"];
             protocol = "ssh-ng";
             sshUser = "nix-remote-builder";
-            sshKey = "/etc/nix/builder_ed25519";
+            sshKey = cfg.builderKeyPath;
 
             # 3, from cores and memory — not from thermals or the appliance
             # role, both of which appear in older comments and neither of which
@@ -613,7 +653,7 @@ in {
         HostName nas-sdg.netbird.cloud
         Port 22
         User nix-remote-builder
-        IdentityFile /etc/nix/builder_ed25519
+        IdentityFile ${cfg.builderKeyPath}
         IdentitiesOnly yes
         # Fast-fail when the netbird overlay is down (laptop off-VPN): the
         # cache-push post-build-hook relies on `nix copy` connecting or
@@ -634,7 +674,7 @@ in {
         HostName torrey.netbird.cloud
         Port 22
         User nix-remote-builder
-        IdentityFile /etc/nix/builder_ed25519
+        IdentityFile ${cfg.builderKeyPath}
         IdentitiesOnly yes
         # Same fast-fail rationale as nas-sdg above, and it matters more
         # here: torrey is an appliance on a home VLAN reached over the
@@ -648,7 +688,7 @@ in {
         HostName nas-sct.netbird.cloud
         Port 22
         User nix-remote-builder
-        IdentityFile /etc/nix/builder_ed25519
+        IdentityFile ${cfg.builderKeyPath}
         IdentitiesOnly yes
         # Same fast-fail rationale as the two above, and it is load-bearing
         # here rather than merely tidy: sct is the one builder that will sit
@@ -664,7 +704,7 @@ in {
         HostName tourmaline.netbird.cloud
         Port 22
         User nix-remote-builder
-        IdentityFile /etc/nix/builder_ed25519
+        IdentityFile ${cfg.builderKeyPath}
         IdentitiesOnly yes
         ConnectTimeout 4
         HostKeyAlias nix-builder-tourmaline
@@ -681,7 +721,7 @@ in {
         # nix-personal#353) — this alias carries no destination path, the
         # server pins it.
         User nix-cache-push
-        IdentityFile /etc/nix/builder_ed25519
+        IdentityFile ${cfg.builderKeyPath}
         IdentitiesOnly yes
         ConnectTimeout 4
         # Same physical host as nix-builder-nas-sdg above, so its pinned
