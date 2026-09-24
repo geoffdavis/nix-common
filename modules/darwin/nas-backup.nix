@@ -157,6 +157,32 @@
   excludeArgs = lib.concatMapStrings (e: " --exclude " + lib.escapeShellArg e) (baselineExcludes ++ tccProtected ++ cfg.extraExcludes);
   pathArgs = lib.concatMapStrings (p: " " + lib.escapeShellArg p) cfg.paths;
   cacertArg = lib.optionalString (cfg.cacertFile != null) (" --cacert " + lib.escapeShellArg "${cfg.cacertFile}");
+  # ── snapshot hostname ────────────────────────────────────────────────
+  # Pin what restic stamps each snapshot with, instead of letting it call
+  # gethostname(2). On macOS that syscall does NOT return the machine's
+  # configured name: scutil's HostName is usually unset (nix-darwin's
+  # networking.hostName is deliberately avoided by some consumers because
+  # activation would perform a live scutil rename), so the kernel falls back
+  # to whatever the current network hands it — the DHCP/DNS domain on a
+  # known network, the mDNS `<name>.local` otherwise.
+  #
+  # A laptop therefore writes snapshots under TWO OR MORE names depending on
+  # where it woke up. That matters because restic groups snapshots by host:
+  # `forget` defaults to --group-by host,paths, so each name is its own
+  # retention series. Observed on a personal Mac 2026-09-23 — one repo split
+  # into `slurricane.local` (14 snapshots, frozen the moment it came home)
+  # and `slurricane.home.geoffdavis.com` (77 and counting). The frozen set is
+  # not covered by any policy aimed at the live name and never ages out.
+  #
+  # Null keeps restic's own behaviour, so this is opt-in and existing repos
+  # do not silently re-group on a flake bump.
+  #
+  # NOTE when adopting it on a repo with history: pinning starts a NEW host
+  # group. Snapshots already written under the old name(s) stay where they
+  # are — restic has no command to re-stamp a snapshot's host — so either let
+  # them age out under a policy that names them, or forget them explicitly
+  # once the pinned series is long enough to stand on its own.
+  hostArg = lib.optionalString (cfg.host != null) (" --host " + lib.escapeShellArg cfg.host);
   label = "nas-backup-${cfg.name}";
   logDir = "/Users/${cfg.username}/Library/Logs";
   # Convention, not an option: a consumer's own status-widget script (e.g.
@@ -259,7 +285,7 @@
       # flow straight to StandardErrorPath, so the TCC denials can be
       # collapsed below; everything else still reaches the log verbatim.
       err=$(${pkgs.coreutils}/bin/mktemp)
-      ${pkgs.restic}/bin/restic backup${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile} 2>"$err"
+      ${pkgs.restic}/bin/restic backup${hostArg}${pathArgs}${excludeArgs}${cacertArg} --json > ${lib.escapeShellArg progressFile} 2>"$err"
       rc=$?
 
       # ── collapse the unreadable-path spam ────────────────────────────────
@@ -361,6 +387,23 @@ in {
     username = lib.mkOption {
       type = lib.types.str;
       description = "macOS user the backup runs as, and whose home holds repositoryFile/passwordFile.";
+    };
+
+    host = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "slurricane";
+      description = ''
+        Hostname restic stamps on each snapshot (`restic backup --host`).
+
+        Null lets restic call gethostname(2), which on macOS follows the
+        network rather than the machine — see the hostArg comment above.
+        Set it to this Mac's stable short name so `forget`'s default
+        --group-by host,paths sees ONE retention series per machine.
+
+        Changing it starts a new host group; snapshots under the previous
+        name are not re-stamped.
+      '';
     };
 
     repositoryFile = lib.mkOption {

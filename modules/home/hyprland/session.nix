@@ -42,6 +42,17 @@ in {
       };
     };
 
+    # Home Manager's upstream kitty module sets `onChange` to
+    # `${pkgs.procps}/bin/pkill -USR1 -u $USER kitty || true`.
+    # On standalone Home Manager hosts where the user is an Active Directory /
+    # SSSD domain account, nix-store glibc cannot resolve the string username
+    # via NSS (`getpwnam`), causing pkill to emit `invalid user name: <user>`.
+    # Filter by numeric UID (`-u "$(${pkgs.coreutils}/bin/id -u)"`) instead,
+    # which filters by effective UID directly without an NSS lookup.
+    xdg.configFile."kitty/kitty.conf".onChange = lib.mkForce ''
+      ${pkgs.procps}/bin/pkill -USR1 -u "$(${pkgs.coreutils}/bin/id -u)" kitty || true
+    '';
+
     services = {
       # walker (the app launcher bound to $mod+Space), via the home-manager
       # module; the systemd service makes $mod+Space instant (resident
