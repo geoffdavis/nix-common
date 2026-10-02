@@ -34,7 +34,7 @@
     if [ -n "$_val" ]; then
       _f=${lib.escapeShellArg entry.dest}
       ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$_f")"
-      (umask 077; printf '%s' "$_val" > "$_f")
+      (umask 077; printf '%s%s%s' ${lib.escapeShellArg entry.prefix} "$_val" ${lib.escapeShellArg entry.suffix} > "$_f")
       ${pkgs.coreutils}/bin/chmod ${lib.escapeShellArg entry.mode} "$_f"
     else
       echo "[op-file-secrets] skipping ${entry.ref} (unavailable or empty)" >&2
@@ -55,6 +55,20 @@ in {
         };
         ref = lib.mkOption {
           description = "1Password secret reference: `op://<vault>/<item>/<field>`.";
+          type = lib.types.str;
+        };
+        prefix = lib.mkOption {
+          default = "";
+          description = ''
+            Literal text written before the secret — for consumers that want
+            the secret inside a line of config syntax (e.g. nix.conf's
+            `access-tokens = github.com=<token>`) rather than as the whole file.
+          '';
+          type = lib.types.str;
+        };
+        suffix = lib.mkOption {
+          default = "";
+          description = "Literal text written after the secret (e.g. a trailing newline).";
           type = lib.types.str;
         };
         mode = lib.mkOption {

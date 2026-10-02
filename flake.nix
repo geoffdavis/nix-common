@@ -236,6 +236,8 @@
     homeModules.unfree-desktop = ./modules/home/unfree-desktop.nix;
     homeModules.op-json-secrets = ./modules/home/op-json-secrets.nix;
     homeModules.op-file-secrets = ./modules/home/op-file-secrets.nix;
+    # Authenticated `github:` fetches for the user's nix client (my.nixGithubToken).
+    homeModules.nix-github-token = ./modules/home/nix-github-token.nix;
     # Needs flake inputs (the plugin's HM module), hence the import-with-args.
     homeModules.teams-for-linux = import ./modules/home/teams-for-linux.nix inputs;
     # Needs flake inputs (the prebuilt-database HM module), hence import-with-args.

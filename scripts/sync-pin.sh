@@ -16,7 +16,7 @@
 #
 #   2. Only refs that are ALREADY a commit SHA, or the
 #      REPLACE_WITH_NIX_COMMON_SHA bootstrap placeholder, are rewritten. A
-#      floating `@main` / `@v1` ref is reported but NOT changed: whether a
+#      floating `@main` / `@v1` ref is counted but NOT changed: whether a
 #      given ref should float is a policy question, and a pin-sync tool has
 #      no business answering it silently. `--report-only` lists them and
 #      changes nothing; `--check` does the same but exits non-zero when a
@@ -114,10 +114,16 @@ for f in "${files[@]}"; do
   fi
 
   # Anything still pinned to something other than $sha after the rewrite is
-  # either a deliberately floating ref or a rev this tool declined to touch.
+  # a deliberately floating ref (`@main`, `@v1`) — SHA pins were rewritten
+  # above, and the post-condition below catches any it missed. Floating is
+  # policy, not a fault, so a normal run only counts them for the summary;
+  # the per-line listing is for --report-only / --check, where it was asked
+  # for. (Printed unconditionally, it read like an error on every update.)
   while IFS= read -r line; do
     [ -n "$line" ] || continue
-    echo "sync-pin: NOT pinned to flake.lock — $f:$line"
+    if [ "$report_only" -eq 1 ]; then
+      echo "sync-pin: floating (left as-is) — $f:$line"
+    fi
     floating=$((floating + 1))
   done < <(grep -nE "$USES_RE" "$f" | grep -vE "@${sha}([^0-9a-fA-F]|$)" || true)
 done
@@ -139,8 +145,9 @@ if [ "$report_only" -eq 0 ]; then
   [ "$stale" -eq 0 ] || exit 1
 fi
 
-if [ "$floating" -gt 0 ]; then
-  echo "sync-pin: $floating floating ref(s) left unchanged (see above)"
+floating_note=""
+if [ "$floating" -gt 0 ] && [ "$report_only" -eq 0 ]; then
+  floating_note=" ($floating floating ref(s) left as-is; --report-only lists them)"
 fi
 
 if [ "$check_only" -eq 1 ]; then
@@ -148,11 +155,11 @@ if [ "$check_only" -eq 1 ]; then
     echo "sync-pin: $changed file(s) out of sync with flake.lock ($sha) — run sync-pin" >&2
     exit 1
   fi
-  echo "sync-pin: all pins match flake.lock ($sha)"
+  echo "sync-pin: all pins match flake.lock ($sha)${floating_note}"
 elif [ "$report_only" -eq 1 ]; then
   echo "sync-pin: report-only; nix-common rev is $sha ($changed file(s) would change)"
 elif [ "$changed" -eq 0 ]; then
-  echo "sync-pin: already in sync at $sha"
+  echo "sync-pin: already in sync at $sha${floating_note}"
 else
-  echo "sync-pin: $changed file(s) -> $sha"
+  echo "sync-pin: $changed file(s) -> $sha${floating_note}"
 fi
