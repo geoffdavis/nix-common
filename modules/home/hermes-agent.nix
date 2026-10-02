@@ -121,4 +121,20 @@ in {
       $DRY_RUN_CMD ${hermesWithMnemosyne}/bin/hermes config set memory.user_profile_enabled false >/dev/null
     fi
   '';
+
+  # Silence the startup "N commits behind" banner. It compares the build's
+  # baked-in rev against upstream main, which lands hundreds of commits a day,
+  # so every flake-pinned install reads 50-500 behind within hours of a bump,
+  # and `hermes update` can't act on a Nix store install anyway. Only the
+  # passive banner check reads `updates.check`; `hermes update --check` still
+  # works on demand. Re-asserted every switch, so this is fleet policy, not a
+  # one-time default. Skipped when a `.managed` marker is present (a consumer
+  # opted into the upstream service, which refuses `config set`), and never
+  # fails activation.
+  home.activation.hermesAgentDisableUpdateCheck = lib.hm.dag.entryAfter ["hermesAgentMigrateMutableConfig"] ''
+    if [ ! -e ${lib.escapeShellArg "${config.home.homeDirectory}/.hermes/.managed"} ]; then
+      $DRY_RUN_CMD ${hermesWithMnemosyne}/bin/hermes config set updates.check false >/dev/null \
+        || echo "hermes-agent: could not set updates.check=false; continuing" >&2
+    fi
+  '';
 }
