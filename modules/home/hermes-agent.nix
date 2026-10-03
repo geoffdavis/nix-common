@@ -26,8 +26,13 @@ inputs: {
   pkgs,
   ...
 }: let
-  hermesPkgs = inputs.hermes-nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-  pythonPackages = hermesPkgs.python312Packages;
+  hermes = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # Build extras against Hermes' OWN interpreter, never a hardcoded one.
+  # Upstream picks it from pm/lock.json and moved 3.12 -> 3.14 at 07ab19b;
+  # `extraPythonPackages` goes through `python.pkgs.requiredPythonModules`,
+  # which silently DROPS packages built for any other interpreter. With
+  # python312Packages here Mnemosyne vanished from the closure with no error.
+  pythonPackages = hermes.python.pkgs;
 
   # Hermes' sealed uv2nix environment already contains most of fastembed's
   # runtime dependencies. Keep only the dependencies absent from that venv so
@@ -89,7 +94,7 @@ inputs: {
     dontCheckRuntimeDeps = true;
   };
 
-  hermesWithMnemosyne = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default.override {
+  hermesWithMnemosyne = hermes.override {
     extraPythonPackages = [mnemosyne-hermes];
   };
 in {
