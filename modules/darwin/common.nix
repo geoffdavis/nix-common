@@ -153,6 +153,17 @@ in {
         # SUDO_ASKPASS set brew calls `sudo -A`, which asks through a GUI dialog
         # instead. Switches that touch no root-owned cask never ask at all.
         extraEnv.SUDO_ASKPASS = lib.mkDefault "${brewAskpass}";
+        # Leave `auto_updates true` casks (1Password, Slack, Zoom, browsers,
+        # editors, ...) to their own updaters. Since Homebrew 29c8bf337b
+        # (2026-03-29) bundle upgrades them by default whenever the installed
+        # app bundle lags the tap, and an upgrade runs the cask's uninstall
+        # stanza: for 1password that is `quit: com.1password.1password` plus
+        # unloading its launcher agent, and nothing relaunches it. The switch
+        # then quit 1Password mid-activation and the home-manager secrets step
+        # (op-file-secrets) found it gone — seen on slurricane and windansea
+        # 2026-10-05. Installs, removals and non-auto-updating upgrades are
+        # unaffected; an app whose own updater is off can lag until updated.
+        extraEnv.HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS = lib.mkDefault "1";
       };
       # Ensure terminal/editor glyph support on every interactive macOS host.
       casks = [
