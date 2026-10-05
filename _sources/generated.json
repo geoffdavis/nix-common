@@ -8,11 +8,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-bquDM/4hIVUxANj0C/raOEo+mJuU+Ufhi6Znem/LQeo=",
+            "sha256": "sha256-A9ZnReO7aexyfWYCNpbzggvAoAqKW6cl62cG0MZ8vmk=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.287/darwin-arm64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.289/darwin-arm64/claude"
         },
-        "version": "2.1.287"
+        "version": "2.1.289"
     },
     "claude-code-linux-x64": {
         "cargoLock": null,
@@ -23,11 +23,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-OSBImlEJz/V4aho5LCUndAj/Irx5bV7bnBamDloXGPA=",
+            "sha256": "sha256-oYa5nkqciDZs1J3y99rVbGH8MG7wFAsZ7mS3xCqNE0g=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.287/linux-x64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.289/linux-x64/claude"
         },
-        "version": "2.1.287"
+        "version": "2.1.289"
     },
     "codex-linux-x64": {
         "cargoLock": null,
@@ -38,11 +38,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-T8xHq1f1L/dTY5Uah2EUbNEMgoi9hv7UVIfbsgSha3E=",
+            "sha256": "sha256-NAgBVlkGpwKPa6qpq2hTrdrvIh8AFqFBenwf/dlsIfA=",
             "type": "url",
-            "url": "https://github.com/openai/codex/releases/download/rust-v0.160.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.160.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
         },
-        "version": "0.160.0"
+        "version": "0.160.1"
     },
     "copilot-cli-darwin-arm64": {
         "cargoLock": null,
@@ -53,11 +53,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-7eqWUaRON3dXEwZ5pjf36zWRdJf+OKDPULaG2GnEDzE=",
+            "sha256": "sha256-aws0QmTKihb4wgwinG04yVr3j/j/ztQyswCySx+OaUU=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.91/github-copilot-1.0.91-darwin-arm64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.92/github-copilot-1.0.92-darwin-arm64.tgz"
         },
-        "version": "1.0.91"
+        "version": "1.0.92"
     },
     "copilot-cli-linux-x64": {
         "cargoLock": null,
@@ -68,11 +68,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-j682m6rqqJXLQLyN6WC2SreM44OTWBGdtEX2/MGTZ3k=",
+            "sha256": "sha256-rQ8GgQNQSMWFTvg4NLHJsC81cnhv03qH4kNi3CH5LDw=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.91/github-copilot-1.0.91-linux-x64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.92/github-copilot-1.0.92-linux-x64.tgz"
         },
-        "version": "1.0.91"
+        "version": "1.0.92"
     },
     "terraform-darwin-arm64": {
         "cargoLock": null,
