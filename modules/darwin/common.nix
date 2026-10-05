@@ -11,6 +11,21 @@
 }: let
   inherit (config.my) username;
   unfreePackageNames = import ../shared/unfree-package-names.nix;
+
+  # SUDO_ASKPASS for Homebrew's own sudo during activation (homebrew block
+  # below). sudo -A runs this with its prompt as $1 and reads the password from
+  # stdout. Cancel/timeout exits non-zero, so that sudo (and the cask step)
+  # fails instead of hanging. `display dialog` without a `tell` runs inside
+  # osascript itself, so no Automation (TCC) grant is needed.
+  brewAskpass = pkgs.writeShellScript "brew-sudo-askpass" ''
+    exec /usr/bin/osascript \
+      -e 'on run argv' \
+      -e 'display dialog (item 1 of argv) with title "Homebrew needs sudo (darwin activation)" default answer "" with hidden answer with icon caution giving up after 300' \
+      -e 'if gave up of result then error number -128' \
+      -e 'return text returned of result' \
+      -e 'end run' \
+      "''${1:-Password:}"
+  '';
 in {
   # nixCustomConf: the one sanctioned channel for daemon settings on a
   # Determinate-managed host, where `nix.enable = false` leaves every
@@ -109,6 +124,14 @@ in {
         upgrade = lib.mkDefault true;
         cleanup = lib.mkDefault "uninstall"; # remove brews/casks not in config
         extraFlags = ["--force"]; # required since homebrew added safety check for --cleanup
+        # Homebrew runs `sudo --reset-timestamp` before its first sudo
+        # (Library/Homebrew/utils/sudo.sh), so no up-front `sudo -v` can cover
+        # a cask that needs root (e.g. the `sudo chown` on a fresh /Applications
+        # bundle), and the re-prompt is a password prompt buried mid-activation
+        # (Touch ID can't present from brew's `sudo --user` context). With
+        # SUDO_ASKPASS set brew calls `sudo -A`, which asks through a GUI dialog
+        # instead. Switches that touch no root-owned cask never ask at all.
+        extraEnv.SUDO_ASKPASS = lib.mkDefault "${brewAskpass}";
       };
       # Ensure terminal/editor glyph support on every interactive macOS host.
       casks = [
