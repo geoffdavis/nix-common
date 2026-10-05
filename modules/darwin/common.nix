@@ -16,13 +16,17 @@
   # below). sudo -A runs this with its prompt as $1 and reads the password from
   # stdout. Cancel/timeout exits non-zero, so that sudo (and the cask step)
   # fails instead of hanging. `display dialog` without a `tell` runs inside
-  # osascript itself, so no Automation (TCC) grant is needed.
+  # osascript itself, so no Automation (TCC) grant is needed. The reply is
+  # bound with `set r to` rather than read back as `result`: inside `on run`,
+  # `result` is not defined after the dialog (-2753), which made the helper
+  # fail and sudo get no password. Touch ID / Watch can't apply here — sudo -A
+  # only takes a typed password from the helper.
   brewAskpass = pkgs.writeShellScript "brew-sudo-askpass" ''
     exec /usr/bin/osascript \
       -e 'on run argv' \
-      -e 'display dialog (item 1 of argv) with title "Homebrew needs sudo (darwin activation)" default answer "" with hidden answer with icon caution giving up after 300' \
-      -e 'if gave up of result then error number -128' \
-      -e 'return text returned of result' \
+      -e 'set r to display dialog (item 1 of argv) with title "Homebrew needs sudo (darwin activation)" default answer "" with hidden answer with icon caution giving up after 300' \
+      -e 'if gave up of r then error number -128' \
+      -e 'return text returned of r' \
       -e 'end run' \
       "''${1:-Password:}"
   '';
@@ -112,6 +116,23 @@ in {
     # gets the same grant from `trusted-users` above.
     nixCustomConf.settings = lib.mkIf (!config.nix.enable) {
       extra-trusted-users = [username];
+    };
+
+    # sudo authentication: Touch ID with the lid open, Apple Watch with it
+    # closed, password last. /etc/pam.d/sudo includes sudo_local, which
+    # nix-darwin manages. pam_tid shows its dialog with the lid open but goes
+    # straight to a password with the lid closed, even with Watch unlock on
+    # (verified on slurricane 2026-10-05, macOS 27.0.1), so pam_watchid follows
+    # it; nix-darwin documents watchIdAuth for exactly that case. `reattach`
+    # makes both work inside tmux/screen, which run detached from the GUI
+    # bootstrap session. Being in the PAM stack, this also covers Homebrew's
+    # `sudo -A` mid-activation (verified nested under root), so the askpass
+    # dialog below only appears when the Watch can't answer.
+    security.pam.services.sudo_local = {
+      enable = lib.mkDefault true;
+      touchIdAuth = lib.mkDefault true;
+      watchIdAuth = lib.mkDefault true;
+      reattach = lib.mkDefault true;
     };
 
     # zsh sourcing of nix-darwin's environment changes.
