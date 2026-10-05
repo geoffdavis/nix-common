@@ -118,6 +118,23 @@ in {
       extra-trusted-users = [username];
     };
 
+    # sudo authentication: Touch ID with the lid open, Apple Watch with it
+    # closed, password last. /etc/pam.d/sudo includes sudo_local, which
+    # nix-darwin manages. pam_tid shows its dialog with the lid open but goes
+    # straight to a password with the lid closed, even with Watch unlock on
+    # (verified on slurricane 2026-10-05, macOS 27.0.1), so pam_watchid follows
+    # it; nix-darwin documents watchIdAuth for exactly that case. `reattach`
+    # makes both work inside tmux/screen, which run detached from the GUI
+    # bootstrap session. Being in the PAM stack, this also covers Homebrew's
+    # `sudo -A` mid-activation (verified nested under root), so the askpass
+    # dialog below only appears when the Watch can't answer.
+    security.pam.services.sudo_local = {
+      enable = lib.mkDefault true;
+      touchIdAuth = lib.mkDefault true;
+      watchIdAuth = lib.mkDefault true;
+      reattach = lib.mkDefault true;
+    };
+
     # zsh sourcing of nix-darwin's environment changes.
     programs.zsh.enable = lib.mkDefault true;
 
