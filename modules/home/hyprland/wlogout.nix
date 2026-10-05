@@ -9,6 +9,27 @@
   cfg = config.hyprland-desktop;
   h = import ./lib.nix {inherit config lib pkgs;};
   inherit (h) plainLogout uwsmLogout;
+
+  # wlogout is launched by waybar's power button, so its actions run inside
+  # waybar.service's cgroup. Both logout scripts begin by stopping
+  # graphical-session.target, which stops waybar — and systemd kills every
+  # process in waybar's cgroup, the running logout script included, before it
+  # reaches the compositor-stop line. Result: bar and wallpaper gone, session
+  # still up (seen on oceaneering-laptop 2026-10-05; the $mod+Shift+E bind is
+  # unaffected because Hyprland, not waybar, is its parent). So the menu hands
+  # the script to its own transient user unit and returns at once. Bare
+  # `systemd-run` (PATH) for the same reason the scripts use bare `systemctl`:
+  # it must match the user manager that owns the session. PATH and the
+  # Hyprland instance are passed through because a transient unit starts from
+  # the manager's environment, not the caller's.
+  detached = script:
+    pkgs.writeShellScript "logout-detached" ''
+      exec systemd-run --user --collect --quiet \
+        --unit="session-logout-$$" \
+        --setenv=PATH="$PATH" \
+        --setenv=HYPRLAND_INSTANCE_SIGNATURE="''${HYPRLAND_INSTANCE_SIGNATURE:-}" \
+        ${script}
+    '';
 in {
   config = lib.mkIf cfg.enable {
     programs = {
@@ -31,10 +52,11 @@ in {
             # services get an ordered SIGTERM while the display is still up;
             # only the way the compositor itself is stopped differs (uwsm stop
             # vs. dispatch exit). See uwsmLogout / plainLogout.
+            # Run detached from waybar's cgroup — see `detached` above.
             action =
               if cfg.uwsm.enable
-              then "${uwsmLogout}"
-              else "${plainLogout}";
+              then "${detached uwsmLogout}"
+              else "${detached plainLogout}";
             text = "Logout";
             keybind = "e";
           }
