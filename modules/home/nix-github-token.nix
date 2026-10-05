@@ -14,6 +14,12 @@
 # works the same on standalone HM (Ubuntu) and under nix-darwin/NixOS, with no
 # root and no daemon restart.
 #
+# ...PROVIDED the client runs as the user. `sudo darwin-rebuild switch`
+# evaluates the flake as root (darwin-rebuild forces HOME=~root), so this file
+# is never read and every fetch is anonymous. Build as the user and sudo only
+# to activate — `nixos-rebuild --sudo` on NixOS, and the consumers' `task
+# switch` on nix-darwin (see README "Updating consumers").
+#
 # ## Shape
 #
 #   ~/.config/nix/nix.conf            HM-managed (store symlink), contains

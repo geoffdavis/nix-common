@@ -233,7 +233,18 @@ explicitly with:
 
 ```sh
 nix flake update nix-common
-sudo darwin-rebuild switch --flake .   # or home-manager switch
+task switch                            # or home-manager switch
+```
+
+On nix-darwin, don't run `sudo darwin-rebuild switch` directly. It evaluates
+the flake as root, and darwin-rebuild forces `HOME=~root`, so user-level nix
+config such as `homeModules.nix-github-token` never applies to its fetches.
+Consumers' `task switch` builds as the user and uses sudo only to activate:
+
+```sh
+sys=$(nix build --no-link --print-out-paths .#darwinConfigurations.<host>.system)
+sudo nix-env -p /nix/var/nix/profiles/system --set "$sys"
+sudo "$sys/activate"
 ```
 
 That two-step is the cost of separating contexts — work-laptop repos
