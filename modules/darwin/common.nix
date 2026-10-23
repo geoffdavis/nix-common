@@ -173,6 +173,13 @@ in {
         "ghostty"
         "lm-studio"
       ];
+      # App Store-only apps. Needs the App Store signed in; `cleanup` never
+      # removes these. `mas` is listed explicitly: bundle would install it on
+      # demand, but cleanup = "uninstall" would then remove it as unlisted.
+      brews = ["mas"];
+      masApps = {
+        Amphetamine = 937984704;
+      };
     };
 
     users.users.${username} = {
