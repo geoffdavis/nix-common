@@ -74,11 +74,28 @@
     xdotool # libxdo.so.3
   ]);
 
+  # copilot-cli 1.0.103 also bundles foundry-local-sdk, whose prebuilt
+  # libfoundry_local.so links ONNX Runtime and ONNX Runtime GenAI. nixpkgs has
+  # no onnxruntime-genai, so the library could not load even with onnxruntime
+  # added. Ignore both, as nixpkgs already does for computer.node's GUI deps:
+  # only the optional Foundry Local (local-model) feature is lost on Linux.
+  copilotFoundryLibs = [
+    "libonnxruntime.so.1"
+    "libonnxruntime-genai.so"
+  ];
+
   # Apply Copilot-only Node runtime defaults without changing the caller's
   # explicit NODE_OPTIONS.  This is deliberately separate from `override`: it
   # is an opt-in runtime policy, not a vendor-source/package override.
   copilotCli = let
-    base = override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs;
+    vendored = override pkgs.github-copilot-cli "copilot-cli" copilotWebviewLibs;
+    base =
+      if vendored == null
+      then null
+      else
+        vendored.overrideAttrs (prev: {
+          autoPatchelfIgnoreMissingDeps = (prev.autoPatchelfIgnoreMissingDeps or []) ++ copilotFoundryLibs;
+        });
   in
     if base == null || cfg.copilotCli.nodeOptions == []
     then base
