@@ -45,7 +45,10 @@
 
     # Hermes keeps its own nixpkgs pin: its uv2nix environment is resolved
     # against that package set and cannot safely follow our stable channels.
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    # Fetched as a shallow git clone, not `github:`: the repo is ~1.3 GB and
+    # codeload.github.com 429s ("too many requests from your network") when
+    # asked to build a tarball for a fresh commit, regardless of access token.
+    hermes-agent.url = "git+https://github.com/NousResearch/hermes-agent?shallow=1";
     hermes-nixpkgs.follows = "hermes-agent/nixpkgs";
   };
 
