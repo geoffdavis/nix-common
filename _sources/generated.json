@@ -8,11 +8,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-uaxTdIOfFKvz8fRWEGN8MytdruXODRY0cmzvh6q3jmo=",
+            "sha256": "sha256-Xq3AAJzc28DQblgRDXsrr4jO1giLHDOmCiEhf+QQYZw=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.304/darwin-arm64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude"
         },
-        "version": "2.1.304"
+        "version": "2.1.309"
     },
     "claude-code-linux-x64": {
         "cargoLock": null,
@@ -23,11 +23,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-6g8TV4RjFhmnpAnQcyLs7JZPnMT9N3UI7Ruj8UHyeRI=",
+            "sha256": "sha256-TXBKiuy+A4r/owAPSYrhfBtPdTrdj6y4dkEgr/yZtlg=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.304/linux-x64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.309/linux-x64/claude"
         },
-        "version": "2.1.304"
+        "version": "2.1.309"
     },
     "codex-linux-x64": {
         "cargoLock": null,
@@ -38,11 +38,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-WCZGxr8FYesN5UD3/IW5EhsAkagmvG6Wgwt/FyISIYI=",
+            "sha256": "sha256-PsVQUxCWCNUDj35QdQ99Jfdo39dA/vBxqnEOJVm2Oqw=",
             "type": "url",
-            "url": "https://github.com/openai/codex/releases/download/rust-v0.163.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
         },
-        "version": "0.163.0"
+        "version": "0.164.0"
     },
     "copilot-cli-darwin-arm64": {
         "cargoLock": null,
@@ -53,11 +53,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-8jlY8BCbat8PDO0UTjGlFu4y4tGzNjNbQldkZvqodQM=",
+            "sha256": "sha256-TLqBaG8tSlbi6i4b0c3eMD0H8o3hFZPh2xeG8SGbj3Q=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.100/github-copilot-1.0.100-darwin-arm64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.103/github-copilot-1.0.103-darwin-arm64.tgz"
         },
-        "version": "1.0.100"
+        "version": "1.0.103"
     },
     "copilot-cli-linux-x64": {
         "cargoLock": null,
@@ -68,11 +68,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-HtlOyNflqP3IyVorL1SnK822NLGK5FZTvwMvXyJJs3g=",
+            "sha256": "sha256-JdYoA+HAiguycUtEsmXoXDrS64r7ZmMfDc0jmLHDabA=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.100/github-copilot-1.0.100-linux-x64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.103/github-copilot-1.0.103-linux-x64.tgz"
         },
-        "version": "1.0.100"
+        "version": "1.0.103"
     },
     "terraform-darwin-arm64": {
         "cargoLock": null,
@@ -83,11 +83,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-heG8eKtFvcX4KnusOSnjfQcoNKWE0iWDokmNxnu2JM0=",
+            "sha256": "sha256-dHKlTMqRHUbA45ml67zkRESRLQ1NrXSV838fpR58prc=",
             "type": "url",
-            "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_darwin_arm64.zip"
+            "url": "https://releases.hashicorp.com/terraform/1.17.0/terraform_1.17.0_darwin_arm64.zip"
         },
-        "version": "1.16.6"
+        "version": "1.17.0"
     },
     "terraform-linux-x64": {
         "cargoLock": null,
@@ -98,10 +98,10 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-OANLONAwljmaehJkoUVhqAKbK0lv0fFpRSZW5Tlo8bc=",
+            "sha256": "sha256-wWjKt8Y3qHaf25AInd0Z3nAbxv+KymTcLiGF/kb1n2c=",
             "type": "url",
-            "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_linux_amd64.zip"
+            "url": "https://releases.hashicorp.com/terraform/1.17.0/terraform_1.17.0_linux_amd64.zip"
         },
-        "version": "1.16.6"
+        "version": "1.17.0"
     }
 }
