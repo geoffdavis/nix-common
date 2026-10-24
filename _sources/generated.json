@@ -8,11 +8,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-Xq3AAJzc28DQblgRDXsrr4jO1giLHDOmCiEhf+QQYZw=",
+            "sha256": "sha256-/7ZDMbwO4bae+3wsQovTq1Frwxt1v2CIazVsl8HCX/0=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.310/darwin-arm64/claude"
         },
-        "version": "2.1.309"
+        "version": "2.1.310"
     },
     "claude-code-linux-x64": {
         "cargoLock": null,
@@ -23,11 +23,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-TXBKiuy+A4r/owAPSYrhfBtPdTrdj6y4dkEgr/yZtlg=",
+            "sha256": "sha256-tzZ2QwrxL5cxanmLg3H4HWQPkKWL3LjzzlaoNbtH31Y=",
             "type": "url",
-            "url": "https://downloads.claude.ai/claude-code-releases/2.1.309/linux-x64/claude"
+            "url": "https://downloads.claude.ai/claude-code-releases/2.1.310/linux-x64/claude"
         },
-        "version": "2.1.309"
+        "version": "2.1.310"
     },
     "codex-linux-x64": {
         "cargoLock": null,
