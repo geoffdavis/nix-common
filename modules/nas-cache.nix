@@ -599,11 +599,21 @@ in {
             # ranks tourmaline below torrey for aarch64 and is the only ARM
             # ranking that matters otherwise — nas-sdg no longer carries ARM.
             #
-            #   4 torrey       native aarch64, dedicated builder
+            # THE FLEET LADDER — the one copy. Comments elsewhere point here
+            # rather than restating it; two restated copies drifted apart
+            # once already.
+            #
+            #   6 Talos k8s    native aarch64, three Pi 5 nodes; defined in
+            #     builders     nix-personal modules/talos-builders.nix, not
+            #                  here (its topology stays downstream)
+            #   4 torrey       native aarch64, worker only (offloads nothing)
             #   3 tourmaline   native armv7l (ONLY native source) + aarch64,
             #                  also a print/UPS appliance
             #   2 nas-sdg      native x86_64 only
             #   1 nas-sct      native x86_64 overflow
+            #
+            # No entry advertises emulated ARM. Add a host by picking a value
+            # relative to this list and adding its row here.
             #
             # WHY BROADENING armv7l-ONLY TO +aarch64 IS SAFE (2026-08-11): this
             # box is also the household print server and UPS monitor
