@@ -6,8 +6,15 @@
 # workflows (GitHub anti-recursion feature), which leaves bump PRs BLOCKED
 # when branch protection requires lint / flake-check. The BOT_PAT secret (a
 # fine-grained PAT with contents + pull-requests write) makes the PR come
-# from a user token so CI fires normally; if the secret is absent we fall
-# back to GITHUB_TOKEN and the old close-and-reopen dance applies.
+# from a user token so CI fires normally. All four consumers set it, so
+# `require-bot-pat` (default true) refuses to run without a WORKING one: a
+# missing, rejected or expired token would otherwise fall back to
+# GITHUB_TOKEN silently and leave a bump PR whose required checks never
+# start (and that nobody notices until a merge is blocked). A token that
+# works but expires within 14 days still lets the bump through, then fails
+# the run at the end, so the failure email arrives before the token dies.
+# Callers that deliberately run without BOT_PAT set require-bot-pat: false
+# and get the GITHUB_TOKEN fallback (and the close-and-reopen dance).
 name: update-flake-lock-action (reusable)
 
 on:
@@ -38,11 +45,19 @@ on:
           every workflow; kept for caller compatibility.
         type: boolean
         default: false
+      require-bot-pat:
+        description: >-
+          Fail (before touching the bump PR) unless BOT_PAT is set and
+          accepted by GitHub, and fail the run at the end when it expires
+          within 14 days. false restores the silent GITHUB_TOKEN fallback.
+        type: boolean
+        default: true
     secrets:
       BOT_PAT:
         description: >-
-          Fine-grained PAT with contents + pull-requests write. Optional —
-          without it the job falls back to GITHUB_TOKEN (see header).
+          Fine-grained PAT with contents + pull-requests write. Required
+          unless require-bot-pat is false (then it falls back to
+          GITHUB_TOKEN; see header).
         required: false
 
 jobs:
@@ -53,6 +68,35 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # First, so a dead token stops the run before the bump PR is touched.
+      # The token reaches curl on stdin (-K -), never argv; Actions masks it
+      # in logs regardless.
+      - name: Check BOT_PAT
+        id: botpat
+        if: inputs.require-bot-pat
+        env:
+          BOT_PAT: ${{ secrets.BOT_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BOT_PAT" ]; then
+            echo "::error::BOT_PAT is not set: the bump PR would come from GITHUB_TOKEN and its required checks would never start. Add the secret, or set require-bot-pat: false."
+            exit 1
+          fi
+          hdrs=$(mktemp)
+          code=$(printf 'header = "Authorization: Bearer %s"\n' "$BOT_PAT" \
+            | curl -sS -K - --max-time 30 -o /dev/null -D "$hdrs" -w '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$REPO") || code=000
+          if [ "$code" != 200 ]; then
+            echo "::error::BOT_PAT was rejected for $REPO (HTTP $code): expired, revoked, or not granted this repo. Regenerate it (contents + pull-requests write) and update the secret."
+            exit 1
+          fi
+          # Fine-grained and expiring classic tokens report their expiry;
+          # a non-expiring classic token has no such header.
+          expires=$(sed -n 's/^github-authentication-token-expiration: *//Ip' "$hdrs" | tr -d '\r')
+          echo "expires=$expires" >>"$GITHUB_OUTPUT"
+          echo "BOT_PAT accepted for $REPO; expires: ${expires:-never}"
+
       # Pinned to immutable commit SHAs; comments name the tag the SHA
       # was resolved from so dependabot / a human can bump intentionally.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -96,3 +140,18 @@ jobs:
           git commit -m "ci: resync nix-common workflow pins from flake.lock" \
             -- .github/workflows
           git push origin "$BRANCH"
+
+      # Last, so a nearly-expired (still working) token lets this week's bump
+      # through but turns the run red -- the failure email is the warning.
+      - name: BOT_PAT expiry
+        if: always() && steps.botpat.outputs.expires != ''
+        env:
+          EXPIRES: ${{ steps.botpat.outputs.expires }}
+        run: |
+          set -euo pipefail
+          left=$(( ($(date -d "$EXPIRES" +%s) - $(date +%s)) / 86400 ))
+          if [ "$left" -lt 14 ]; then
+            echo "::error::BOT_PAT expires in $left day(s) ($EXPIRES). Regenerate it and update the secret in every repo that uses it."
+            exit 1
+          fi
+          echo "BOT_PAT expires in $left days ($EXPIRES)"
