@@ -84,6 +84,13 @@ in {
 
     programs.zsh.enable = lib.mkDefault true;
 
+    # System-level direnv (+ nix-direnv, on by default in the NixOS module),
+    # hooked into /etc/zshrc so every login gets it -- including FreeIPA users
+    # on the NAS fleet, who have no home-manager generation. Hosts whose HM
+    # also enables direnv (home/zsh.nix) are fine: direnv's zsh hook guards
+    # against double registration.
+    programs.direnv.enable = lib.mkDefault true;
+
     users.users.${username} = {
       isNormalUser = true;
       description = lib.mkDefault "Geoff Davis";
