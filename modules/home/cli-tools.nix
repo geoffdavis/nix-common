@@ -54,6 +54,20 @@ in {
 
   home.sessionPath = ["$HOME/.local/bin"];
 
+  # gh as git's GitHub credential helper, baked into the HM-managed git
+  # config. `gh auth setup-git` writes the same block to ~/.gitconfig with
+  # whatever gh store path was current, and that path dangles after the next
+  # GC (git then can't pull at all). Here the path tracks the generation and
+  # is rooted by it. The leading "" clears inherited helpers (osxkeychain).
+  # Same block as programs.gh's gitCredentialHelper, without handing HM
+  # ~/.config/gh/config.yml. Tokens stay in gh's own hosts.yml.
+  programs.git.settings.credential = let
+    helper = ["" "${lib.getExe pkgs.gh} auth git-credential"];
+  in {
+    "https://github.com".helper = helper;
+    "https://gist.github.com".helper = helper;
+  };
+
   home.packages = with pkgs;
     [
       # cloud / infra
