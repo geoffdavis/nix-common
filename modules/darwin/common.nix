@@ -171,6 +171,7 @@ in {
         "1password-cli"
         "font-hack-nerd-font"
         "ghostty"
+        "kitty"
         "lm-studio"
       ];
       # App Store-only apps. Needs the App Store signed in; `cleanup` never
