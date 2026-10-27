@@ -20,6 +20,14 @@
       enableZshIntegration = lib.mkDefault true;
     };
 
+    # direnv: per-project env/devShells via .envrc (`use flake`). nix-direnv
+    # adds eval caching and GC roots so a store sweep doesn't force a devShell
+    # rebuild on the next cd. Shell hooks are wired by the HM module itself.
+    direnv = {
+      enable = lib.mkDefault true;
+      nix-direnv.enable = lib.mkDefault true;
+    };
+
     zsh = {
       enable = lib.mkDefault true;
       oh-my-zsh = {
