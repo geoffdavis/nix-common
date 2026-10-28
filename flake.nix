@@ -221,6 +221,13 @@
     # Opt-in distrobox + rootless podman backend (my.distrobox.enable, off by
     # default) for running a mutable FHS distro against the host's $HOME.
     nixosModules.distrobox = ./modules/nixos/distrobox.nix;
+    # Raspberry Pi 5 board config for linux-rpi via U-Boot (my.rpi5.enable),
+    # promoted from nix-personal's torrey so the pi-talos-home-ops cluster
+    # shares it. Consumer imports nixos-hardware's raspberry-pi-5 itself.
+    nixosModules.rpi5 = ./modules/nixos/rpi5.nix;
+    # Prune stale GPU firmware off a Pi's FAT partition
+    # (my.rpiFirmwarePrune.enable); rpi5 imports it, Pi 2/3/4 hosts use it alone.
+    nixosModules.rpi-firmware-prune = ./modules/nixos/rpi-firmware-prune.nix;
     # OpenDeck app + udev rules + pkgs.opendeck overlay (programs.opendeck.enable).
     nixosModules.opendeck = inputs.opendeck-nix.nixosModules.default;
     homeModules.cli-tools = ./modules/home/cli-tools.nix;
