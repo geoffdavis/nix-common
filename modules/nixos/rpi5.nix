@@ -216,6 +216,15 @@ in {
     # Drop the version override once nixpkgs' defaultVersion reaches
     # 2026.07+; drop the patch once a release's drivers/nvme/nvme.c applies
     # the bridge's inbound offset.
+    #
+    # KEYED AUTOBOOT. enable_uart (below) makes the debug UART U-Boot's
+    # console, and with nothing plugged into the 3-pin debug header its RX
+    # line floats. Noise reads as keystrokes, any keystroke during the
+    # countdown aborts autoboot, and the node sits at `U-Boot>` -- powered,
+    # no OS, no network. The pi5 cluster's 01/02 hung this way on
+    # 2026-10-28 and booted the moment an adapter was attached; torrey and
+    # pi5-03 always had one, which is why it never showed. Only the string
+    # "stop" aborts now: noise will not spell it, a human on serial still can.
     hardware.raspberry-pi.firmware.uboot.package = pkgs.ubootRaspberryPiAarch64.override {
       version = "2026.07";
       src = pkgs.fetchurl {
@@ -226,6 +235,9 @@ in {
         CONFIG_NVME=y
         CONFIG_NVME_PCI=y
         CONFIG_CMD_NVME=y
+        CONFIG_AUTOBOOT_KEYED=y
+        CONFIG_AUTOBOOT_PROMPT="Autoboot in %d seconds, type 'stop' to abort\n"
+        CONFIG_AUTOBOOT_STOP_STR="stop"
       '';
       extraPatches = [
         (pkgs.fetchurl {
