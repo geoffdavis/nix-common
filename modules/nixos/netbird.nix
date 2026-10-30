@@ -61,6 +61,25 @@ in {
         plain spoke wants.
       '';
     };
+
+    restartDelay = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = "10min";
+      example = "5min";
+      description = ''
+        How long after an activation that changed netbird.service to restart
+        it (a systemd time span). Null restarts it during activation, the
+        upstream behaviour.
+
+        Deploys reach these hosts over the overlay, and deploy-rs holds two
+        SSH sessions open for the whole activation with no reconnect. A
+        netbird restart inside activation cuts them, and magicRollback then
+        reverts a good deploy ("Activation cancelled by deployment client";
+        nas-sct and torrey on the 2026-10-30 nixpkgs bump). Deferring the
+        restart lets the deploy finish first: confirm plus the post-deploy
+        health check take under 3 minutes.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
@@ -118,6 +137,55 @@ in {
         config.environment.etc."netbird/config.d/50-nixos.json".source
       ];
     }
+
+    # Deferred restart (see restartDelay). switch-to-configuration leaves
+    # netbird running on its old unit ("NOT restarting"); this oneshot
+    # carries the change instead, because its restartTrigger is netbird's
+    # whole unit file -- package, flags and the config.d trigger above
+    # included -- so it re-runs exactly when netbird would have restarted.
+    # It only schedules: a transient timer restarts netbird after the delay,
+    # once the deploy that activated it has confirmed and disconnected.
+    #
+    # At boot (or after anything else restarted it) netbird has just started
+    # on the current unit, so there is nothing to catch up on; the
+    # started-under-a-minute guard skips the restart that would otherwise
+    # follow every boot. A second activation inside the window
+    # (another deploy, or a magicRollback back to the old generation)
+    # replaces the pending timer rather than failing on its name, and the
+    # restart then picks up whichever unit is current.
+    (lib.mkIf (cfg.restartDelay != null) {
+      systemd.services.netbird.restartIfChanged = false;
+
+      systemd.services.netbird-deferred-restart = {
+        description = "Restart netbird ${cfg.restartDelay} after its unit changed (after the deploy)";
+        after = ["netbird.service"];
+        wantedBy = ["multi-user.target"];
+        restartTriggers = [config.systemd.units."netbird.service".unit];
+        path = [config.systemd.package pkgs.coreutils];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          started=$(systemctl show -p ActiveEnterTimestampMonotonic --value netbird.service)
+          now=$(cut -d' ' -f1 /proc/uptime | tr -d .)0000
+          if [ "''${started:-0}" -eq 0 ]; then
+            echo "netbird is not running; nothing to restart"
+            exit 0
+          fi
+          if [ $(( (now - started) / 1000000 )) -lt 60 ]; then
+            echo "netbird started under a minute ago: it already runs the current unit"
+            exit 0
+          fi
+          systemctl stop netbird-restart-pending.timer 2>/dev/null || true
+          systemctl reset-failed netbird-restart-pending.service 2>/dev/null || true
+          systemd-run --unit=netbird-restart-pending \
+            --on-active=${cfg.restartDelay} --timer-property=AccuracySec=1s \
+            systemctl restart netbird.service
+          echo "netbird.service changed; restart scheduled in ${cfg.restartDelay}"
+        '';
+      };
+    })
 
     (lib.mkIf (cfg.useRoutingFeatures != null) {
       services.netbird.useRoutingFeatures = cfg.useRoutingFeatures;
