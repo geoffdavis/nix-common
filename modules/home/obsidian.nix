@@ -45,7 +45,7 @@
   '';
 
   wrapped = pkgs.symlinkJoin {
-    name = "obsidian-cache-reset-${cfg.package.version or "unknown"}";
+    name = "obsidian-cache-reset-${lib.getVersion cfg.package}";
     paths = [cfg.package];
     nativeBuildInputs = [pkgs.makeWrapper];
     postBuild = ''
