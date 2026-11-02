@@ -60,7 +60,7 @@ jobs:
       # combination without it ever getting reported back here.
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@70fec183852c4f82f3f1969faed7dd60c5149ca7 # v1.0.207
+        uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d # v1.0.266
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # The action refuses bot-initiated runs by default; Renovate's
