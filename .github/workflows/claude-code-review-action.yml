@@ -63,6 +63,12 @@ jobs:
         uses: anthropics/claude-code-action@70fec183852c4f82f3f1969faed7dd60c5149ca7 # v1.0.207
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The action refuses bot-initiated runs by default; Renovate's
+          # dependency PRs need a review like any other (callers require
+          # claude-review to be clean before merging). Only same-repo PRs
+          # reach here (callers' fork guard), so this admits Renovate's own
+          # branches, not arbitrary bots.
+          allowed_bots: 'renovate'
           path_to_bun_executable: ${{ steps.nixtools.outputs.bun }}
           path_to_claude_code_executable: ${{ steps.nixtools.outputs.claude }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
