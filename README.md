@@ -54,6 +54,9 @@ unless noted):
 - `homeModules.ssh` — 1Password SSH agent / `IdentityAgent` config
 - `homeModules.onepassword` — 1Password CLI (+ GUI on Linux x86_64)
 - `homeModules.terraform` — pinned terraform
+- `homeModules.obsidian` — Obsidian wrapped to clear its stale Chromium caches
+  when the package (and so its Electron) changes (`my.obsidian`; set
+  `my.obsidian.package` to a nixGL-wrapped build on non-NixOS)
 - `homeModules.graphics` — GUI / diagramming tools
 - `homeModules.desktop-base` — cli-tools + git + graphics + ssh, plus
   GUI/fonts on an interactive desktop
