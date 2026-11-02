@@ -128,19 +128,19 @@
               gcc
               gnumake
               pkg-config
-              electron_42
+              electron_44
             ];
 
             # Make the checkout's own node_modules/.bin/electron launch the
-            # nixpkgs-wrapped Electron (matching package.json's pinned major 42)
+            # nixpkgs-wrapped Electron (matching package.json's pinned major 44)
             # for `npm run start:dev`. The npm shim joins this dir with
             # "electron", so point at the wrapper in $out/bin — NOT the raw
             # libexec binary, which SIGILLs without the wrapper's GTK/GIO/pixbuf/
             # sandbox environment.
-            ELECTRON_OVERRIDE_DIST_PATH = "${pkgs.electron_42}/bin";
+            ELECTRON_OVERRIDE_DIST_PATH = "${pkgs.electron_44}/bin";
 
             shellHook = ''
-              echo "teams-for-linux dev: node $(node --version), gcc $(gcc -dumpversion), electron ${pkgs.electron_42.version}"
+              echo "teams-for-linux dev: node $(node --version), gcc $(gcc -dumpversion), electron ${pkgs.electron_44.version}"
               echo "  build:   npm run pack        (home-manager switch then picks up dist/linux-unpacked)"
               echo "  iterate: npm run start:dev   (--no-sandbox; the Nix store sandbox binary isn't SUID)"
             '';
