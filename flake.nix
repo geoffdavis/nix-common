@@ -267,6 +267,9 @@
     homeModules.doc-tools = ./modules/home/doc-tools.nix;
     homeModules.onepassword = ./modules/home/onepassword.nix;
     homeModules.terraform = ./modules/home/terraform.nix;
+    # Obsidian wrapped to clear stale Chromium caches after an Electron bump
+    # (my.obsidian; package overridable for nixGL hosts).
+    homeModules.obsidian = ./modules/home/obsidian.nix;
     homeModules.yazi = ./modules/home/yazi.nix;
     # NAS binary cache (substituter only) for standalone home-manager on
     # Linux. buildMachines is not a home-manager option; system-level
