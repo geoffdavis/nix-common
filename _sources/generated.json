@@ -38,11 +38,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-O7916D3mtYrtKPLPbjOtQj7DH9RwChRXuUvlV+pafG4=",
+            "sha256": "sha256-PXe+F0jTWkuw5/h1LN47EYkMYzOOjFmfAer6Slnhez0=",
             "type": "url",
-            "url": "https://github.com/openai/codex/releases/download/rust-v0.167.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+            "url": "https://github.com/openai/codex/releases/download/rust-v0.167.2/codex-package-x86_64-unknown-linux-musl.tar.gz"
         },
-        "version": "0.167.0"
+        "version": "0.167.2"
     },
     "copilot-cli-darwin-arm64": {
         "cargoLock": null,
@@ -53,11 +53,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-WLj8EunsHTU41VJ0khQqqUeKVV03koEBNtSRj9JJ8mg=",
+            "sha256": "sha256-DjFSA6KpD3jdEd74tEwCCDUYrHqUJ2qlbKNYSmMP8IM=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.108/github-copilot-1.0.108-darwin-arm64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.109/github-copilot-1.0.109-darwin-arm64.tgz"
         },
-        "version": "1.0.108"
+        "version": "1.0.109"
     },
     "copilot-cli-linux-x64": {
         "cargoLock": null,
@@ -68,11 +68,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-rQVGuv2LIEmypth3sbawPtQPHmwa+jF5bPDq11o83YA=",
+            "sha256": "sha256-0It6aPwMofMWfiJ5TgTWrsxE3cnnD0SCrjs9KBBK8Do=",
             "type": "url",
-            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.108/github-copilot-1.0.108-linux-x64.tgz"
+            "url": "https://github.com/github/copilot-cli/releases/download/v1.0.109/github-copilot-1.0.109-linux-x64.tgz"
         },
-        "version": "1.0.108"
+        "version": "1.0.109"
     },
     "terraform-darwin-arm64": {
         "cargoLock": null,
@@ -83,11 +83,11 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-seyz/g0KApDBq2+D2WfUPyXaBdC2ce4Ps1UlImjc6Vo=",
+            "sha256": "sha256-2gx+8nipETR4YnWOdXOlkHNl5mSFwmN89cIXxeInmS4=",
             "type": "url",
-            "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_darwin_arm64.zip"
+            "url": "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_darwin_arm64.zip"
         },
-        "version": "1.17.1"
+        "version": "1.17.2"
     },
     "terraform-linux-x64": {
         "cargoLock": null,
@@ -98,10 +98,10 @@
         "pinned": false,
         "src": {
             "name": null,
-            "sha256": "sha256-RjhigFjnGlUhKxxWNxLqwDuQISj0B0Dz3IF03xITUGE=",
+            "sha256": "sha256-5vFrLwsTfuVynKqMTnmjuuTuJhrNGYofz6hYSmKWYFs=",
             "type": "url",
-            "url": "https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_linux_amd64.zip"
+            "url": "https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_linux_amd64.zip"
         },
-        "version": "1.17.1"
+        "version": "1.17.2"
     }
 }
