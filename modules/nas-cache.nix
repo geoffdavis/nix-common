@@ -318,6 +318,7 @@ in {
       extra-substituters = [cacheUrl];
       extra-trusted-public-keys = [cachePublicKey];
       builders-use-substitutes = true;
+      always-allow-substitutes = true;
     };
 
     # Substitution: pull paths the NAS has already built instead of rebuilding.
@@ -327,11 +328,24 @@ in {
     # Remote builder: offload x86_64-linux derivations to the NAS. The big
     # win is on aarch64-darwin (windansea and other Apple-silicon laptops —
     # native x86_64 builds); on birdrock it adds spillover capacity.
+    #
+    # always-allow-substitutes: NixOS's trivial derivations (unit files,
+    # system-path, buildEnvs, deploy-rs's activatable wrapper -- ~155 of them
+    # per NAS closure) set allowSubstitutes = false, and nix honours that even
+    # when the cache already holds the output. Realising a host's toplevel by
+    # DERIVATION (`drv^out`, what deploy-rs does) then rebuilds every one of
+    # them; from an aarch64-darwin laptop that means a remote-builder round
+    # trip each. Measured 2026-11-23 on slurricane, deploying nas-sdg with
+    # Hydra's build fully cached: 155 derivations to build without this, 0
+    # (1051 paths fetched) with it. The flag is meant for "building it is
+    # cheaper than a cache lookup", which stops being true as soon as the
+    # builder is another machine.
     nix = {
       settings = {
         extra-substituters = [cacheUrl];
         extra-trusted-public-keys = [cachePublicKey];
         builders-use-substitutes = true;
+        always-allow-substitutes = true;
       };
       distributedBuilds = true;
       # A host must never appear in its OWN buildMachines. Before this filter
