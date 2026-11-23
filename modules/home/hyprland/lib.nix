@@ -187,8 +187,13 @@
 
     nvidia_util=""
     if command -v nvidia-smi &>/dev/null; then
-      raw=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -d ' ')
-      [ -n "$raw" ] && nvidia_util="$raw"
+      if raw=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null); then
+        raw=''${raw%%$'\n'*}
+        raw="''${raw//[[:space:]]/}"
+        if [[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -le 100 ]; then
+          nvidia_util="$raw"
+        fi
+      fi
     fi
 
     out=""
