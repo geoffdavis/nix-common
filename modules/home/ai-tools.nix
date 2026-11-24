@@ -196,6 +196,18 @@ in {
     };
   };
 
+  # nixpkgs wraps claude with `--set-default CLAUDE_CODE_CERT_STORE system`,
+  # which trusts ONLY the runtime's "system" store and drops its bundled
+  # roots. On darwin that store holds just the user/admin-trusted keychain
+  # certs (3 on a Mac, Nov 2026: no public roots), so every request fails
+  # with UNABLE_TO_GET_ISSUER_CERT_LOCALLY. Trust both: bundled public roots
+  # plus anything OS-installed (private/corporate CAs). The wrapper only sets
+  # a default, so this session variable wins. Shell-launched claude only;
+  # mkDefault so a host can override.
+  config.home.sessionVariables = lib.mkIf cfg.claude.enable {
+    CLAUDE_CODE_CERT_STORE = lib.mkDefault "bundled,system";
+  };
+
   config.home.packages =
     lib.filter (p: p != null) (
       lib.optional cfg.claude.enable (override pkgs.claude-code "claude-code" [])
