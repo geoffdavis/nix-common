@@ -196,6 +196,18 @@ in {
     };
   };
 
+  # Verify TLS against the OS trust store (macOS keychain / /etc/ssl) rather
+  # than only the root list bundled into claude's runtime. The Claude desktop
+  # app already launches its claude with this set; terminal sessions without
+  # it hit intermittent UNABLE_TO_GET_ISSUER_CERT_LOCALLY on api.anthropic.com
+  # (seen on a Mac, Nov 2026). Also picks up OS-installed private/corporate
+  # CAs. Shell-wide rather than a wrapper: other Node CLIs benefit too, and
+  # Node versions that predate the variable ignore it. mkDefault so a host can
+  # set "0" to opt out.
+  config.home.sessionVariables = lib.mkIf cfg.claude.enable {
+    NODE_USE_SYSTEM_CA = lib.mkDefault "1";
+  };
+
   config.home.packages =
     lib.filter (p: p != null) (
       lib.optional cfg.claude.enable (override pkgs.claude-code "claude-code" [])
